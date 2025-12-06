@@ -1,0 +1,34 @@
+{
+  "name": "inventree-flat-bom-generator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    
+    "lint": "npx @biomejs/biome check ./src",
+    "lint:fix": "npx @biomejs/biome check ./src --fix",
+    "build": "tsc -b && vite build --emptyOutDir",
+    "dev": "vite --config vite.dev.config.ts --host"
+  },
+  "dependencies": {
+    "@inventreedb/ui": "latest",
+    "react": ">= 19.1.1",
+    "react-dom": ">= 19.1.1",
+    "@mantine/core": ">= 8.2.7",
+    "@mantine/hooks": ">= 8.2.7",
+    "@mantine/modals": ">= 8.2.7",
+    "@mantine/notifications": ">= 8.2.7"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@biomejs/biome": "2.0.0",
+    
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "^4.7.0",
+    "globals": "^15.14.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.5",
+    "vite-plugin-externals": "^0.6.2"
+  }
+}

@@ -2,12 +2,12 @@
 
 from plugin import InvenTreePlugin
 
-from plugin.mixins import ReportMixin, ScheduleMixin, SettingsMixin, UrlsMixin, UserInterfaceMixin
+from plugin.mixins import SettingsMixin, UrlsMixin, UserInterfaceMixin
 
 from . import PLUGIN_VERSION
 
 
-class FlatBOMGenerator(ReportMixin, ScheduleMixin, SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin):
+class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePlugin):
 
     """FlatBOMGenerator - custom InvenTree plugin."""
 
@@ -27,57 +27,33 @@ class FlatBOMGenerator(ReportMixin, ScheduleMixin, SettingsMixin, UrlsMixin, Use
     # MIN_VERSION = '0.18.0'
     # MAX_VERSION = '2.0.0'
 
-    
-    
-    # Scheduled tasks (from ScheduleMixin)
-    # Ref: https://docs.inventree.org/en/latest/plugins/mixins/schedule/
-    SCHEDULED_TASKS = {
-        # Define your scheduled tasks here...
-    }
-    
     # Plugin settings (from SettingsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/settings/
     SETTINGS = {
-        # Define your plugin settings here...
-        'CUSTOM_VALUE': {
-            'name': 'Custom Value',
-            'description': 'A custom value',
+        'MAX_DEPTH': {
+            'name': 'Maximum Traversal Depth',
+            'description': 'Maximum depth to traverse BOM hierarchy (0 = unlimited)',
             'validator': int,
-            'default': 42,
+            'default': 0,
+        },
+        'SHOW_PURCHASED_ASSEMBLIES': {
+            'name': 'Expand Purchased Assemblies',
+            'description': 'Expand BOM for assemblies that have a default supplier (usually purchased as complete units)',
+            'validator': bool,
+            'default': False,
         }
     }
-    
-    
-    
-    
-    # Custom report context (from ReportMixin)
-    # Ref: https://docs.inventree.org/en/latest/plugins/mixins/report/
-    def add_label_context(self, label_instance, model_instance, request, context, **kwargs):
-        """Add custom context data to a label rendering context."""
-        
-        # Add custom context data to the label rendering context
-        context['foo'] = 'label_bar'
 
-    def add_report_context(self, report_instance, model_instance, request, context, **kwargs):
-        """Add custom context data to a report rendering context."""
-        
-        # Add custom context data to the report rendering context
-        context['foo'] = 'report_bar'
-
-    def report_callback(self, template, instance, report, request, **kwargs):
-        """Callback function called after a report is generated."""
-        ...
-    
     # Custom URL endpoints (from UrlsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/urls/
     def setup_urls(self):
         """Configure custom URL endpoints for this plugin."""
         from django.urls import path
-        from .views import ExampleView
+        from .views import FlatBOMView
 
         return [
-            # Provide path to a simple custom view - replace this with your own views
-            path('example/', ExampleView.as_view(), name='example-view'),
+            # API endpoint to get flattened BOM for a part
+            path('flat-bom/<int:part_id>/', FlatBOMView.as_view(), name='flat-bom'),
         ]
     
 
@@ -90,22 +66,28 @@ class FlatBOMGenerator(ReportMixin, ScheduleMixin, SettingsMixin, UrlsMixin, Use
 
         panels = []
 
-        # Only display this panel for the 'part' target
+        # Only display this panel for parts that are assemblies
         if context.get('target_model') == 'part':
-            panels.append({
-                'key': 'flat-bom-generator-panel',
-                'title': 'Flat BOM Generator',
-                'description': 'Custom panel description',
-                'icon': 'ti:mood-smile:outline',
-                'source': self.plugin_static_file('Panel.js:renderFlatBOMGeneratorPanel'),
-                'context': {
-                    # Provide additional context data to the panel
-                    'settings': self.get_settings_dict(),
-                    'foo': 'bar'
-                }
-            })
+            # Get the part ID from context
+            part_id = context.get('target_id')
+            
+            if part_id:
+                # Import here to avoid circular dependencies
+                from part.models import Part
+                
+                try:
+                    part = Part.objects.get(pk=part_id)
+                    
+                    # Only show panel if this part is an assembly (has a BOM)
+                    if part.assembly:
+                        panels.append({
+                            'key': 'flat-bom-viewer-panel',
+                            'title': 'Flat BOM Viewer',
+                            'description': 'View flattened bill of materials with all sub-assemblies',
+                            'icon': 'ti:list-tree:outline',
+                            'source': self.plugin_static_file('Panel.js:renderFlatBOMGeneratorPanel'),
+                        })
+                except Part.DoesNotExist:
+                    pass
         
         return panels
-    
-
-    

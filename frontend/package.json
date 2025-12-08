@@ -4,11 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    
     "lint": "npx @biomejs/biome check ./src",
     "lint:fix": "npx @biomejs/biome check ./src --fix",
     "build": "tsc -b && vite build --emptyOutDir",
-    "dev": "vite --config vite.dev.config.ts --host"
+    "dev": "vite --config vite.dev.config.ts"
   },
   "dependencies": {
     "@inventreedb/ui": "latest",
@@ -17,12 +16,12 @@
     "@mantine/core": ">= 8.2.7",
     "@mantine/hooks": ">= 8.2.7",
     "@mantine/modals": ">= 8.2.7",
-    "@mantine/notifications": ">= 8.2.7"
+    "@mantine/notifications": ">= 8.2.7",
+    "mantine-datatable": "^8.2.0"
   },
   "peerDependencies": {},
   "devDependencies": {
     "@biomejs/biome": "2.0.0",
-    
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "^4.7.0",

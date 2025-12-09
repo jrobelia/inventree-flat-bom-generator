@@ -76,7 +76,6 @@ class FlatBOMView(APIView):
                     # Calculate stock and order quantities
                     total_stock = part_obj.total_stock or 0
                     on_order = part_obj.on_order  # From incomplete purchase orders
-                    building = part_obj.quantity_being_built  # Parts currently being built
                     allocated = part_obj.allocation_count()  # Stock allocated to builds + sales orders
                     available = part_obj.available_stock  # total_stock - allocated
                     
@@ -86,10 +85,8 @@ class FlatBOMView(APIView):
                         'thumbnail': part_obj.image.thumbnail.url if part_obj.image else None,
                         'in_stock': total_stock,
                         'on_order': on_order,
-                        'building': building,
                         'allocated': allocated,
                         'available': available,
-                        'default_supplier_name': part_obj.default_supplier.name if part_obj.default_supplier else None,
                         'units': part_obj.units or '',
                         'link': part_obj.get_absolute_url() if hasattr(part_obj, 'get_absolute_url') else f'/part/{part_obj.pk}/'
                     }

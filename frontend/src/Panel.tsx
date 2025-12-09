@@ -11,9 +11,13 @@ import {
     NumberInput,
     TextInput,
     Anchor,
-    Checkbox
+    Checkbox,
+    Menu,
+    ActionIcon,
+    Tooltip,
+    Divider
 } from '@mantine/core';
-import { IconRefresh, IconDownload, IconAlertCircle, IconSearch } from '@tabler/icons-react';
+import { IconRefresh, IconDownload, IconAlertCircle, IconSearch, IconAdjustments, IconX } from '@tabler/icons-react';
 import { DataTable, type DataTableColumn, type DataTableSortStatus } from 'mantine-datatable';
 
 // Import for type checking
@@ -130,7 +134,7 @@ function FlatBOMGeneratorPanel({
         if (!bomData) return;
 
         // Always export complete dataset (not filtered)
-        const headers = ['IPN', 'Part Name', 'Description', 'Part Type', 'Total Qty', 'Unit', 'In Stock', 'Allocated', 'Available', 'On Order', 'Building', 'Net Shortfall', 'Supplier'];
+        const headers = ['IPN', 'Part Name', 'Description', 'Part Type', 'Total Qty', 'Unit', 'In Stock', 'Allocated', 'Available', 'On Order', 'Net Shortfall'];
         const rows = bomData.bom_items.map(item => {
             const totalRequired = item.total_qty * buildQuantity;
             const stockToUse = includeAllocations ? item.available : item.in_stock;
@@ -147,9 +151,7 @@ function FlatBOMGeneratorPanel({
                 item.allocated,
                 item.available,
                 item.on_order,
-                item.building || 0,
-                netShortfall,
-                item.default_supplier_name || ''
+                netShortfall
             ];
         });
 
@@ -270,6 +272,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'part_name',
             title: 'Part',
             sortable: true,
+            switchable: false,
             render: (record) => (
                 <Group gap="xs" wrap="nowrap">
                     {record.thumbnail && (
@@ -294,6 +297,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'ipn',
             title: 'IPN',
             sortable: true,
+            switchable: true,
             render: (record) => (
                 <Text size="sm" style={{ fontFamily: 'monospace' }}>
                     {record.ipn}
@@ -304,6 +308,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'description',
             title: 'Description',
             sortable: true,
+            switchable: true,
             render: (record) => (
                 <Text size="sm" lineClamp={2} title={record.description}>
                     {record.description}
@@ -314,6 +319,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'part_type',
             title: 'Type',
             sortable: true,
+            switchable: true,
             render: (record) => (
                 <Badge
                     size="sm"
@@ -332,6 +338,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'total_qty',
             title: 'Total Qty',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
                 return (
@@ -350,6 +357,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'in_stock',
             title: 'In Stock',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
                 if (record.in_stock <= 0) {
@@ -373,6 +381,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'on_order',
             title: 'On Order',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 if (record.on_order > 0) {
                     return (
@@ -385,25 +394,10 @@ function FlatBOMGeneratorPanel({
             }
         },
         {
-            accessor: 'building',
-            title: 'Building',
-            sortable: true,
-            render: (record) => {
-                const building = record.building || 0;
-                if (building > 0) {
-                    return (
-                        <Badge color="cyan" variant="light">
-                            {building.toFixed(2)}
-                        </Badge>
-                    );
-                }
-                return <Text c="dimmed" size="sm">-</Text>;
-            }
-        },
-        {
             accessor: 'allocated',
             title: 'Allocated',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 if (record.allocated > 0) {
                     return (
@@ -419,6 +413,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'available',
             title: 'Available',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
                 if (record.available <= 0) {
@@ -442,6 +437,7 @@ function FlatBOMGeneratorPanel({
             accessor: 'shortfall',
             title: 'Shortfall',
             sortable: true,
+            switchable: true,
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
                 const stockToUse = includeAllocations ? record.available : record.in_stock;
@@ -456,19 +452,34 @@ function FlatBOMGeneratorPanel({
                 }
                 return <Text c="green" fw={700}>✓</Text>;
             }
-        },
-        {
-            accessor: 'default_supplier_name',
-            title: 'Supplier',
-            sortable: true,
-            render: (record) => {
-                if (record.default_supplier_name) {
-                    return <Text size="sm">{record.default_supplier_name}</Text>;
-                }
-                return <Text size="sm" c="dimmed" fs="italic">No supplier</Text>;
-            }
         }
     ], [buildQuantity, includeAllocations, includeOnOrder]);
+
+    // Column visibility state - stored in localStorage
+    const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+        const stored = localStorage.getItem('flat-bom-hidden-columns');
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    });
+
+    // Toggle column visibility
+    const toggleColumn = (accessor: string) => {
+        setHiddenColumns(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(accessor)) {
+                newSet.delete(accessor);
+            } else {
+                newSet.add(accessor);
+            }
+            localStorage.setItem('flat-bom-hidden-columns', JSON.stringify([...newSet]));
+            return newSet;
+        });
+    };
+
+    // Filter columns based on visibility
+    const visibleColumns = useMemo(() => 
+        columns.filter(col => !hiddenColumns.has(col.accessor as string)),
+        [columns, hiddenColumns]
+    );
 
     return (
         <Stack gap="md">
@@ -579,6 +590,31 @@ function FlatBOMGeneratorPanel({
                                 >
                                     Export CSV
                                 </Button>
+                                <Menu shadow="xs" closeOnItemClick={false}>
+                                    <Menu.Target>
+                                        <ActionIcon variant="light" size="lg" aria-label="table-select-columns">
+                                            <Tooltip label="Select Columns" position="top-end">
+                                                <IconAdjustments />
+                                            </Tooltip>
+                                        </ActionIcon>
+                                    </Menu.Target>
+                                    <Menu.Dropdown style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                        <Menu.Label>Select Columns</Menu.Label>
+                                        <Divider />
+                                        {columns
+                                            .filter((col: any) => col.switchable !== false)
+                                            .map((col: any) => (
+                                                <Menu.Item key={col.accessor}>
+                                                    <Checkbox
+                                                        checked={!hiddenColumns.has(col.accessor)}
+                                                        label={col.title || col.accessor}
+                                                        onChange={() => toggleColumn(col.accessor)}
+                                                        radius="sm"
+                                                    />
+                                                </Menu.Item>
+                                            ))}
+                                    </Menu.Dropdown>
+                                </Menu>
                             </Group>
                         </Group>
                     </Paper>
@@ -587,6 +623,17 @@ function FlatBOMGeneratorPanel({
                         <TextInput
                             placeholder="Search by IPN or Part Name..."
                             leftSection={<IconSearch size={16} />}
+                            rightSection={
+                                searchQuery && (
+                                    <ActionIcon
+                                        variant="subtle"
+                                        onClick={() => setSearchQuery('')}
+                                        aria-label="Clear search"
+                                    >
+                                        <IconX size={16} />
+                                    </ActionIcon>
+                                )
+                            }
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.currentTarget.value)}
                             mb="xs"
@@ -598,7 +645,7 @@ function FlatBOMGeneratorPanel({
                         withColumnBorders
                         striped
                         highlightOnHover
-                        columns={columns}
+                        columns={visibleColumns}
                         records={filteredAndSortedData.slice((page - 1) * recordsPerPage, page * recordsPerPage)}
                         totalRecords={filteredAndSortedData.length}
                         recordsPerPage={recordsPerPage}

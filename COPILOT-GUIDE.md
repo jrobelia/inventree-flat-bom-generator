@@ -104,7 +104,7 @@ includeOnOrder: boolean         // Include incoming in shortfall
 searchQuery: string             // Filter text
 sortStatus: DataTableSortStatus // Column + direction
 page: number                    // Current page
-recordsPerPage: number          // Pagination size
+recordsPerPage: number | 'All'  // Pagination size (can be 'All')
 bomData: FlatBomResponse | null // API response
 ```
 
@@ -125,6 +125,7 @@ interface BomItem {
     part_id: number;
     ipn: string;
     part_name: string;
+    full_name: string;
     description: string;
     
     // Categorization
@@ -159,6 +160,7 @@ interface BomItem {
   "part_name": "Assembly Name",
   "ipn": "ASM-001",
   "total_unique_parts": 45,
+  "total_imps_processed": 12,
   "bom_items": [/* array of BomItem */]
 }
 ```
@@ -186,15 +188,15 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 ## DataTable Column Configuration
 
 **12 Columns** (all sortable):
-1. **Part** - Thumbnail + clickable name
+1. **Component** - Thumbnail + clickable full_name
 2. **IPN** - Monospace font
 3. **Description** - Line clamped
-4. **Type** - Badge (blue/green/orange)
-5. **Total Qty** - Scaled by buildQuantity
-6. **In Stock** - Color badge (green/orange/red)
-7. **On Order** - Blue badge if > 0
+4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo)
+5. **Total Qty** - Scaled by buildQuantity with [unit]
+6. **In Stock** - Color badge (green/orange/red) with [unit]
+7. **On Order** - Blue badge if > 0 with [unit]
 8. **Building** - Cyan badge if > 0
-9. **Allocated** - Yellow badge if > 0
+9. **Allocated** - Yellow badge if > 0 with [unit]
 10. **Available** - Color badge (green/orange/red) based on requirement
 11. **Shortfall** - Red badge or green checkmark (uses toggles)
 12. **Supplier** - Default supplier name
@@ -269,6 +271,10 @@ python -m build
 - [ ] Build quantity multiplies all requirements
 - [ ] Stats panel counts update dynamically
 - [ ] CSV export includes all fields
+- [ ] Pagination includes "All" option and works correctly
+- [ ] Component column displays full_name instead of part_name
+- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, and On Order columns
+- [ ] IMP Processed counter displays in statistics panel
 
 **Integration:**
 - [ ] Panel appears on assembly part pages
@@ -363,4 +369,99 @@ npx biome format --write .
 
 ---
 
-*Last Updated: December 2025*
+## Documentation Maintenance
+
+### Keeping Documentation Current
+
+This plugin has three documentation files that must stay synchronized with code:
+
+1. **README.md** - User-facing feature documentation
+2. **COPILOT-GUIDE.md** - This file, developer/AI reference
+3. **TEST-PLAN.md** - Test cases and verification procedures
+
+### When to Update Documentation
+
+Update documentation immediately when you change:
+
+#### UI Changes
+- [ ] Column names, headers, or labels → Update README Table Columns section
+- [ ] Pagination options → Update README and this file's state variables
+- [ ] Statistics panel counters → Update README Usage section
+- [ ] Data display formats (e.g., adding units) → Update README and examples
+
+#### Data/API Changes
+- [ ] BomItem interface fields → Update this file's interface definition
+- [ ] API response structure → Update README API section and this file
+- [ ] New query parameters → Update README API docs
+- [ ] Field name changes → Update all documentation examples
+
+#### Code Structure Changes
+- [ ] Component state variables → Update this file's State Variables section
+- [ ] Column definitions → Update this file's DataTable section
+- [ ] New utility functions → Add to this file's Key Files section
+
+### Documentation Update Checklist
+
+After making code changes, verify:
+
+- [ ] **README.md**
+  - [ ] Features list is accurate
+  - [ ] Table columns match UI
+  - [ ] API examples work
+  - [ ] Usage instructions are current
+  - [ ] Note if screenshots are outdated
+
+- [ ] **COPILOT-GUIDE.md** (this file)
+  - [ ] Interfaces match code
+  - [ ] State variables are accurate
+  - [ ] Column descriptions are current
+  - [ ] Modification patterns still work
+
+- [ ] **TEST-PLAN.md**
+  - [ ] New features have test cases
+  - [ ] UI checklist includes new elements
+  - [ ] Manual verification steps are complete
+
+### Quick Documentation Audit
+
+Run this mental checklist periodically:
+
+1. Open README.md → Does the table column description match the UI?
+2. Check "Table Columns" section → Are all columns listed and accurate?
+3. Review API response example → Does it match current backend?
+4. Check COPILOT-GUIDE interfaces → Do they match Panel.tsx?
+5. Review TEST-PLAN UI checklist → Does it cover current features?
+
+### Documentation Verification Schedule
+
+**After Every Feature Addition:**
+- Update relevant sections immediately
+
+**Before Staging Deployment:**
+- Quick audit of all three files
+
+**Before Production Deployment:**
+- Full documentation review
+
+**Monthly (for Mature Plugins):**
+- Comprehensive documentation verification
+
+### Handling Documentation Debt
+
+If you skip documentation updates during development:
+
+1. **Mark Sections**: Add `<!-- NEEDS UPDATE: [reason] -->` comments
+2. **Create List**: Document what needs updating in commit message
+3. **Schedule Review**: Allocate time before next deployment
+4. **Prioritize User Docs**: README.md updates are most critical
+
+**Example Comment:**
+```markdown
+<!-- NEEDS UPDATE: Column changed from "Part" to "Component" on 2025-12-10 -->
+| **Part** | Part name with thumbnail |
+```
+
+---
+
+*Last Updated: December 10, 2025*
+*Documentation Maintenance Section Added: December 10, 2025*

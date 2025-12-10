@@ -89,6 +89,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 ### Statistics Panel
 
 - **Total Parts**: Number of unique purchaseable components
+- **IMP Processed**: Number of Internally Manufactured Parts (IMPs) processed during BOM traversal
 - **Out of Stock**: Parts with zero inventory
 - **On Order**: Parts with incoming purchase orders
 - **Need to Order**: Parts with shortfall (respects checkbox settings)
@@ -97,20 +98,20 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 
 | Column | Description |
 |--------|-------------|
-| **Part** | Part name with thumbnail image (clickable link) |
+| **Component** | Full part name with thumbnail image (clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
 | **Type** | Fab Part (blue), Coml Part (green), or Purchaseable Assembly (orange) |
-| **Total Qty** | Required quantity for build (scales with build quantity) |
-| **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) |
-| **On Order** | Incoming stock from purchase orders |
+| **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
+| **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
+| **On Order** | Incoming stock from purchase orders with [unit] |
 | **Building** | Stock currently in production |
-| **Allocated** | Stock reserved for builds and sales orders |
+| **Allocated** | Stock reserved for builds and sales orders with [unit] |
 | **Available** | Truly available stock (In Stock - Allocated) |
 | **Shortfall** | Deficit to fulfill build (respects checkboxes) |
 | **Supplier** | Default supplier name |
 
-All columns are **sortable** and the table is **paginated** (10/25/50/100 per page).
+All columns are **sortable** and the table is **paginated** (10/25/50/100/All per page).
 
 ## API Endpoint
 
@@ -130,11 +131,13 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
   "part_name": "Main Assembly",
   "ipn": "ASM-001",
   "total_unique_parts": 45,
+  "total_imps_processed": 12,
   "bom_items": [
     {
       "part_id": 456,
       "ipn": "FAB-100",
       "part_name": "Fabricated Bracket",
+      "full_name": "Bracket, Mounting, Steel - FAB-100",
       "description": "Steel mounting bracket",
       "part_type": "Fab Part",
       "total_qty": 2.0,

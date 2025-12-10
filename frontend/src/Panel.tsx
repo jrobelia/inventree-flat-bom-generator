@@ -27,10 +27,11 @@ interface BomItem {
     part_id: number;
     ipn: string;
     part_name: string;
+    full_name: string;
     description: string;
 
     // Categorization
-    part_type: 'Fab Part' | 'Coml Part' | 'Purchaseable Assembly';
+    part_type: 'TLA' | 'IMP' | 'Purchaseable Assembly' | 'Assembly' | 'Made From' | 'Fab Part' | 'Coml Part' | 'Unknown';
     is_assembly: boolean;
     purchaseable: boolean;
     has_default_supplier: boolean;
@@ -60,6 +61,7 @@ interface FlatBomResponse {
     part_name: string;
     ipn: string;
     total_unique_parts: number;
+    total_imps_processed: number;
     bom_items: BomItem[];
 }
 
@@ -84,7 +86,7 @@ function FlatBOMGeneratorPanel({
         direction: 'asc'
     });
     const [page, setPage] = useState(1);
-    const [recordsPerPage, setRecordsPerPage] = useState(50);
+    const [recordsPerPage, setRecordsPerPage] = useState<number | 'All'>(50);
 
     // Get the part ID from the context
     const partId = useMemo(() => {
@@ -134,12 +136,17 @@ function FlatBOMGeneratorPanel({
         if (!bomData) return;
 
         // Always export complete dataset (not filtered)
-        const headers = ['IPN', 'Part Name', 'Description', 'Part Type', 'Total Qty', 'Unit', 'In Stock', 'Allocated', 'Available', 'On Order', 'Net Shortfall'];
+        const headers = ['IPN', 'Part Name', 'Description', 'Part Type', 'Total Qty', 'Unit', 'In Stock', 'Allocated', 'On Order', 'Net Shortfall'];
         const rows = bomData.bom_items.map(item => {
             const totalRequired = item.total_qty * buildQuantity;
-            const stockToUse = includeAllocations ? item.available : item.in_stock;
-            const onOrderToUse = includeOnOrder ? item.on_order : 0;
-            const netShortfall = Math.max(0, totalRequired - stockToUse - onOrderToUse);
+            let stockValue = item.in_stock;
+            if (includeAllocations) {
+                stockValue -= item.allocated;
+            }
+            if (includeOnOrder) {
+                stockValue += item.on_order;
+            }
+            const netShortfall = Math.max(0, totalRequired - stockValue);
             return [
                 item.ipn,
                 item.part_name,
@@ -149,7 +156,6 @@ function FlatBOMGeneratorPanel({
                 item.unit,
                 item.in_stock,
                 item.allocated,
-                item.available,
                 item.on_order,
                 netShortfall
             ];
@@ -198,6 +204,10 @@ function FlatBOMGeneratorPanel({
                         aValue = a.ipn;
                         bValue = b.ipn;
                         break;
+                    case 'full_name':
+                        aValue = a.full_name;
+                        bValue = b.full_name;
+                        break;
                     case 'part_name':
                         aValue = a.part_name;
                         bValue = b.part_name;
@@ -230,17 +240,19 @@ function FlatBOMGeneratorPanel({
                         aValue = a.allocated;
                         bValue = b.allocated;
                         break;
-                    case 'available':
-                        aValue = a.available;
-                        bValue = b.available;
-                        break;
                     case 'shortfall':
-                        const aStock = includeAllocations ? a.available : a.in_stock;
-                        const bStock = includeAllocations ? b.available : b.in_stock;
-                        const aOnOrder = includeOnOrder ? a.on_order : 0;
-                        const bOnOrder = includeOnOrder ? b.on_order : 0;
-                        aValue = Math.max(0, a.total_qty * buildQuantity - aStock - aOnOrder);
-                        bValue = Math.max(0, b.total_qty * buildQuantity - bStock - bOnOrder);
+                        let aStockValue = a.in_stock;
+                        let bStockValue = b.in_stock;
+                        if (includeAllocations) {
+                            aStockValue -= a.allocated;
+                            bStockValue -= b.allocated;
+                        }
+                        if (includeOnOrder) {
+                            aStockValue += a.on_order;
+                            bStockValue += b.on_order;
+                        }
+                        aValue = Math.max(0, a.total_qty * buildQuantity - aStockValue);
+                        bValue = Math.max(0, b.total_qty * buildQuantity - bStockValue);
                         break;
                     case 'default_supplier_name':
                         aValue = a.default_supplier_name || '';
@@ -269,8 +281,8 @@ function FlatBOMGeneratorPanel({
     // Define DataTable columns matching InvenTree BomTable style
     const columns: DataTableColumn<BomItem>[] = useMemo(() => [
         {
-            accessor: 'part_name',
-            title: 'Part',
+            accessor: 'full_name',
+            title: 'Component',
             sortable: true,
             switchable: false,
             render: (record) => (
@@ -278,7 +290,7 @@ function FlatBOMGeneratorPanel({
                     {record.thumbnail && (
                         <img
                             src={record.thumbnail}
-                            alt={record.part_name}
+                            alt={record.full_name}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                         />
                     )}
@@ -288,7 +300,7 @@ function FlatBOMGeneratorPanel({
                         size="sm"
                         style={{ textDecoration: 'none' }}
                     >
-                        {record.part_name}
+                        {record.full_name}
                     </Anchor>
                 </Group>
             )
@@ -320,19 +332,34 @@ function FlatBOMGeneratorPanel({
             title: 'Type',
             sortable: true,
             switchable: true,
-            render: (record) => (
-                <Badge
-                    size="sm"
-                    color={
-                        record.part_type === 'Fab Part' ? 'blue' :
-                            record.part_type === 'Coml Part' ? 'green' :
-                                'orange'
-                    }
-                    variant="light"
-                >
-                    {record.part_type}
-                </Badge>
-            )
+            render: (record) => {
+                // Handle dynamic part type names (e.g., "fab Part", "FABR Part", "coml Part")
+                const partType = record.part_type;
+                let color = 'gray';
+                
+                if (partType.endsWith(' Part')) {
+                    // Fab/Coml parts with custom prefixes
+                    color = partType.toLowerCase().includes('fab') ? 'blue' : 'green';
+                } else if (partType === 'IMP') {
+                    color = 'cyan';
+                } else if (partType === 'TLA') {
+                    color = 'grape';
+                } else if (partType === 'Assembly') {
+                    color = 'violet';
+                } else if (partType.startsWith('Made From')) {
+                    color = 'indigo';
+                } else if (partType === 'Purchaseable Assembly') {
+                    color = 'orange';
+                } else if (partType === 'Unknown') {
+                    color = 'gray';
+                }
+                
+                return (
+                    <Badge size="sm" color={color} variant="light">
+                        {partType}
+                    </Badge>
+                );
+            }
         },
         {
             accessor: 'total_qty',
@@ -361,36 +388,37 @@ function FlatBOMGeneratorPanel({
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
                 if (record.in_stock <= 0) {
-                    return <Text c="red" fs="italic" size="sm">No stock</Text>;
+                    return (
+                        <Group gap="xs" justify="space-between" wrap="nowrap">
+                            <Text c="red" fs="italic" size="sm">No stock</Text>
+                            {record.unit && (
+                                <Text size="xs" c="dimmed">[{record.unit}]</Text>
+                            )}
+                        </Group>
+                    );
                 } else if (record.in_stock < totalRequired) {
                     return (
-                        <Badge color="orange" variant="light">
-                            {record.in_stock.toFixed(2)}
-                        </Badge>
+                        <Group gap="xs" justify="space-between" wrap="nowrap">
+                            <Badge color="orange" variant="light">
+                                {record.in_stock.toFixed(2)}
+                            </Badge>
+                            {record.unit && (
+                                <Text size="xs" c="dimmed">[{record.unit}]</Text>
+                            )}
+                        </Group>
                     );
                 } else {
                     return (
-                        <Badge color="green" variant="filled">
-                            {record.in_stock.toFixed(2)}
-                        </Badge>
+                        <Group gap="xs" justify="space-between" wrap="nowrap">
+                            <Badge color="green" variant="filled">
+                                {record.in_stock.toFixed(2)}
+                            </Badge>
+                            {record.unit && (
+                                <Text size="xs" c="dimmed">[{record.unit}]</Text>
+                            )}
+                        </Group>
                     );
                 }
-            }
-        },
-        {
-            accessor: 'on_order',
-            title: 'On Order',
-            sortable: true,
-            switchable: true,
-            render: (record) => {
-                if (record.on_order > 0) {
-                    return (
-                        <Badge color="blue" variant="light">
-                            {record.on_order.toFixed(2)}
-                        </Badge>
-                    );
-                }
-                return <Text c="dimmed" size="sm">-</Text>;
             }
         },
         {
@@ -399,38 +427,56 @@ function FlatBOMGeneratorPanel({
             sortable: true,
             switchable: true,
             render: (record) => {
+                const isDimmed = !includeAllocations;
                 if (record.allocated > 0) {
                     return (
-                        <Badge color="yellow" variant="light">
-                            {record.allocated.toFixed(2)}
-                        </Badge>
+                        <Group gap="xs" justify="space-between" wrap="nowrap">
+                            <Badge color="yellow" variant="light" style={{ opacity: isDimmed ? 0.4 : 1 }}>
+                                {record.allocated.toFixed(2)}
+                            </Badge>
+                            {record.unit && (
+                                <Text size="xs" c="dimmed" style={{ opacity: isDimmed ? 0.4 : 1 }}>[{record.unit}]</Text>
+                            )}
+                        </Group>
                     );
                 }
-                return <Text c="dimmed" size="sm">-</Text>;
+                return (
+                    <Group gap="xs" justify="space-between" wrap="nowrap">
+                        <Text c="dimmed" size="sm" style={{ opacity: isDimmed ? 0.4 : 1 }}>-</Text>
+                        {record.unit && (
+                            <Text size="xs" c="dimmed" style={{ opacity: isDimmed ? 0.4 : 1 }}>[{record.unit}]</Text>
+                        )}
+                    </Group>
+                );
             }
         },
         {
-            accessor: 'available',
-            title: 'Available',
+            accessor: 'on_order',
+            title: 'On Order',
             sortable: true,
             switchable: true,
             render: (record) => {
-                const totalRequired = record.total_qty * buildQuantity;
-                if (record.available <= 0) {
-                    return <Text c="red" fs="italic" size="sm">None</Text>;
-                } else if (record.available < totalRequired) {
+                const isDimmed = !includeOnOrder;
+                if (record.on_order > 0) {
                     return (
-                        <Badge color="orange" variant="light">
-                            {record.available.toFixed(2)}
-                        </Badge>
-                    );
-                } else {
-                    return (
-                        <Badge color="green" variant="filled">
-                            {record.available.toFixed(2)}
-                        </Badge>
+                        <Group gap="xs" justify="space-between" wrap="nowrap">
+                            <Badge color="blue" variant="light" style={{ opacity: isDimmed ? 0.4 : 1 }}>
+                                {record.on_order.toFixed(2)}
+                            </Badge>
+                            {record.unit && (
+                                <Text size="xs" c="dimmed" style={{ opacity: isDimmed ? 0.4 : 1 }}>[{record.unit}]</Text>
+                            )}
+                        </Group>
                     );
                 }
+                return (
+                    <Group gap="xs" justify="space-between" wrap="nowrap">
+                        <Text c="dimmed" size="sm" style={{ opacity: isDimmed ? 0.4 : 1 }}>-</Text>
+                        {record.unit && (
+                            <Text size="xs" c="dimmed" style={{ opacity: isDimmed ? 0.4 : 1 }}>[{record.unit}]</Text>
+                        )}
+                    </Group>
+                );
             }
         },
         {
@@ -440,9 +486,14 @@ function FlatBOMGeneratorPanel({
             switchable: true,
             render: (record) => {
                 const totalRequired = record.total_qty * buildQuantity;
-                const stockToUse = includeAllocations ? record.available : record.in_stock;
-                const onOrderToUse = includeOnOrder ? record.on_order : 0;
-                const netShortfall = Math.max(0, totalRequired - stockToUse - onOrderToUse);
+                let stockValue = record.in_stock;
+                if (includeAllocations) {
+                    stockValue -= record.allocated;
+                }
+                if (includeOnOrder) {
+                    stockValue += record.on_order;
+                }
+                const netShortfall = Math.max(0, totalRequired - stockValue);
                 if (netShortfall > 0) {
                     return (
                         <Badge color="red" variant="filled">
@@ -532,6 +583,12 @@ function FlatBOMGeneratorPanel({
                                     <Text size="lg" fw={700}>{bomData.total_unique_parts}</Text>
                                 </div>
                                 <div>
+                                    <Text size="xs" c="dimmed">IMP Processed</Text>
+                                    <Text size="lg" fw={700} c="cyan">
+                                        {bomData.total_imps_processed}
+                                    </Text>
+                                </div>
+                                <div>
                                     <Text size="xs" c="dimmed">Out of Stock</Text>
                                     <Text size="lg" fw={700} c="red">
                                         {bomData.bom_items.filter(item => item.in_stock <= 0).length}
@@ -548,9 +605,14 @@ function FlatBOMGeneratorPanel({
                                     <Text size="lg" fw={700} c="orange">
                                         {bomData.bom_items.filter(item => {
                                             const totalRequired = item.total_qty * buildQuantity;
-                                            const stockToUse = includeAllocations ? item.available : item.in_stock;
-                                            const onOrderToUse = includeOnOrder ? item.on_order : 0;
-                                            return totalRequired > (stockToUse + onOrderToUse);
+                                            let stockValue = item.in_stock;
+                                            if (includeAllocations) {
+                                                stockValue -= item.allocated;
+                                            }
+                                            if (includeOnOrder) {
+                                                stockValue += item.on_order;
+                                            }
+                                            return totalRequired > stockValue;
                                         }).length}
                                     </Text>
                                 </div>
@@ -566,12 +628,12 @@ function FlatBOMGeneratorPanel({
                                 />
                                 <Stack gap="xs">
                                     <Checkbox
-                                        label="Include Allocations in Shortfall"
+                                        label="Include Allocations in Shortfall (-)"
                                         checked={includeAllocations}
                                         onChange={(e) => setIncludeAllocations(e.currentTarget.checked)}
                                     />
                                     <Checkbox
-                                        label="Include On Order in Shortfall"
+                                        label="Include On Order in Shortfall (+)"
                                         checked={includeOnOrder}
                                         onChange={(e) => setIncludeOnOrder(e.currentTarget.checked)}
                                     />
@@ -646,13 +708,20 @@ function FlatBOMGeneratorPanel({
                         striped
                         highlightOnHover
                         columns={visibleColumns}
-                        records={filteredAndSortedData.slice((page - 1) * recordsPerPage, page * recordsPerPage)}
+                        records={
+                            recordsPerPage === 'All'
+                                ? filteredAndSortedData
+                                : filteredAndSortedData.slice((page - 1) * recordsPerPage, page * recordsPerPage)
+                        }
                         totalRecords={filteredAndSortedData.length}
-                        recordsPerPage={recordsPerPage}
+                        recordsPerPage={recordsPerPage === 'All' ? filteredAndSortedData.length : recordsPerPage}
                         page={page}
                         onPageChange={setPage}
-                        recordsPerPageOptions={[10, 25, 50, 100]}
-                        onRecordsPerPageChange={setRecordsPerPage}
+                        recordsPerPageOptions={[10, 25, 50, 100, 'All'] as any}
+                        onRecordsPerPageChange={(value) => {
+                            setRecordsPerPage(value);
+                            setPage(1);
+                        }}
                         sortStatus={sortStatus}
                         onSortStatusChange={setSortStatus}
                         minHeight={200}

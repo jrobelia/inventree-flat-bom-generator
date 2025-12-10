@@ -41,6 +41,30 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             'description': 'Expand BOM for assemblies that have a default supplier (usually purchased as complete units)',
             'validator': bool,
             'default': False,
+        },
+        'PRIMARY_INTERNAL_SUPPLIER': {
+            'name': 'Primary Internal Supplier',
+            'description': 'Your primary internal manufacturing company/supplier. Parts/assemblies with this supplier will be categorized as Internally Manufactured Parts (IMP).',
+            'model': 'company.company',
+            'default': None,
+        },
+        'ADDITIONAL_INTERNAL_SUPPLIERS': {
+            'name': 'Additional Internal Suppliers',
+            'description': 'Additional internal supplier IDs (comma-separated, e.g., "5,12"). Leave empty if you only have one internal supplier.',
+            'validator': str,
+            'default': '',
+        },
+        'FAB_PREFIX': {
+            'name': 'Fabricated Part Prefix',
+            'description': 'Part name prefix for fabricated parts (case-insensitive). Default: "fab"',
+            'validator': str,
+            'default': 'fab',
+        },
+        'COML_PREFIX': {
+            'name': 'Commercial Part Prefix',
+            'description': 'Part name prefix for commercial/COTS parts (case-insensitive). Default: "coml"',
+            'validator': str,
+            'default': 'coml',
         }
     }
 

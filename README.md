@@ -128,9 +128,10 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 - Parts are automatically categorized based on these settings
 - **Fab Part** (blue badge): Starts with fab prefix, non-assembly
 - **Coml Part** (green badge): Starts with coml prefix, non-assembly
-- **IMP** (cyan badge): Has internal supplier, will be expanded to show components
-- **Purchaseable Assembly** (orange badge): Assembly with external supplier, treated as purchaseable unit
+- **IMP** (cyan badge): Has internal default supplier, will be expanded to show components
+- **Purchaseable Assembly** (orange badge): Assembly with external default supplier, treated as purchaseable unit
 - **Unknown** (gray badge): Doesn't match any category (common if not using prefix naming)
+- **Standard Assemblies**: Assembly without default supplier, not categorized because they are expanded during traversal and not displayed in the final flat BOM
 
 ## Usage
 

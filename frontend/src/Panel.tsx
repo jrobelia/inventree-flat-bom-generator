@@ -155,6 +155,27 @@ function FlatBOMGeneratorPanel({
   };
 
   /**
+   * Escape CSV field value by:
+   * 1. Converting to string
+   * 2. Replacing any double quotes with two double quotes (RFC 4180)
+   * 3. Wrapping in double quotes if contains comma, quote, or newline
+   */
+  const escapeCsvField = (value: any): string => {
+    const str = String(value ?? '');
+    // Escape double quotes by doubling them
+    const escaped = str.replace(/"/g, '""');
+    // Wrap in quotes if contains comma, quote, or newline
+    if (
+      escaped.includes(',') ||
+      escaped.includes('"') ||
+      escaped.includes('\n')
+    ) {
+      return `"${escaped}"`;
+    }
+    return escaped;
+  };
+
+  /**
    * Export BOM to CSV
    */
   const exportToCsv = () => {
@@ -198,16 +219,19 @@ function FlatBOMGeneratorPanel({
     });
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(','))
+      headers.map(escapeCsvField).join(','),
+      ...rows.map((row) => row.map(escapeCsvField).join(','))
     ].join('\n');
 
-    // Download file
+    // Download file with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
+    const dateStr = timestamp[0]; // YYYY-MM-DD
+    const timeStr = timestamp[1].split('Z')[0]; // HH-MM-SS
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `flat_bom_${bomData.ipn || partId}_qty${buildQuantity}.csv`;
+    a.download = `flat_bom_${bomData.ipn || partId}_qty${buildQuantity}_${dateStr}_${timeStr}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };

@@ -69,8 +69,6 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
     # Custom URL endpoints (from UrlsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/urls/
-    # Note: REST API endpoints are only supported in InvenTree 0.14.0+
-    # For InvenTree 1.1.6, use the UI panel for flat BOM generation (already implemented via UserInterfaceMixin)
     def setup_urls(self):
         """Configure custom URL endpoints for this plugin.
 

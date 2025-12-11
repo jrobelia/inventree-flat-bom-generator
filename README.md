@@ -186,16 +186,22 @@ All columns are **sortable** and the table is **paginated** (10/25/50/100/All pe
 
 ## API Endpoint
 
-### Get Flat BOM
+**Note:** The REST API endpoint feature requires InvenTree version **0.14.0 or later** with full plugin API support. Your current version (1.1.6) supports the UI panel via `UrlsMixin` but not the `/api/plugin/` REST endpoint namespace.
+
+### Get Flat BOM (InvenTree 0.14.0+)
 
 ```
 GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 ```
 
+**If you are running InvenTree 0.14.0 or later** and need REST API access, ensure the `ENABLE_PLUGINS_URL` setting is enabled in your InvenTree configuration.
+
 **Performance Warning:** Each API call performs a complete recursive BOM traversal with no caching. For large assemblies, response times can be several seconds.
 
 **Query Parameters:**
 - `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
+
+**Authentication:** Requires an authenticated user (login required)
 
 **Response:**
 ```json

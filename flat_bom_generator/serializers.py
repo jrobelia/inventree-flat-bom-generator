@@ -10,24 +10,25 @@ from rest_framework import serializers
 
 class ExampleSerializer(serializers.Serializer):
     """Example serializer for the FlatBOMGenerator plugin.
-    
+
     This simply demonstrates how to create a serializer,
     with a few example fields of different types.
     """
 
     class Meta:
         """Meta options for this serializer."""
+
         fields = [
-            'random_text',
-            'part_count',
-            'today',
+            "random_text",
+            "part_count",
+            "today",
         ]
-    
+
     random_text = serializers.CharField(
         max_length=100,
         required=True,
         label="Random Text",
-        help_text="A text field containing randomly generated data."
+        help_text="A text field containing randomly generated data.",
     )
 
     part_count = serializers.IntegerField(

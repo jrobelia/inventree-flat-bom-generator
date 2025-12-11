@@ -1,40 +1,33 @@
 # Flat BOM Generator
 
-InvenTree plugin that provides an advanced flat bill of materials viewer with intelligent stock tracking, allocation awareness, and production planning capabilities.
+InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation.
 
-## Features
+## What This Plugin Adds
 
-### 📊 Smart BOM Analysis
-- **Leaf-Part Filtering**: Automatically identifies and displays only purchaseable components (Fab Parts, Commercial Parts, and Purchaseable Assemblies)
-- **Quantity Deduplication**: Aggregates duplicate parts across the BOM hierarchy with accurate cumulative quantities
-- **Part Categorization**: Distinguishes between fabricated parts, commercial parts, and purchaseable assemblies
-- **Circular Reference Detection**: Safely handles circular BOM references without infinite loops
+InvenTree's built-in BOM view shows the hierarchical structure. This plugin **flattens** that hierarchy into a purchasing-focused view by:
 
-### 📦 Stock Intelligence
-- **Real-Time Stock Levels**: Shows current inventory with color-coded indicators
-- **Allocation Tracking**: Displays stock allocated to build orders and sales orders
-- **Available Stock**: Calculates truly available stock (total - allocations)
-- **On Order Quantities**: Shows incoming stock from purchase orders
-- **Building Quantities**: Tracks parts currently in production
+### Core Functionality
 
-### 🎯 Production Planning
-- **Build Quantity Multiplier**: Calculate requirements for any build quantity
-- **Flexible Shortfall Calculation**: 
-  - Toggle allocations: Use total stock (optimistic) or available stock (realistic)
-  - Toggle on-order: Include or exclude incoming stock from shortfall
-- **Need to Order Counter**: Instantly see how many parts require purchasing
+- **Automatic Leaf-Part Extraction**: Traverses the entire BOM tree and extracts only the purchaseable leaf components (Fab Parts, Commercial Parts, Purchaseable Assemblies), filtering out intermediate assemblies
+- **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
+- **Flexible Shortfall Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
+- **On-Order Awareness**: Choose whether to include incoming purchase orders in your shortfall calculations
 
-### 🎨 Modern UI
-- **DataTable Interface**: Sortable, filterable, paginated table using Mantine DataTable
-- **Search Functionality**: Filter by IPN or part name
-- **Visual Indicators**: Color-coded badges for stock levels and part types
-- **Statistics Dashboard**: Quick overview of total parts, out of stock, on order, and need to order
-- **Part Thumbnails**: Visual identification with inline images
-- **Responsive Design**: Works on desktop and mobile
+### User Interface
 
-### 📤 Export Capabilities
-- **CSV Export**: Download complete BOM with all calculated quantities
-- **Includes All Fields**: IPN, name, description, quantities, stock levels, allocations, shortfalls, and suppliers
+- **Single-Page View**: See all purchaseable components in one table instead of navigating through BOM levels
+- **Interactive Controls**: Adjust build quantity and instantly see scaled requirements across all parts
+- **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order) in real-time
+- **CSV Export**: Export the complete flat BOM with all calculated quantities for purchasing workflows
+
+### Why This Matters
+
+When planning a build, you typically need to answer: "What parts do I need to order?" InvenTree's hierarchical BOM view requires manual traversal and calculation. This plugin automates that process by:
+
+1. Traversing multi-level BOMs automatically
+2. Aggregating duplicate parts across branches
+3. Calculating cumulative quantities through the hierarchy
+4. Presenting a single, actionable purchasing list
 
 ## Installation
 
@@ -101,15 +94,12 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Component** | Full part name with thumbnail image (clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
-| **Type** | Fab Part (blue), Coml Part (green), or Purchaseable Assembly (orange) |
+| **Type** | Fab Part (blue), Coml Part (green), IMP (cyan), Purchaseable Assembly (orange), or Unknown (gray) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
-| **On Order** | Incoming stock from purchase orders with [unit] |
-| **Building** | Stock currently in production |
-| **Allocated** | Stock reserved for builds and sales orders with [unit] |
-| **Available** | Truly available stock (In Stock - Allocated) |
-| **Shortfall** | Deficit to fulfill build (respects checkboxes) |
-| **Supplier** | Default supplier name |
+| **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
+| **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
+| **Shortfall** | Deficit to fulfill build (respects allocation and on-order checkboxes) |
 
 All columns are **sortable** and the table is **paginated** (10/25/50/100/All per page).
 
@@ -194,8 +184,4 @@ The plugin uses a battle-tested recursive traversal with the `visited.copy()` pa
 - `level`: Depth in the BOM tree (0 = top level)
 - `parent_ipn`: IPN of the parent part
 - `cumulative_qty`: Total quantity needed for one unit of the top assembly
-
-## Development
-
-Based on battle-tested BOM traversal code from the [OA-Inventree-Cost-Analysis-Plugin](https://github.com/jrobelia/OA-Inventree-Cost-Analysis-Plugin).
 

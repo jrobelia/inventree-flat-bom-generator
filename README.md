@@ -31,26 +31,74 @@ When planning a build, you typically need to answer: "What parts do I need to or
 
 ## Installation
 
-### From PyPI (Recommended)
+### Option 1: Install from Git (Recommended for Production)
 
+**For Docker:**
 ```bash
-pip install inventree-flat-bom-generator
+# Add to your InvenTree data/plugins.txt file:
+git+https://github.com/jrobelia/inventree-flat-bom-generator.git
+
+# Then restart InvenTree
+docker-compose restart
 ```
 
-### From Source
-
+**For Bare Metal:**
 ```bash
-git clone https://github.com/yourusername/inventree-flat-bom-generator.git
-cd inventree-flat-bom-generator
-pip install -e .
+# Install directly via pip
+pip install git+https://github.com/jrobelia/inventree-flat-bom-generator.git
+
+# Then restart InvenTree
 ```
 
-### InvenTree Plugin Manager
+**Enable the plugin:**
+- Navigate to **Settings → Plugins** in InvenTree
+- Find "Flat BOM Generator" in the list
+- Toggle to enable and restart InvenTree
 
-1. Navigate to **Settings → Plugins**
-2. Search for "Flat BOM Generator"  
-3. Click **Install**
-4. Enable the plugin and restart InvenTree
+### Option 2: Development Installation (Editable Mode)
+
+**For Docker:**
+
+1. **On your Docker host**, navigate to your InvenTree installation directory:
+   ```bash
+   cd /path/to/inventree  # Directory containing docker-compose.yml
+   ```
+
+2. **Clone into the plugins directory:**
+   ```bash
+   git clone https://github.com/jrobelia/inventree-flat-bom-generator.git data/plugins/inventree-flat-bom-generator
+   ```
+
+3. **Install in editable mode:**
+   ```bash
+   docker-compose exec inventree-server pip install -e /home/inventree/data/plugins/inventree-flat-bom-generator
+   ```
+
+4. **Restart InvenTree:**
+   ```bash
+   docker-compose restart
+   ```
+
+**For Bare Metal:**
+
+1. **Navigate to the InvenTree data directory:**
+   ```bash
+   cd /path/to/inventree/data  # Your InvenTree data folder
+   ```
+
+2. **Clone and install:**
+   ```bash
+   git clone https://github.com/jrobelia/inventree-flat-bom-generator.git plugins/inventree-flat-bom-generator
+   cd plugins/inventree-flat-bom-generator
+   pip install -e .
+   ```
+
+3. **Restart InvenTree**
+
+**Enable the plugin:**
+- Navigate to **Settings → Plugins** in InvenTree
+- Find "Flat BOM Generator" in the list  
+- Toggle to enable and restart InvenTree
 
 ## Usage
 

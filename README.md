@@ -29,6 +29,15 @@ When planning a build, you typically need to answer: "What parts do I need to or
 3. Calculating cumulative quantities through the hierarchy
 4. Presenting a single, actionable purchasing list
 
+### Performance Note
+
+**Each generation request performs a complete recursive BOM traversal with no caching.** For large assemblies (1000+ parts, 10+ levels deep), this can take several seconds. The plugin:
+- Traverses every part in the BOM hierarchy from scratch
+- Calculates cumulative quantities through all levels
+- Filters and deduplicates results
+
+Consider using the optional `max_depth` parameter for very deep BOMs to limit traversal depth if appropriate.
+
 ## Installation
 
 ### Option 1: Install from Git (Recommended for Production)
@@ -100,6 +109,29 @@ pip install git+https://github.com/jrobelia/inventree-flat-bom-generator.git
 - Find "Flat BOM Generator" in the list  
 - Toggle to enable and restart InvenTree
 
+## Configuration
+
+After enabling the plugin, configure it in **Settings → Plugins → Flat BOM Generator**:
+
+### Plugin Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Maximum Traversal Depth** | Maximum depth to traverse BOM hierarchy. Set to 0 for unlimited depth. Use positive values (e.g., 5) to limit traversal for very deep BOMs and improve performance. | `0` (unlimited) |
+| **Expand Purchased Assemblies** | When enabled, expands the BOM for assemblies that have a default supplier (normally treated as purchaseable units). Useful to see internal components of purchased sub-assemblies. | `False` |
+| **Primary Internal Supplier** | Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internally Manufactured Parts (IMP) and automatically expanded during traversal. | None |
+| **Additional Internal Suppliers** | Comma-separated list of additional internal supplier IDs (e.g., "5,12"). Parts with these suppliers are also treated as IMPs. Leave empty if you only have one internal supplier. | Empty |
+| **Fabricated Part Prefix** | Part name prefix for identifying fabricated parts (case-insensitive). Used to categorize and color-code parts in the UI. | `"fab"` |
+| **Commercial Part Prefix** | Part name prefix for identifying commercial/COTS parts (case-insensitive). Used to categorize and color-code parts in the UI. | `"coml"` |
+
+**Part Type Categorization:**
+- Parts are automatically categorized based on these settings
+- **Fab Part** (blue badge): Starts with fab prefix, non-assembly
+- **Coml Part** (green badge): Starts with coml prefix, non-assembly
+- **IMP** (cyan badge): Has internal supplier, will be expanded to show components
+- **Purchaseable Assembly** (orange badge): Assembly with external supplier, treated as purchaseable unit
+- **Unknown** (gray badge): Doesn't match any category (common if not using prefix naming)
+
 ## Usage
 
 ### Interactive UI Panel
@@ -159,8 +191,10 @@ All columns are **sortable** and the table is **paginated** (10/25/50/100/All pe
 GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 ```
 
+**Performance Warning:** Each API call performs a complete recursive BOM traversal with no caching. For large assemblies, response times can be several seconds.
+
 **Query Parameters:**
-- `max_depth` (optional): Maximum BOM traversal depth
+- `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
 
 **Response:**
 ```json
@@ -174,21 +208,24 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
     {
       "part_id": 456,
       "ipn": "FAB-100",
-      "part_name": "Fabricated Bracket",
-      "full_name": "Bracket, Mounting, Steel - FAB-100",
+      "part_name": "Bracket, Mounting, Steel",
+      "full_name": "FAB-100 | Bracket, Mounting, Steel | A ",
       "description": "Steel mounting bracket",
       "part_type": "Fab Part",
-      "total_qty": 2.0,
+      "cumulative_qty": 2.0,
       "unit": "pcs",
+      "units": "pcs",
       "is_assembly": false,
       "purchaseable": true,
-      "has_default_supplier": true,
+      "default_supplier_id": 789,
+      "reference": "U1, U2",
+      "note": "",
+      "level": 1,
       "in_stock": 50.0,
+      "on_order": 100.0,
       "allocated": 10.0,
       "available": 40.0,
-      "on_order": 100.0,
-      "building": 0.0,
-      "default_supplier_name": "Acme Manufacturing",
+      "image": "/media/part_images/fab-100.jpg",
       "thumbnail": "/media/part_images/fab-100_thumbnail.jpg",
       "link": "/part/456/"
     }
@@ -200,7 +237,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 
 ### BOM Traversal Algorithm
 
-The plugin uses a battle-tested recursive traversal with the `visited.copy()` pattern:
+The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 1. **Traverse**: Build complete BOM tree with cumulative quantities
    - Uses `visited.copy()` to allow same part in different branches
@@ -229,7 +266,29 @@ The plugin uses a battle-tested recursive traversal with the `visited.copy()` pa
 
 **Shortfall** = Total Required - Stock Used - (On Order if enabled)
 - Where Stock Used = Available (if allocations enabled) or Total (if disabled)
-- `level`: Depth in the BOM tree (0 = top level)
-- `parent_ipn`: IPN of the parent part
-- `cumulative_qty`: Total quantity needed for one unit of the top assembly
+
+### API Response Fields
+
+Each item in `bom_items` contains:
+- `part_id`: Part database ID
+- `ipn`: Internal Part Number
+- `part_name`: Part name
+- `full_name`: Full display name (includes variant info)
+- `description`: Part description
+- `part_type`: "Fab Part", "Coml Part", "IMP", "Purchaseable Assembly", or "Unknown"
+- `cumulative_qty`: Total quantity needed through BOM hierarchy
+- `unit`/`units`: Unit of measurement
+- `is_assembly`: Boolean - whether part is an assembly
+- `purchaseable`: Boolean - whether part can be purchased
+- `default_supplier_id`: ID of default supplier (null if none)
+- `reference`: BOM reference designator (e.g., "U1, U2")
+- `note`: BOM item notes
+- `level`: Depth in original BOM tree
+- `in_stock`: Total inventory
+- `on_order`: Quantity on incomplete purchase orders
+- `allocated`: Stock reserved for builds/sales
+- `available`: Total stock minus allocated
+- `image`: Full-size image URL (null if none)
+- `thumbnail`: Thumbnail image URL (null if none)
+- `link`: URL to part detail page
 

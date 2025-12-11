@@ -1,0 +1,8 @@
+{
+  "src/Panel.tsx": {
+    "file": "Panel.js",
+    "name": "Panel",
+    "src": "src/Panel.tsx",
+    "isEntry": true
+  }
+}

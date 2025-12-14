@@ -62,6 +62,11 @@ interface BomItem {
   total_qty: number;
   unit: string;
   cut_list?: Array<{ quantity: number; length: number }> | null; // Cut list details for CtL parts
+  internal_fab_cut_list?: Array<{
+    count: number;
+    piece_qty: number;
+    unit: string;
+  }> | null; // Cut list for Internal Fab parts
   cut_length?: number | null; // Length for individual cut (child rows only)
   is_cut_list_child?: boolean; // Flag to identify cut list child rows
 
@@ -79,6 +84,9 @@ interface BomItem {
   image?: string;
   thumbnail?: string;
   link: string;
+
+  // Unit for cut breakdown rows (Internal Fab or CtL)
+  cut_unit?: string;
 }
 
 interface FlatBomResponse {
@@ -111,7 +119,13 @@ function FlatBOMGeneratorPanel({
     direction: 'asc'
   });
   const [page, setPage] = useState(1);
-  const [recordsPerPage, setRecordsPerPage] = useState<number | 'All'>(50);
+  // Records per page state - persisted in localStorage
+  const [recordsPerPage, setRecordsPerPage] = useState<number | 'All'>(() => {
+    const stored = localStorage.getItem('flat-bom-records-per-page');
+    if (stored === 'All') return 'All';
+    const num = Number(stored);
+    return num > 0 ? num : 50;
+  });
 
   // Get the part ID from the context
   const partId = useMemo(() => {
@@ -209,10 +223,10 @@ function FlatBOMGeneratorPanel({
           item.part_name,
           item.description,
           item.part_type,
-          item.total_qty,
+          item.total_qty, // Do not multiply by buildQuantity for child rows
           '',
           item.cut_length || '-',
-          item.unit || '',
+          item.cut_unit || item.unit || '',
           '-',
           '-',
           '-',
@@ -280,7 +294,8 @@ function FlatBOMGeneratorPanel({
           flattenedData.push({
             ...item,
             total_qty: cut.quantity,
-            part_type: 'CtL Cut' as any,
+            // CtL children should remain CtL type
+            part_type: 'CtL' as any,
             in_stock: null as any,
             on_order: null as any,
             allocated: null as any,
@@ -290,6 +305,29 @@ function FlatBOMGeneratorPanel({
             cut_length: cut.length,
             is_cut_list_child: true,
             cut_list: null
+          });
+        }
+      }
+
+      // Add Internal Fab cut breakdown child rows if internal_fab_cut_list exists
+      if (item.internal_fab_cut_list && item.internal_fab_cut_list.length > 0) {
+        for (const piece of item.internal_fab_cut_list) {
+          flattenedData.push({
+            ...item,
+            total_qty: piece.count,
+            // Force Internal Fab type for child rows
+            part_type: 'Internal Fab' as any,
+            in_stock: null as any,
+            on_order: null as any,
+            allocated: null as any,
+            building: null as any,
+            available: null as any,
+            default_supplier_name: '',
+            cut_length: piece.piece_qty, // Use cut_length column for per-use qty
+            cut_unit: piece.unit,
+            is_cut_list_child: true,
+            cut_list: null,
+            internal_fab_cut_list: null
           });
         }
       }
@@ -497,11 +535,11 @@ function FlatBOMGeneratorPanel({
         sortable: true,
         switchable: true,
         render: (record) => {
-          const partType = record.part_type;
+          const baseType = record.part_type;
           let color = 'gray';
 
-          // Color code by part type
-          switch (partType) {
+          // Color code by base type (no suffix)
+          switch (baseType) {
             case 'Coml':
               color = 'green';
               break;
@@ -530,10 +568,35 @@ function FlatBOMGeneratorPanel({
               color = 'gray';
           }
 
+          // Internal Fab and CtL child rows get the CUT suffix
+          const display =
+            record.is_cut_list_child &&
+            (baseType === 'Internal Fab' || baseType === 'CtL')
+              ? `${baseType} - CUT`
+              : baseType;
+
+          // Use CSS ellipsis and always show tooltip for now (like InvenTree ellipsis 'Actions')
           return (
-            <Badge size='sm' color={color} variant='light'>
-              {partType}
-            </Badge>
+            <Tooltip label={display} withArrow>
+              <Badge
+                size='sm'
+                color={color}
+                variant='light'
+                style={{
+                  maxWidth: 90,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  display: 'inline-block',
+                  verticalAlign: 'middle'
+                }}
+                tabIndex={0}
+                aria-label={display}
+              >
+                {display}
+              </Badge>
+            </Tooltip>
           );
         }
       },
@@ -548,7 +611,7 @@ function FlatBOMGeneratorPanel({
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
                 <Text size='sm' fw={700}>
-                  {totalRequired.toFixed(0)}
+                  {record.total_qty.toFixed(0)}
                 </Text>
                 <Text size='xs' c='dimmed'>
                   pieces
@@ -573,8 +636,8 @@ function FlatBOMGeneratorPanel({
       {
         accessor: 'cut_length',
         title: 'Cut Length',
-        sortable: true,
-        switchable: true,
+        sortable: false, // Disable sorting and arrow
+        switchable: false, // Prevent hiding to clarify intent
         render: (record) => {
           if (!record.cut_length) {
             return (
@@ -586,9 +649,9 @@ function FlatBOMGeneratorPanel({
           return (
             <Group gap='xs' justify='space-between' wrap='nowrap'>
               <Text size='sm'>{record.cut_length.toFixed(2)}</Text>
-              {record.unit && (
+              {(record.cut_unit || record.unit) && (
                 <Text size='xs' c='dimmed'>
-                  [{record.unit}]
+                  [{record.cut_unit || record.unit}]
                 </Text>
               )}
             </Group>
@@ -863,6 +926,12 @@ function FlatBOMGeneratorPanel({
     [columns, hiddenColumns]
   );
 
+  const handleRecordsPerPageChange = (value: number | 'All') => {
+    setRecordsPerPage(value);
+    setPage(1);
+    localStorage.setItem('flat-bom-records-per-page', value.toString());
+  };
+
   return (
     <Stack gap='md'>
       {!bomData && !loading && (
@@ -981,14 +1050,14 @@ function FlatBOMGeneratorPanel({
                 />
                 <Stack gap='xs'>
                   <Checkbox
-                    label='Include Allocations in Shortfall (-)'
+                    label='Include Allocations in Build Margin (-)'
                     checked={includeAllocations}
                     onChange={(e) =>
                       setIncludeAllocations(e.currentTarget.checked)
                     }
                   />
                   <Checkbox
-                    label='Include On Order in Shortfall (+)'
+                    label='Include On Order in Build Margin (+)'
                     checked={includeOnOrder}
                     onChange={(e) => setIncludeOnOrder(e.currentTarget.checked)}
                   />
@@ -1086,17 +1155,20 @@ function FlatBOMGeneratorPanel({
             page={page}
             onPageChange={setPage}
             recordsPerPageOptions={[10, 25, 50, 100, 'All'] as any}
-            onRecordsPerPageChange={(value) => {
-              setRecordsPerPage(value);
-              setPage(1);
-            }}
+            onRecordsPerPageChange={handleRecordsPerPageChange}
             sortStatus={sortStatus}
             onSortStatusChange={setSortStatus}
             minHeight={200}
             noRecordsText='No parts found'
-            paginationText={({ from, to, totalRecords }) =>
-              `Showing ${from} to ${to} of ${totalRecords} parts`
-            }
+            paginationText={({ from, to, totalRecords }) => {
+              // Count child/cut parts (rows with is_cut_list_child true)
+              const cutParts = filteredAndSortedData.filter(
+                (row) => row.is_cut_list_child
+              ).length;
+              return cutParts > 0
+                ? `Showing ${from} to ${to} of ${totalRecords} parts (including ${cutParts} cut parts)`
+                : `Showing ${from} to ${to} of ${totalRecords} parts`;
+            }}
           />
         </Stack>
       )}

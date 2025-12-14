@@ -78,6 +78,18 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "model": "part.partcategory",
             "default": None,
         },
+        "INTERNAL_FAB_CUT_BREAKDOWN": {
+            "name": "Enable Internal Fab Cut Breakdown",
+            "description": "Show Internal Fab children as grouped cut breakdowns (like CtL) for specified units.",
+            "validator": bool,
+            "default": False,
+        },
+        "INTERNAL_FAB_CUT_UNITS": {
+            "name": "Internal Fab Cut Units",
+            "description": "Comma-separated list of units (e.g., mm,in,cm) to apply cut breakdown to Internal Fab children.",
+            "validator": str,
+            "default": "mm,in,cm",
+        },
     }
 
     # Custom URL endpoints (from UrlsMixin)

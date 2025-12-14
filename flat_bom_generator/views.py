@@ -216,12 +216,19 @@ class FlatBOMView(APIView):
         expand_purchased_assemblies = False
         internal_supplier_ids = []
         category_mappings = {}
+        enable_ifab_cuts = False
+        ifab_units = set()
+
         if plugin:
             expand_purchased_assemblies = plugin.get_setting(
                 "SHOW_PURCHASED_ASSEMBLIES", False
             )
             internal_supplier_ids = get_internal_supplier_ids(plugin)
             category_mappings = get_category_mappings(plugin)
+            enable_ifab_cuts = plugin.get_setting("INTERNAL_FAB_CUT_BREAKDOWN", False)
+            units_csv = plugin.get_setting("INTERNAL_FAB_CUT_UNITS", "")
+            if units_csv:
+                ifab_units = set(u.strip() for u in units_csv.split(",") if u.strip())
 
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
@@ -229,6 +236,11 @@ class FlatBOMView(APIView):
             )
             logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
             logger.info(f"  - category_mappings: {category_mappings}")
+            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts}")
+            logger.info(f"  - ifab_units: {ifab_units}")
+            logger.info(
+                f"[FlatBOM][DEBUG] Using settings for cut_list logic: enable_ifab_cuts={enable_ifab_cuts}, ifab_units={ifab_units}"
+            )
         else:
             logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
@@ -258,6 +270,8 @@ class FlatBOMView(APIView):
                 expand_purchased_assemblies=expand_purchased_assemblies,
                 internal_supplier_ids=internal_supplier_ids,
                 category_mappings=category_mappings,
+                enable_ifab_cuts=enable_ifab_cuts,
+                ifab_units=ifab_units,
             )
             logger.info(
                 f"[FlatBOM] Traversal complete: {len(flat_bom)} unique parts, {total_imps_processed} IMPs processed"

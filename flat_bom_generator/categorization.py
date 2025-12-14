@@ -71,10 +71,22 @@ def categorize_part(
         has_default_supplier and default_supplier_id in internal_supplier_ids
     )
 
-    # PRIORITY 1: External Assembly (leaf part - purchased complete)
-    # Assembly with default supplier that is NOT in internal suppliers list
-    if is_assembly and has_default_supplier and not has_internal_supplier:
-        return "Purchased Assy"
+    # PRIORITY 1: Internal assemblies (NOT leaf parts - traverse deeper)
+    # Assembly in Fabrication category with internal default supplier
+    # These are assemblies we fabricate internally - need to expand to find child parts
+    if is_assembly:
+        fab_category_ids = category_mappings.get("fabrication", [])
+        if (
+            fab_category_ids
+            and part_category_id
+            and part_category_id in fab_category_ids
+            and has_internal_supplier
+        ):
+            return "Internal Fab"
+        # External Assembly (leaf part - purchased complete)
+        # Assembly with default supplier that is NOT in internal suppliers list
+        if has_default_supplier and not has_internal_supplier:
+            return "Purchased Assy"
 
     # PRIORITY 2: Non-assembly parts (check InvenTree categories)
     if not is_assembly and part_category_id and category_mappings:
@@ -100,20 +112,8 @@ def categorize_part(
         if fab_category_ids and part_category_id in fab_category_ids:
             return "Fab"
 
-    # PRIORITY 3: Internal assemblies (NOT leaf parts - traverse deeper)
+    # Any other assembly (in Assembly category, no category, or no supplier info)
     if is_assembly:
-        # Assembly in Fabrication category with internal default supplier
-        # These are assemblies we fabricate internally - need to expand to find child parts
-        fab_category_ids = category_mappings.get("fabrication", [])
-        if (
-            fab_category_ids
-            and part_category_id
-            and part_category_id in fab_category_ids
-            and has_internal_supplier
-        ):
-            return "Internal Fab"
-
-        # Any other assembly (in Assembly category, no category, or no supplier info)
         return "Assy"
 
     # PRIORITY 4: No match

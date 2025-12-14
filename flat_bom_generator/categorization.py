@@ -4,6 +4,8 @@ Part Categorization
 Functions for categorizing parts based on InvenTree categories and supplier relationships.
 """
 
+import re
+
 
 def categorize_part(
     part_name: str,
@@ -139,8 +141,6 @@ def _extract_length_from_notes(notes: str) -> float:
     """
     if not notes:
         return None
-
-    import re
 
     # Try to find first number (int or float) in the notes
     # Pattern matches: 123, 123.45, .45

@@ -1,43 +1,102 @@
-# Refactor Plan: FlatBOMGenerator Panel.tsx
+# FlatBOMGenerator Refactor & Optimization Plan
 
-## Goal
-Refactor and optimize the large, complex `Panel.tsx` file by breaking it into logical, reusable components and hooks, improving code organization, and applying Mantine/React best practices. This will make the codebase easier to maintain, test, and extend, especially for users with limited frontend experience.
+> **Personal Note:**
+> I am not certain of my current test quality and am very new to unit testing and refactoring. This plan should assume a learning approach, with extra care for incremental testing, clear documentation, and opportunities to improve test coverage and code quality as I go.
 
-## Steps
+---
 
-### 1. Identify and Extract Logical Components
-- Break out the DataTable, CSV export button, and settings controls into separate components in a new `components/` folder.
-- Extract repeated logic (e.g., data fetching, filtering, CSV export) into custom hooks in a new `hooks/` folder.
+## Practical Advice for Unit Testing & Refactoring (Beginner)
 
-### 2. Propose File/Folder Structure for frontend/src
-- Create `components/` for UI elements (e.g., DataTable, SettingsPanel, ExportButton).
-- Create `hooks/` for custom logic (e.g., useBOMData, useCSVExport).
-- Keep `Panel.tsx` as a high-level container that composes these pieces.
-- Example:
-  - `src/components/DataTable.tsx`
-  - `src/components/SettingsPanel.tsx`
-  - `src/components/ExportButton.tsx`
-  - `src/hooks/useBOMData.ts`
-  - `src/hooks/useCSVExport.ts`
-  - `src/Panel.tsx`
+1. **Start Small and Isolate Changes**
+  - Refactor one small section at a time (e.g., a single function or component).
+  - After each change, run your tests to confirm nothing broke.
 
-### 3. Apply Mantine DataTable and State Management Best Practices
-- Use Mantine’s DataTable with memoized columns and rows for performance.
-- Manage state with React’s `useState`/`useReducer` or a simple context if state is shared.
-- Use Mantine’s form components for settings, and keep form state local to the settings component.
+2. **Write Tests Before and After Refactoring**
+  - If a function isn’t tested, write a simple test for its current behavior before changing it.
+  - After refactoring, make sure the test still passes.
 
-### 4. Improve Performance and Testability
-- Memoize expensive computations (e.g., filtered/sorted data) with `useMemo`.
-- Use `React.memo` for pure components.
-- Write simple unit tests for hooks and components (e.g., test data fetching, CSV export logic).
-- Avoid unnecessary re-renders by lifting state only when needed.
+3. **Use Descriptive Test Names**
+  - Name tests after what they check, e.g., `test_flatten_bom_handles_duplicates`.
 
-### 5. Plan for Future Extensibility
-- Document component props and hook return values with TypeScript types and JSDoc.
-- Keep business logic in hooks, UI in components.
-- Use clear naming and folder structure to make adding new features (e.g., new export formats, settings) straightforward.
+4. **Focus on “Pure” Functions First**
+  - Functions that don’t depend on external state (like database or network) are easiest to test and refactor.
 
-## Further Considerations
-1. Should settings be global (context) or local (component state)? Recommend local unless needed elsewhere.
-2. Consider splitting DataTable into smaller subcomponents if it has custom cells, toolbars, or filters.
-3. Recommend starting with one component/hook at a time, testing after each extraction for confidence.
+5. **Don’t Aim for Perfection**
+  - Incremental improvement is better than a big rewrite. It’s okay if your first tests are basic.
+
+6. **Use Assertions Effectively**
+  - Assert expected outputs, but also check for error cases and edge conditions.
+
+7. **Keep Tests Close to Code**
+  - Place test files in a `tests/` folder next to the code they cover.
+
+8. **Learn by Example**
+  - Look at existing tests in your project or in open-source plugins for patterns.
+
+9. **Use Version Control**
+  - Commit after every small, working change. This makes it easy to revert if something breaks.
+
+10. **Ask for Feedback**
+   - Don’t hesitate to ask for code reviews or advice as you go.
+
+---
+
+## Goals
+- Achieve a semi-professional, maintainable codebase
+- Reduce file/component complexity (especially Panel.tsx)
+- Improve separation of concerns and code readability
+- Adopt modern React/TypeScript patterns (hooks, context, modularization)
+- Ensure backend logic is clear, testable, and efficient
+- Maintain or improve test coverage
+- Document all major changes and rationale
+
+## Step 1: Code Review
+- Review frontend (Panel.tsx, related components, hooks, API logic)
+- Review backend (core.py, bom_traversal.py, views.py, categorization.py)
+- Identify:
+  - Long files/components (over 300 lines)
+  - Repeated or tightly coupled logic
+  - Unclear responsibilities or “God objects”
+  - Outdated patterns or tech debt
+  - Missing/unclear documentation
+
+## Step 2: Outline Refactor Targets
+- List pain points and desired outcomes for each major file/module
+- Example (Panel.tsx):
+  - Split into smaller presentational and container components
+  - Move API/data logic to custom hooks
+  - Extract table logic, summary, and controls into separate files
+  - Add/clarify prop and state types
+- Example (bom_traversal.py):
+  - Clarify function responsibilities
+  - Add docstrings and type hints
+  - Split large functions if needed
+
+## Step 3: Plan Refactor Steps
+- For each target area:
+  - Define what to split, move, or rewrite
+  - Choose new structure/pattern (e.g., hooks, context, services)
+  - Plan how to test and validate after each step
+- Prioritize high-impact, low-risk changes first
+- Commit after each logical step
+
+## Step 4: Incremental Refactor & Test
+- Refactor one area at a time
+- Run tests and check UI after each change
+- Document changes in code and this plan
+
+## Step 5: Final Review & Documentation
+- Review for code clarity, maintainability, and test coverage
+- Update README and developer docs
+- Summarize lessons learned and future improvement ideas
+
+---
+
+**Tips:**
+- Ask for advice or code review at any step
+- Don’t try to do everything at once—small, tested steps are best
+- Use this plan as a living document: update as you go
+
+---
+
+_Last updated: 2025-12-14_

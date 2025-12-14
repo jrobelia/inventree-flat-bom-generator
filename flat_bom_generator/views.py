@@ -32,9 +32,16 @@ def get_internal_supplier_ids(plugin):
     try:
         primary_supplier = plugin.get_setting("PRIMARY_INTERNAL_SUPPLIER")
         if primary_supplier:
-            # Handle both ID (int) and object with pk attribute
+            # Handle int, str, or object with pk/id attribute
             if isinstance(primary_supplier, int):
                 internal_ids.append(primary_supplier)
+            elif isinstance(primary_supplier, str):
+                try:
+                    internal_ids.append(int(primary_supplier))
+                except ValueError:
+                    logger.warning(
+                        f"PRIMARY_INTERNAL_SUPPLIER has invalid string value: '{primary_supplier}'"
+                    )
             elif hasattr(primary_supplier, "pk"):
                 internal_ids.append(primary_supplier.pk)
             elif hasattr(primary_supplier, "id"):
@@ -78,6 +85,96 @@ def get_internal_supplier_ids(plugin):
     return sorted(validated_ids)
 
 
+def get_category_mappings(plugin):
+    """
+    Build category mappings from plugin settings.
+
+    Retrieves InvenTree category IDs for each part type (Fabrication, Commercial,
+    Assembly, Cut-to-Length) from plugin settings. For each category, includes
+    the category itself plus all descendant (child) categories to support
+    hierarchical category structures.
+
+    Args:
+        plugin: Plugin instance
+
+    Returns:
+        Dict mapping category type keys to lists of category IDs (includes descendants):
+        {
+            'fabrication': [5, 12, 13],  # Parent + children
+            'commercial': [8, 9, 10],
+            'assembly': [15, 16],
+            'cut_to_length': [20]
+        }
+        Empty dict if no categories configured.
+    """
+    from part.models import PartCategory
+
+    category_mappings = {}
+
+    category_settings = {
+        "fabrication": "FABRICATION_CATEGORY",
+        "commercial": "COMMERCIAL_CATEGORY",
+        "assembly": "ASSEMBLY_CATEGORY",
+        "cut_to_length": "CUT_TO_LENGTH_CATEGORY",
+    }
+
+    for key, setting_name in category_settings.items():
+        try:
+            category = plugin.get_setting(setting_name)
+            logger.info(
+                f"Retrieved {setting_name}: {category} (type: {type(category)})"
+            )
+
+            if category:
+                # Handle various types: int, str, or object with pk/id attribute
+                if isinstance(category, int):
+                    category_id = category
+                elif isinstance(category, str):
+                    # Convert string to int
+                    try:
+                        category_id = int(category)
+                    except ValueError:
+                        logger.warning(
+                            f"{setting_name} has invalid string value: '{category}'"
+                        )
+                        continue
+                elif hasattr(category, "pk"):
+                    category_id = category.pk
+                elif hasattr(category, "id"):
+                    category_id = category.id
+                else:
+                    logger.warning(
+                        f"{setting_name} has unexpected type: {type(category)}"
+                    )
+                    continue
+
+                # Validate category exists and fetch the object
+                try:
+                    category_obj = PartCategory.objects.get(pk=category_id)
+
+                    # Get all descendant categories (including self)
+                    # This handles hierarchical category structures
+                    descendant_categories = category_obj.get_descendants(
+                        include_self=True
+                    )
+                    descendant_ids = [cat.pk for cat in descendant_categories]
+
+                    category_mappings[key] = descendant_ids
+                    logger.info(
+                        f"{setting_name}: Category {category_id} + {len(descendant_ids) - 1} descendants = {descendant_ids}"
+                    )
+                except PartCategory.DoesNotExist:
+                    logger.warning(
+                        f"Category ID {category_id} from {setting_name} does not exist. Ignoring."
+                    )
+            else:
+                logger.info(f"{setting_name}: No category configured")
+        except Exception as e:
+            logger.error(f"Error retrieving {setting_name}: {e}", exc_info=True)
+
+    return category_mappings
+
+
 class FlatBOMView(APIView):
     """API view to get flattened BOM for a part.
 
@@ -118,16 +215,22 @@ class FlatBOMView(APIView):
         plugin = registry.get_plugin("flat-bom-generator")
         expand_purchased_assemblies = False
         internal_supplier_ids = []
-        fab_prefix = "fab"  # Default
-        coml_prefix = "coml"  # Default
+        category_mappings = {}
         if plugin:
             expand_purchased_assemblies = plugin.get_setting(
                 "SHOW_PURCHASED_ASSEMBLIES", False
             )
             internal_supplier_ids = get_internal_supplier_ids(plugin)
-            # Get prefixes - allow blank for companies not using fab/coml naming
-            fab_prefix = plugin.get_setting("FAB_PREFIX", "fab") or ""
-            coml_prefix = plugin.get_setting("COML_PREFIX", "coml") or ""
+            category_mappings = get_category_mappings(plugin)
+
+            logger.info("[FlatBOM] Settings loaded:")
+            logger.info(
+                f"  - expand_purchased_assemblies: {expand_purchased_assemblies}"
+            )
+            logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
+            logger.info(f"  - category_mappings: {category_mappings}")
+        else:
+            logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
         # Validate part exists and is an assembly
         try:
@@ -146,13 +249,18 @@ class FlatBOMView(APIView):
 
         # Generate flat BOM (deduplicated leaf parts)
         try:
+            logger.info(
+                f"[FlatBOM] Starting BOM traversal for part {part_id} ({part.name})"
+            )
             flat_bom, total_imps_processed = get_flat_bom(
                 part_id,
                 max_depth=max_depth,
                 expand_purchased_assemblies=expand_purchased_assemblies,
                 internal_supplier_ids=internal_supplier_ids,
-                fab_prefix=fab_prefix,
-                coml_prefix=coml_prefix,
+                category_mappings=category_mappings,
+            )
+            logger.info(
+                f"[FlatBOM] Traversal complete: {len(flat_bom)} unique parts, {total_imps_processed} IMPs processed"
             )
 
             # Enrich with additional data for UI display

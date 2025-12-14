@@ -24,6 +24,7 @@ import {
 import {
   IconAdjustments,
   IconAlertCircle,
+  IconCornerDownRight,
   IconDownload,
   IconRefresh,
   IconSearch,
@@ -34,7 +35,7 @@ import {
   type DataTableColumn,
   type DataTableSortStatus
 } from 'mantine-datatable';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface BomItem {
   part_id: number;
@@ -46,13 +47,13 @@ interface BomItem {
   // Categorization
   part_type:
     | 'TLA'
-    | 'IMP'
-    | 'Purchaseable Assembly'
-    | 'Assembly'
-    | 'Made From'
-    | 'Fab Part'
-    | 'Coml Part'
-    | 'Unknown';
+    | 'Coml'
+    | 'Fab'
+    | 'CtL'
+    | 'Purchased Assy'
+    | 'Internal Fab'
+    | 'Assy'
+    | 'Other';
   is_assembly: boolean;
   purchaseable: boolean;
   has_default_supplier: boolean;
@@ -60,6 +61,9 @@ interface BomItem {
   // Quantities (aggregated/deduplicated)
   total_qty: number;
   unit: string;
+  cut_list?: Array<{ quantity: number; length: number }> | null; // Cut list details for CtL parts
+  cut_length?: number | null; // Length for individual cut (child rows only)
+  is_cut_list_child?: boolean; // Flag to identify cut list child rows
 
   // Stock and order information
   in_stock: number;
@@ -132,9 +136,10 @@ function FlatBOMGeneratorPanel({
     setError(null);
 
     try {
-      // Call the plugin API endpoint
+      // Call the plugin API endpoint with 30 second timeout
       const response = await context.api.get(
-        `/plugin/flat-bom-generator/flat-bom/${partId}/`
+        `/plugin/flat-bom-generator/flat-bom/${partId}/`,
+        { timeout: 30000 }
       );
 
       if (response.status === 200) {
@@ -189,12 +194,33 @@ function FlatBOMGeneratorPanel({
       'Part Type',
       'Total Qty',
       'Unit',
+      'Cut Length',
+      'Cut Unit',
       'In Stock',
       'Allocated',
       'On Order',
-      'Net Shortfall'
+      'Build Margin'
     ];
-    const rows = bomData.bom_items.map((item) => {
+    const rows = filteredAndSortedData.map((item) => {
+      // Handle cut list children differently
+      if (item.is_cut_list_child) {
+        return [
+          item.ipn,
+          item.part_name,
+          item.description,
+          item.part_type,
+          item.total_qty,
+          '',
+          item.cut_length || '-',
+          item.unit || '',
+          '-',
+          '-',
+          '-',
+          '-'
+        ];
+      }
+
+      // Normal row calculation
       const totalRequired = item.total_qty * buildQuantity;
       let stockValue = item.in_stock;
       if (includeAllocations) {
@@ -203,7 +229,7 @@ function FlatBOMGeneratorPanel({
       if (includeOnOrder) {
         stockValue += item.on_order;
       }
-      const netShortfall = Math.max(0, totalRequired - stockValue);
+      const balance = stockValue - totalRequired;
       return [
         item.ipn,
         item.part_name,
@@ -211,10 +237,12 @@ function FlatBOMGeneratorPanel({
         item.part_type,
         totalRequired,
         item.unit,
+        '-',
+        '',
         item.in_stock,
         item.allocated,
         item.on_order,
-        netShortfall
+        balance
       ];
     });
 
@@ -240,7 +268,34 @@ function FlatBOMGeneratorPanel({
   const filteredAndSortedData = useMemo(() => {
     if (!bomData) return [];
 
-    let data = [...bomData.bom_items];
+    // Flatten data: insert cut list child rows after each CtL parent
+    const flattenedData: BomItem[] = [];
+    for (const item of bomData.bom_items) {
+      // Add parent row
+      flattenedData.push(item);
+
+      // Add child rows if cut list exists
+      if (item.cut_list && item.cut_list.length > 0) {
+        for (const cut of item.cut_list) {
+          flattenedData.push({
+            ...item,
+            total_qty: cut.quantity,
+            part_type: 'CtL Cut' as any,
+            in_stock: null as any,
+            on_order: null as any,
+            allocated: null as any,
+            building: null as any,
+            available: null as any,
+            default_supplier_name: '',
+            cut_length: cut.length,
+            is_cut_list_child: true,
+            cut_list: null
+          });
+        }
+      }
+    }
+
+    let data = flattenedData;
 
     // Filter by search query (IPN and Part Name only)
     if (searchQuery) {
@@ -333,6 +388,34 @@ function FlatBOMGeneratorPanel({
             : (bValue as number) - (aValue as number);
         }
       });
+
+      // Post-sort: Group children with their parents
+      // Separate parents and children, then recombine
+      const parents: BomItem[] = [];
+      const childrenByParentId = new Map<number, BomItem[]>();
+
+      for (const item of data) {
+        if (item.is_cut_list_child) {
+          // Children inherit parent's part_id
+          const parentId = item.part_id;
+          if (!childrenByParentId.has(parentId)) {
+            childrenByParentId.set(parentId, []);
+          }
+          childrenByParentId.get(parentId)!.push(item);
+        } else {
+          parents.push(item);
+        }
+      }
+
+      // Rebuild array with children immediately after their parents
+      data = [];
+      for (const parent of parents) {
+        data.push(parent);
+        const children = childrenByParentId.get(parent.part_id);
+        if (children) {
+          data.push(...children);
+        }
+      }
     }
 
     return data;
@@ -353,25 +436,38 @@ function FlatBOMGeneratorPanel({
         title: 'Component',
         sortable: true,
         switchable: false,
-        render: (record) => (
-          <Group gap='xs' wrap='nowrap'>
-            {record.thumbnail && (
-              <img
-                src={record.thumbnail}
-                alt={record.full_name}
-                style={{ width: 40, height: 40, objectFit: 'contain' }}
-              />
-            )}
-            <Anchor
-              href={record.link}
-              target='_blank'
-              size='sm'
-              style={{ textDecoration: 'none' }}
-            >
-              {record.full_name}
-            </Anchor>
-          </Group>
-        )
+        render: (record) => {
+          if (record.is_cut_list_child) {
+            return (
+              <Group gap='xs' wrap='nowrap' justify='flex-end'>
+                <IconCornerDownRight
+                  size={40}
+                  stroke={1.5}
+                  style={{ color: 'var(--mantine-color-blue-5)' }}
+                />
+              </Group>
+            );
+          }
+          return (
+            <Group gap='xs' wrap='nowrap'>
+              {record.thumbnail && (
+                <img
+                  src={record.thumbnail}
+                  alt={record.full_name}
+                  style={{ width: 40, height: 40, objectFit: 'contain' }}
+                />
+              )}
+              <Anchor
+                href={record.link}
+                target='_blank'
+                size='sm'
+                style={{ textDecoration: 'none' }}
+              >
+                {record.full_name}
+              </Anchor>
+            </Group>
+          );
+        }
       },
       {
         accessor: 'ipn',
@@ -401,25 +497,37 @@ function FlatBOMGeneratorPanel({
         sortable: true,
         switchable: true,
         render: (record) => {
-          // Handle dynamic part type names (e.g., "fab Part", "FABR Part", "coml Part")
           const partType = record.part_type;
           let color = 'gray';
 
-          if (partType.endsWith(' Part')) {
-            // Fab/Coml parts with custom prefixes
-            color = partType.toLowerCase().includes('fab') ? 'blue' : 'green';
-          } else if (partType === 'IMP') {
-            color = 'cyan';
-          } else if (partType === 'TLA') {
-            color = 'grape';
-          } else if (partType === 'Assembly') {
-            color = 'violet';
-          } else if (partType.startsWith('Made From')) {
-            color = 'indigo';
-          } else if (partType === 'Purchaseable Assembly') {
-            color = 'orange';
-          } else if (partType === 'Unknown') {
-            color = 'gray';
+          // Color code by part type
+          switch (partType) {
+            case 'Coml':
+              color = 'green';
+              break;
+            case 'Fab':
+              color = 'blue';
+              break;
+            case 'CtL':
+              color = 'teal';
+              break;
+            case 'Purchased Assy':
+              color = 'orange';
+              break;
+            case 'Internal Fab':
+              color = 'cyan';
+              break;
+            case 'Assy':
+              color = 'violet';
+              break;
+            case 'TLA':
+              color = 'grape';
+              break;
+            case 'Other':
+              color = 'gray';
+              break;
+            default:
+              color = 'gray';
           }
 
           return (
@@ -436,6 +544,18 @@ function FlatBOMGeneratorPanel({
         switchable: true,
         render: (record) => {
           const totalRequired = record.total_qty * buildQuantity;
+          if (record.is_cut_list_child) {
+            return (
+              <Group gap='xs' justify='space-between' wrap='nowrap'>
+                <Text size='sm' fw={700}>
+                  {totalRequired.toFixed(0)}
+                </Text>
+                <Text size='xs' c='dimmed'>
+                  pieces
+                </Text>
+              </Group>
+            );
+          }
           return (
             <Group gap='xs' justify='space-between' wrap='nowrap'>
               <Text size='sm' fw={700}>
@@ -451,11 +571,45 @@ function FlatBOMGeneratorPanel({
         }
       },
       {
+        accessor: 'cut_length',
+        title: 'Cut Length',
+        sortable: true,
+        switchable: true,
+        render: (record) => {
+          if (!record.cut_length) {
+            return (
+              <Text size='sm' c='dimmed'>
+                -
+              </Text>
+            );
+          }
+          return (
+            <Group gap='xs' justify='space-between' wrap='nowrap'>
+              <Text size='sm'>{record.cut_length.toFixed(2)}</Text>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
+      },
+      {
         accessor: 'in_stock',
         title: 'In Stock',
         sortable: true,
         switchable: true,
         render: (record) => {
+          // Show dash for cut list children
+          if (record.is_cut_list_child) {
+            return (
+              <Text size='sm' c='dimmed'>
+                -
+              </Text>
+            );
+          }
+
           const totalRequired = record.total_qty * buildQuantity;
           if (record.in_stock <= 0) {
             return (
@@ -506,6 +660,13 @@ function FlatBOMGeneratorPanel({
         switchable: true,
         render: (record) => {
           const isDimmed = !includeAllocations;
+          if (record.is_cut_list_child) {
+            return (
+              <Text size='sm' c='dimmed'>
+                -
+              </Text>
+            );
+          }
           if (record.allocated > 0) {
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
@@ -557,6 +718,13 @@ function FlatBOMGeneratorPanel({
         switchable: true,
         render: (record) => {
           const isDimmed = !includeOnOrder;
+          if (record.is_cut_list_child) {
+            return (
+              <Text size='sm' c='dimmed'>
+                -
+              </Text>
+            );
+          }
           if (record.on_order > 0) {
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
@@ -603,10 +771,19 @@ function FlatBOMGeneratorPanel({
       },
       {
         accessor: 'shortfall',
-        title: 'Shortfall',
+        title: 'Build Margin',
         sortable: true,
         switchable: true,
         render: (record) => {
+          // No shortfall for cut list children
+          if (record.is_cut_list_child) {
+            return (
+              <Text size='sm' c='dimmed'>
+                -
+              </Text>
+            );
+          }
+
           const totalRequired = record.total_qty * buildQuantity;
           let stockValue = record.in_stock;
           if (includeAllocations) {
@@ -615,18 +792,18 @@ function FlatBOMGeneratorPanel({
           if (includeOnOrder) {
             stockValue += record.on_order;
           }
-          const netShortfall = Math.max(0, totalRequired - stockValue);
-          if (netShortfall > 0) {
+          const balance = stockValue - totalRequired;
+          if (balance < 0) {
             return (
               <Badge color='red' variant='filled'>
-                -{netShortfall.toFixed(2)}
+                {balance.toFixed(2)}
               </Badge>
             );
           }
           return (
-            <Text c='green' fw={700}>
-              ✓
-            </Text>
+            <Badge color='green' variant='filled'>
+              +{balance.toFixed(2)}
+            </Badge>
           );
         }
       }
@@ -639,6 +816,29 @@ function FlatBOMGeneratorPanel({
     const stored = localStorage.getItem('flat-bom-hidden-columns');
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
+
+  // Auto-manage cut_length column visibility
+  useEffect(() => {
+    if (bomData) {
+      const hasCtLParts = bomData.bom_items.some(
+        (item) => item.cut_list && item.cut_list.length > 0
+      );
+
+      setHiddenColumns((prev) => {
+        const newSet = new Set(prev);
+        if (hasCtLParts) {
+          newSet.delete('cut_length');
+        } else {
+          newSet.add('cut_length');
+        }
+        localStorage.setItem(
+          'flat-bom-hidden-columns',
+          JSON.stringify([...newSet])
+        );
+        return newSet;
+      });
+    }
+  }, [bomData]);
 
   // Toggle column visibility
   const toggleColumn = (accessor: string) => {
@@ -719,7 +919,7 @@ function FlatBOMGeneratorPanel({
                 </div>
                 <div>
                   <Text size='xs' c='dimmed'>
-                    IMP Processed
+                    Internal Fab Processed
                   </Text>
                   <Text size='lg' fw={700} c='cyan'>
                     {bomData.total_imps_processed}

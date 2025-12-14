@@ -1,7 +1,7 @@
 """
 Part Categorization
 
-Functions for categorizing parts based on naming conventions and assembly flags.
+Functions for categorizing parts based on InvenTree categories and supplier relationships.
 """
 
 
@@ -11,74 +11,146 @@ def categorize_part(
     is_top_level: bool = False,
     default_supplier_id: int = None,
     internal_supplier_ids: list = None,
-    fab_prefix: str = "fab",
-    coml_prefix: str = "coml",
+    part_category_id: int = None,
+    category_mappings: dict = None,
+    bom_item_notes: str = None,
+    # Unused legacy parameters (kept for API compatibility during transition)
+    fab_prefix: str = None,
+    coml_prefix: str = None,
 ) -> str:
     """
-    Categorize part based on assembly flag, name prefix, default_supplier, and position in BOM.
+    Categorize part using InvenTree categories and supplier relationships.
 
-    Categories:
-    - TLA: Top Level Assembly (the input part at level 0)
-    - IMP: Internally Manufactured Part (has default_supplier matching internal supplier, can be assembly or non-assembly)
-      * Only expands children if is_assembly=True (respects SHOW_PURCHASED_ASSEMBLIES setting)
-    - Purchaseable Assembly: is_assembly=True + external default_supplier (not internal) (leaf part unless expand setting enabled)
-    - Assembly: is_assembly=True + no default_supplier, name starts with "Assy"
-    - Made From: is_assembly=True + no default_supplier, name starts with fab_prefix
-    - Fab Part: name starts with fab_prefix (case-insensitive) (leaf part)
-    - Coml Part: name starts with coml_prefix (case-insensitive) (leaf part)
-    - Unknown: doesn't match any pattern
+    Category Priority Order:
+    1. Top Level Assembly (TLA) - The input part at level 0
+    2. External Assembly - Assembly with default supplier that is NOT internal (leaf part)
+    3. InvenTree Category-based Classification (for non-assemblies):
+       - Cut-to-Length: Raw material with length in BOM notes
+       - Commercial: Purchased commercial/COTS parts
+       - Fabrication: Fabricated non-assembly parts
+    4. Internal Assemblies (traverse deeper, not leaf parts):
+       - Internal Fab: Assembly in Fabrication category with internal default supplier
+       - Assembly: Assembly in Assembly category or no category
+    5. Fallback: "Other"
 
     Args:
         part_name: Part name (may have indentation from BOM display)
-        is_assembly: Assembly flag
+        is_assembly: Assembly flag from part model (Part.assembly)
         is_top_level: True if this is the input part (level 0)
-        default_supplier_id: ID of default_supplier (None if no default_supplier set)
-        internal_supplier_ids: List of internal supplier IDs (empty list if none configured)
-        fab_prefix: Prefix for fabricated parts (default: 'fab', case-insensitive)
-        coml_prefix: Prefix for commercial parts (default: 'coml', case-insensitive)
+        default_supplier_id: ID of default_supplier (None if not set)
+        internal_supplier_ids: List of internal supplier IDs from plugin settings
+        part_category_id: Part's category ID from InvenTree
+        category_mappings: Dict mapping category types to lists of category IDs (includes descendants)
+            Example: {
+                'fabrication': [5, 12, 13],  # Parent category + children
+                'commercial': [8, 9],
+                'assembly': [15, 16, 17],
+                'cut_to_length': [20]
+            }
+        bom_item_notes: Notes field from BOM line item (for CtL length extraction)
+        fab_prefix: Unused (kept for API compatibility)
+        coml_prefix: Unused (kept for API compatibility)
 
     Returns:
-        Category string
+        Category string: "TLA", "Purchased Assy", "Coml", "Fab",
+                        "CtL", "Internal Fab", "Assy", "Other"
     """
     if internal_supplier_ids is None:
         internal_supplier_ids = []
+
+    if category_mappings is None:
+        category_mappings = {}
 
     # Top level assembly gets special TLA category
     if is_top_level:
         return "TLA"
 
-    # Clean name - remove indentation and get first word before comma or hyphen
-    name_clean = part_name.strip().split(",")[0].split("-")[0].strip()
-    name_lower = name_clean.lower()
+    # Helper booleans
+    has_default_supplier = default_supplier_id is not None
+    has_internal_supplier = (
+        has_default_supplier and default_supplier_id in internal_supplier_ids
+    )
 
-    # Handle empty prefixes - allow blank if company doesn't use fab/coml naming
-    fab_prefix_clean = fab_prefix.strip() if fab_prefix else ""
-    coml_prefix_clean = coml_prefix.strip() if coml_prefix else ""
-    fab_prefix_lower = fab_prefix_clean.lower()
-    coml_prefix_lower = coml_prefix_clean.lower()
+    # PRIORITY 1: External Assembly (leaf part - purchased complete)
+    # Assembly with default supplier that is NOT in internal suppliers list
+    if is_assembly and has_default_supplier and not has_internal_supplier:
+        return "Purchased Assy"
 
-    # Check IMP FIRST (can be assembly or non-assembly)
-    # IMP = Internally Manufactured Part (has default_supplier that is in internal supplier list)
-    if default_supplier_id and default_supplier_id in internal_supplier_ids:
-        return "IMP"
+    # PRIORITY 2: Non-assembly parts (check InvenTree categories)
+    if not is_assembly and part_category_id and category_mappings:
+        # Check Cut-to-Length first (requires BOM notes validation)
+        ctl_category_ids = category_mappings.get("cut_to_length", [])
+        if ctl_category_ids and part_category_id in ctl_category_ids:
+            # Validate that BOM notes contain a length value
+            if (
+                bom_item_notes
+                and _extract_length_from_notes(bom_item_notes) is not None
+            ):
+                return "CtL"
+            # If no valid length in notes, treat as fabrication
+            return "Fab"
 
-    # Then check if it's an assembly
+        # Check Commercial category (including descendants)
+        coml_category_ids = category_mappings.get("commercial", [])
+        if coml_category_ids and part_category_id in coml_category_ids:
+            return "Coml"
+
+        # Check Fabrication category (including descendants)
+        fab_category_ids = category_mappings.get("fabrication", [])
+        if fab_category_ids and part_category_id in fab_category_ids:
+            return "Fab"
+
+    # PRIORITY 3: Internal assemblies (NOT leaf parts - traverse deeper)
     if is_assembly:
-        # Assemblies with external default_supplier are treated as leaf parts (purchased as complete units)
-        if default_supplier_id:
-            return "Purchaseable Assembly"
-        elif name_lower.startswith("assy"):
-            return "Assembly"
-        elif fab_prefix_clean and name_lower.startswith(fab_prefix_lower):
-            return f"Made From {fab_prefix_clean}"
-        else:
-            return "Unknown"
-    else:
-        # Non-assembly parts - categorize by name prefix (case-insensitive)
-        # Skip empty prefixes (graceful handling for companies not using fab/coml naming)
-        if fab_prefix_clean and name_lower.startswith(fab_prefix_lower):
-            return f"{fab_prefix_clean} Part"
-        elif coml_prefix_clean and name_lower.startswith(coml_prefix_lower):
-            return f"{coml_prefix_clean} Part"
-        else:
-            return "Unknown"
+        # Assembly in Fabrication category with internal default supplier
+        # These are assemblies we fabricate internally - need to expand to find child parts
+        fab_category_ids = category_mappings.get("fabrication", [])
+        if (
+            fab_category_ids
+            and part_category_id
+            and part_category_id in fab_category_ids
+            and has_internal_supplier
+        ):
+            return "Internal Fab"
+
+        # Any other assembly (in Assembly category, no category, or no supplier info)
+        return "Assy"
+
+    # PRIORITY 4: No match
+    return "Other"
+
+
+def _extract_length_from_notes(notes: str) -> float:
+    """
+    Extract numeric length value from BOM line item notes field.
+
+    Handles various formats:
+    - "100" → 100.0
+    - "100mm" → 100.0
+    - "Length: 50.5" → 50.5
+    - "Cut to 12.75 inches" → 12.75
+    - "Non-numeric text" → None
+
+    Args:
+        notes: BOM line item notes string
+
+    Returns:
+        Float length value if found, None otherwise
+    """
+    if not notes:
+        return None
+
+    import re
+
+    # Try to find first number (int or float) in the notes
+    # Pattern matches: 123, 123.45, .45
+    pattern = r"\d+\.?\d*|\.\d+"
+    match = re.search(pattern, notes.strip())
+
+    if match:
+        try:
+            return float(match.group())
+        except ValueError:
+            return None
+
+    return None

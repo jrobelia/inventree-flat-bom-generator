@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Set
 from collections import defaultdict
 import logging
 
-from .categorization import categorize_part
+from .categorization import categorize_part, _extract_length_from_notes
 
 logger = logging.getLogger("inventree")
 
@@ -45,6 +45,7 @@ def get_bom_items(part) -> List[Dict]:
                 "quantity": float(bom_item.quantity),
                 "reference": bom_item.reference or "",
                 "note": bom_item.note or "",
+                "notes": bom_item.note or "",  # Alias for categorization
                 "optional": bom_item.optional,
                 "inherited": bom_item.inherited,
                 "has_default_supplier": bool(bom_item.sub_part.default_supplier),
@@ -65,9 +66,9 @@ def traverse_bom(
     visited: Optional[Set[int]] = None,
     max_depth: Optional[int] = None,
     internal_supplier_ids: Optional[List[int]] = None,
+    category_mappings: Optional[Dict[str, int]] = None,
+    bom_item_notes: Optional[str] = None,
     imp_counter: Optional[Dict[str, int]] = None,
-    fab_prefix: str = "fab",
-    coml_prefix: str = "coml",
 ) -> Dict:
     """
     Recursively traverse BOM structure and build tree.
@@ -82,16 +83,18 @@ def traverse_bom(
         parent_ipn: IPN of parent part
         visited: Set of visited part IDs (to detect circular references)
         max_depth: Maximum depth to traverse (None = unlimited)
-        internal_supplier_ids: List of internal supplier IDs for IMP categorization
-        imp_counter: Dictionary to count IMPs {'count': 0} (mutable for recursion)
-        fab_prefix: Prefix for fabricated parts (default: 'fab')
-        coml_prefix: Prefix for commercial parts (default: 'coml')
+        internal_supplier_ids: List of internal supplier IDs for categorization
+        category_mappings: Dict mapping category types to lists of IDs (includes descendants)
+        bom_item_notes: Notes from BOM line item (for Cut-to-Length length extraction)
+        imp_counter: Dictionary to count Internal Fab parts {'count': 0} (mutable for recursion)
 
     Returns:
         Dictionary representing BOM node with all metadata and children
     """
     if internal_supplier_ids is None:
         internal_supplier_ids = []
+    if category_mappings is None:
+        category_mappings = {}
     # Initialize visited set on first call
     if visited is None:
         visited = set()
@@ -126,18 +129,21 @@ def traverse_bom(
 
     # Categorize part
     is_top_level = level == 0
+    part_category_id = part.category.pk if part.category else None
     part_type = categorize_part(
         part_name,
         is_assembly,
         is_top_level,
         default_supplier_id,
         internal_supplier_ids,
-        fab_prefix,
-        coml_prefix,
+        part_category_id,
+        category_mappings,
+        bom_item_notes,
     )
 
-    # Count IMPs processed during traversal
-    if part_type == "IMP":
+    # Count Internal Fab parts processed during traversal
+    # These are assemblies we fabricate internally (need to expand to find child parts)
+    if part_type == "Internal Fab":
         imp_counter["count"] += 1
 
     # Initialize node
@@ -175,6 +181,7 @@ def traverse_bom(
                 child_qty = bom_item["quantity"]
                 child_ref = bom_item["reference"]
                 child_note = bom_item["note"]
+                child_notes = bom_item.get("notes", "")  # For CtL categorization
 
                 # Calculate cumulative quantity for child
                 child_cumulative_qty = parent_qty * child_qty
@@ -188,9 +195,9 @@ def traverse_bom(
                     visited=visited.copy(),  # ← CRITICAL for correct deduplication
                     max_depth=max_depth,
                     internal_supplier_ids=internal_supplier_ids,
+                    category_mappings=category_mappings,
+                    bom_item_notes=child_notes,  # Pass BOM notes for CtL
                     imp_counter=imp_counter,
-                    fab_prefix=fab_prefix,
-                    coml_prefix=coml_prefix,
                 )
 
                 # Set child-specific values
@@ -212,19 +219,23 @@ def get_leaf_parts_only(
     """
     Flatten BOM tree to leaf parts only.
 
-    Leaf parts are:
-    - Fab Part (fabricated, non-assembly)
-    - Coml Part (commercial, non-assembly)
-    - Purchaseable Assembly (assembly with external supplier) - UNLESS expand_purchased_assemblies is True
+    Leaf parts are parts that should be purchased/ordered:
+    - Commercial: Purchased non-assembly parts
+    - Fabrication: Non-assembly fabricated parts
+    - Cut-to-Length: Raw material with length in notes
+    - External Assembly: Assemblies purchased complete (if expand=True)
 
-    NOT leaf parts (will be expanded):
-    - IMP (Internally Manufactured Part) - always expand to show internal components
-    - Regular assemblies without suppliers
+    NOT leaf parts (will be expanded to find their children):
+    - TLA: Top level assembly
+    - Assembly: Internal assemblies
+    - Internal Fab: Fabricated assemblies (expand to find child parts to buy)
+    - Other: Uncategorized
 
     Args:
         tree: BOM tree from traverse_bom()
         leaves: Accumulator list (for recursion)
-        expand_purchased_assemblies: If True, expand purchased assemblies to show subcomponents
+        expand_purchased_assemblies: If False, treat External Assemblies as leaf parts
+                                      If True, expand them to show subcomponents
 
     Returns:
         Flat list of leaf parts with cumulative quantities
@@ -238,25 +249,34 @@ def get_leaf_parts_only(
 
     # Check if this is a leaf part
     part_type = tree.get("part_type", "Unknown")
-    is_purchaseable_assembly = part_type == "Purchaseable Assembly"
+    is_purchaseable_assembly = part_type == "Purchased Assy"
 
     # Determine if this part should be included as a leaf
-    # Include non-assembly parts: Fab Part, Coml Part, Unknown (for companies without naming conventions)
-    is_non_assembly_leaf = (
-        part_type.endswith(" Part")  # Matches "fab Part", "Coml Part", etc.
-        or (
-            part_type == "Unknown" and not tree.get("is_assembly", False)
-        )  # Unknown non-assemblies
-    )
+    # Include non-assembly leaf parts based on category
+    is_non_assembly_leaf = part_type in [
+        "Coml",  # Purchased parts
+        "Fab",  # Fabricated non-assembly parts
+        "CtL",  # Raw material with specified length
+    ]
 
     if is_non_assembly_leaf:
         # Always include non-assembly leaf parts
+        cumulative_qty = tree["cumulative_qty"]
+        cut_length = None
+
+        # For Cut-to-Length parts, extract length from notes but keep as separate field
+        # Don't multiply into quantity - we want piece count and length separate for cut lists
+        if part_type == "CtL":
+            note_text = tree.get("note", "")
+            cut_length = _extract_length_from_notes(note_text)
+
         leaves.append({
             "part_id": tree["part_id"],
             "ipn": tree["ipn"],
             "part_name": tree["part_name"],
             "description": tree.get("description", ""),
-            "cumulative_qty": tree["cumulative_qty"],
+            "cumulative_qty": cumulative_qty,
+            "cut_length": cut_length,  # Length for CtL parts, None for others
             "unit": tree.get("unit", ""),
             "is_assembly": tree["is_assembly"],
             "purchaseable": tree["purchaseable"],
@@ -299,25 +319,41 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     """
     Sum quantities for parts appearing multiple times.
 
+    For Cut-to-Length parts, creates a single row per part with total quantity,
+    and stores cut list details in a nested array for row expansion.
+
+    For other parts, groups by part_id only.
+
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
 
     Returns:
-        Deduplicated list with aggregated quantities
+        Deduplicated list with aggregated quantities and cut_list metadata
     """
     # Use defaultdict to accumulate quantities
     totals = defaultdict(float)
     part_info = {}
+    cut_lists = defaultdict(list)  # Store cut list details for CtL parts
 
     for leaf in leaf_parts:
         part_id = leaf["part_id"]
+        part_type = leaf["part_type"]
+        cut_length = leaf.get("cut_length")
 
-        # Sum quantities
-        totals[part_id] += leaf["cumulative_qty"]
+        # Always use part_id as key (single row per part)
+        key = part_id
+
+        # For CtL parts, accumulate total length (qty * length)
+        # For other parts, accumulate piece count
+        if part_type == "CtL" and cut_length is not None:
+            totals[key] += leaf["cumulative_qty"] * cut_length
+        else:
+            totals[key] += leaf["cumulative_qty"]
 
         # Store part info (first occurrence wins for metadata)
-        if part_id not in part_info:
-            part_info[part_id] = {
+        if key not in part_info:
+            part_info[key] = {
+                "part_id": part_id,
                 "ipn": leaf["ipn"],
                 "part_name": leaf["part_name"],
                 "description": leaf["description"],
@@ -325,24 +361,35 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                 "is_assembly": leaf["is_assembly"],
                 "purchaseable": leaf["purchaseable"],
                 "default_supplier_id": leaf.get("default_supplier_id"),
-                "part_type": leaf["part_type"],
+                "part_type": part_type,
             }
+
+        # For CtL parts, accumulate cut list details
+        if part_type == "CtL" and cut_length is not None:
+            cut_lists[key].append({
+                "quantity": leaf["cumulative_qty"],
+                "length": cut_length,
+            })
 
     # Convert to sorted list
     result = [
         {
-            "part_id": part_id,
+            "part_id": part_info[key]["part_id"],
             "total_qty": qty,
-            "ipn": part_info[part_id]["ipn"],
-            "part_name": part_info[part_id]["part_name"],
-            "description": part_info[part_id]["description"],
-            "unit": part_info[part_id]["unit"],
-            "is_assembly": part_info[part_id]["is_assembly"],
-            "purchaseable": part_info[part_id]["purchaseable"],
-            "default_supplier_id": part_info[part_id]["default_supplier_id"],
-            "part_type": part_info[part_id]["part_type"],
+            "ipn": part_info[key]["ipn"],
+            "part_name": part_info[key]["part_name"],
+            "description": part_info[key]["description"],
+            "unit": part_info[key]["unit"],
+            "is_assembly": part_info[key]["is_assembly"],
+            "purchaseable": part_info[key]["purchaseable"],
+            "default_supplier_id": part_info[key]["default_supplier_id"],
+            "part_type": part_info[key]["part_type"],
+            "cut_list": cut_lists.get(key, None),  # Cut list details for expansion
         }
-        for part_id, qty in sorted(totals.items(), key=lambda x: part_info[x[0]]["ipn"])
+        for key, qty in sorted(
+            totals.items(),
+            key=lambda x: part_info[x[0]]["ipn"],
+        )
     ]
 
     return result
@@ -353,46 +400,47 @@ def get_flat_bom(
     max_depth: Optional[int] = None,
     expand_purchased_assemblies: bool = False,
     internal_supplier_ids: Optional[List[int]] = None,
-    fab_prefix: str = "fab",
-    coml_prefix: str = "coml",
+    category_mappings: Optional[Dict[str, int]] = None,
 ) -> tuple:
     """
     Get flat BOM with leaf parts only and deduplicated quantities.
 
     Pipeline:
     1. traverse_bom() - Build complete tree with cumulative quantities
-    2. get_leaf_parts_only() - Filter to leaf parts (Fab/Coml/Purchaseable Assembly)
+    2. get_leaf_parts_only() - Filter to leaf parts (Commercial/Fabrication/External Assembly)
     3. deduplicate_and_sum() - Aggregate quantities for duplicate parts
 
     Args:
         part_id: Part ID to get flat BOM for
-        max_depth: Maximum depth to traverse (None = unlimited)
+        max_depth: Maximum BOM depth to traverse (None = unlimited)
         expand_purchased_assemblies: If True, expand purchased assemblies to show subcomponents
-        internal_supplier_ids: List of internal supplier IDs for IMP categorization
-        fab_prefix: Prefix for fabricated parts (default: 'fab')
-        coml_prefix: Prefix for commercial parts (default: 'coml')
+        internal_supplier_ids: List of internal supplier IDs for categorization
+        category_mappings: Dict mapping category types to lists of IDs (includes descendants)
 
     Returns:
-        Tuple of (flat_bom_list, total_imps_processed)
+        Tuple of (flat_bom_list, total_internal_fab_processed)
     """
     if internal_supplier_ids is None:
         internal_supplier_ids = []
+    if category_mappings is None:
+        category_mappings = {}
     from part.models import Part
 
     try:
-        # Fetch part with default_supplier prefetched
-        part = Part.objects.select_related("default_supplier").get(pk=part_id)
+        # Fetch part with default_supplier and category prefetched
+        part = Part.objects.select_related("default_supplier", "category").get(
+            pk=part_id
+        )
 
-        # Step 1: Traverse BOM to build tree and count IMPs
+        # Step 1: Traverse BOM to build tree and count Internal Fab parts
         logger.info(f"Traversing BOM for part {part_id} ({part.IPN})")
         imp_counter = {"count": 0}
         bom_tree = traverse_bom(
             part,
             max_depth=max_depth,
             internal_supplier_ids=internal_supplier_ids,
+            category_mappings=category_mappings,
             imp_counter=imp_counter,
-            fab_prefix=fab_prefix,
-            coml_prefix=coml_prefix,
         )
 
         # Step 2: Filter to leaf parts only
@@ -408,7 +456,7 @@ def get_flat_bom(
         logger.info("Deduplicating and summing quantities")
         flat_bom = deduplicate_and_sum(leaf_parts)
         logger.info(
-            f"Result: {len(flat_bom)} unique leaf parts, {imp_counter['count']} IMPs processed"
+            f"Result: {len(flat_bom)} unique leaf parts, {imp_counter['count']} Internal Fab parts processed"
         )
 
         return flat_bom, imp_counter["count"]

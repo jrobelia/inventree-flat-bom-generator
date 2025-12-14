@@ -119,10 +119,12 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 |---------|-------------|---------|
 | **Maximum Traversal Depth** | Maximum depth to traverse BOM hierarchy. Set to 0 for unlimited depth. Use positive values (e.g., 5) to limit traversal for very deep BOMs and improve performance. | `0` (unlimited) |
 | **Expand Purchased Assemblies** | When enabled, expands the BOM for assemblies that have a default supplier (normally treated as purchaseable units). Useful to see internal components of purchased sub-assemblies. | `False` |
-| **Primary Internal Supplier** | Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internally Manufactured Parts (IMP) and automatically expanded during traversal. | None |
-| **Additional Internal Suppliers** | Comma-separated list of additional internal supplier IDs (e.g., "5,12"). Parts with these suppliers are also treated as IMPs. Leave empty if you only have one internal supplier. | Empty |
-| **Fabricated Part Prefix** | Part name prefix for identifying fabricated parts (case-insensitive). Used to categorize and color-code parts in the UI. | `"fab"` |
-| **Commercial Part Prefix** | Part name prefix for identifying commercial/COTS parts (case-insensitive). Used to categorize and color-code parts in the UI. | `"coml"` |
+| **Primary Internal Supplier** | Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab and automatically expanded during traversal. | None |
+| **Additional Internal Suppliers** | Comma-separated list of additional internal supplier IDs (e.g., "5,12"). Parts with these suppliers are also treated as internal. Leave empty if you only have one internal supplier. | Empty |
+| **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) will be classified as Fab or Internal Fab. Required for proper categorization. | None |
+| **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) will be classified as Coml. Required for proper categorization. | None |
+| **Assembly Category** | InvenTree category for assemblies. Used to identify assembly parts. Optional - assemblies are also identified by the `is_assembly` flag. | None |
+| **Cut-to-Length Category** | InvenTree category for cut-to-length raw materials (wire, bar stock, etc.). Parts in this category with length in BOM notes will be classified as CtL. Optional but recommended if you use cut-to-length parts. | None |
 
 **Part Type Categorization:**
 - Parts are automatically categorized based on these settings
@@ -132,6 +134,45 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 - **Purchaseable Assembly** (orange badge): Assembly with external default supplier, treated as purchaseable unit
 - **Unknown** (gray badge): Doesn't match any category (common if not using prefix naming)
 - **Standard Assemblies**: Assembly without default supplier, not categorized because they are expanded during traversal and not displayed in the final flat BOM
+
+## Part Categorization Reference
+
+The plugin uses the following logic to categorize parts and determine whether they appear in the flat BOM:
+
+| Part Type | Category | is_assembly | default_supplier | supplier source | Appears in Flat BOM | Description |
+|-----------|----------|-------------|------------------|-----------------|---------------------|-------------|
+| **Coml** | Commercial | FALSE | any/none | any | ✅ YES | Off-the-shelf parts you buy but didn't design |
+| **Internal Fab** | Fabricated | TRUE | required | internal | ❌ NO (expands) | CNC, 3D print, cut pieces - BOM must contain materials part is made from |
+| **CtL** | Fabricated → Cut to Length | FALSE | any/none | any | ✅ YES | Wire, bar stock, etc. - Length stored in BOM line item note field |
+| **Fab** | Fabricated | FALSE | any/none | any | ✅ YES | Machining, PCB - Standard part made externally from a drawing |
+| **Assy** | Assembly | TRUE | none/internal | internal | ❌ NO (expands) | Standard assembly done in-house |
+| **Purchased Assy** | Assembly | TRUE | required | external | ✅ YES | PCBA, wire harness, etc. - Purchased complete with external supplier |
+
+### Category Configuration Behavior
+
+**When all categories are configured:**
+- Plugin uses InvenTree category structure to classify parts
+- Supports hierarchical categories (parent + all child categories)
+- Non-assembly parts: Classified as Coml, Fab, or CtL based on their category
+- Assembly parts: Classified based on default supplier (Purchased Assy, Internal Fab, or Assy)
+
+**When categories are NOT configured:**
+- **Assemblies still work**: Purchased Assy and Internal Fab rely on `is_assembly` flag and default supplier, not categories
+- **Non-assemblies become "Other"**: Without category mappings, non-assembly parts cannot be classified as Coml, Fab, or CtL
+- **Result**: Only assemblies with suppliers will be correctly filtered; non-assemblies may all appear as "Other"
+- **Recommendation**: Configure at minimum the Fabricated and Commercial categories for proper classification
+
+**Partial configuration scenarios:**
+
+| Categories Configured | What Works | What Doesn't |
+|----------------------|------------|--------------|
+| None | Purchased Assy, Internal Fab identification | Coml, Fab, CtL classification (all → "Other") |
+| Fabricated only | Fab, Internal Fab, assemblies | Coml, CtL (→ "Other") |
+| Commercial only | Coml, assemblies | Fab, CtL (→ "Other") |
+| Fabricated + Commercial | Most parts classified correctly | CtL (→ treated as Fab) |
+| All four categories | ✅ Full classification | None |
+
+**Note:** The "Other" category means the plugin cannot determine the part type from available data. These parts will still appear in the flat BOM if they are leaf parts (non-assemblies without child BOMs).
 
 ## Usage
 
@@ -163,7 +204,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 ### Statistics Panel
 
 - **Total Parts**: Number of unique purchaseable components
-- **IMP Processed**: Number of Internally Manufactured Parts (IMPs) processed during BOM traversal
+- **Internal Fab Processed**: Number of internally fabricated assemblies (Internal Fab) expanded during BOM traversal
 - **Out of Stock**: Parts with zero inventory
 - **On Order**: Parts with incoming purchase orders
 - **Need to Order**: Parts with shortfall (respects checkbox settings)
@@ -175,7 +216,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Component** | Full part name with thumbnail image (clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
-| **Type** | Fab Part (blue), Coml Part (green), IMP (cyan), Purchaseable Assembly (orange), or Unknown (gray) |
+| **Type** | Color-coded badge: Coml (green), Fab (blue), CtL (teal), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
@@ -186,22 +227,16 @@ All columns are **sortable** and the table is **paginated** (10/25/50/100/All pe
 
 ## API Endpoint
 
-**Note:** The REST API endpoint feature requires InvenTree version **0.14.0 or later** with full plugin API support. Your current version (1.1.6) supports the UI panel via `UrlsMixin` but not the `/api/plugin/` REST endpoint namespace.
-
-### Get Flat BOM (InvenTree 0.14.0+)
+### Get Flat BOM
 
 ```
 GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 ```
 
-**If you are running InvenTree 0.14.0 or later** and need REST API access, ensure the `ENABLE_PLUGINS_URL` setting is enabled in your InvenTree configuration.
-
 **Performance Warning:** Each API call performs a complete recursive BOM traversal with no caching. For large assemblies, response times can be several seconds.
 
 **Query Parameters:**
 - `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
-
-**Authentication:** Requires an authenticated user (login required)
 
 **Response:**
 ```json
@@ -218,7 +253,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "part_name": "Bracket, Mounting, Steel",
       "full_name": "FAB-100 | Bracket, Mounting, Steel | A ",
       "description": "Steel mounting bracket",
-      "part_type": "Fab Part",
+      "part_type": "Fab",
       "cumulative_qty": 2.0,
       "unit": "pcs",
       "units": "pcs",
@@ -252,9 +287,10 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
    - Calculates cumulative quantities through multiplication
 
 2. **Filter**: Extract only leaf parts (purchaseable components)
-   - Fab Parts: Fabricated, non-assembly parts
-   - Coml Parts: Commercial, non-assembly parts  
-   - Purchaseable Assemblies: Assemblies with default suppliers (treated as purchaseable units)
+   - Coml: Commercial/COTS parts (non-assembly in Commercial category)
+   - Fab: Fabricated parts (non-assembly in Fabrication category)
+   - CtL: Cut-to-length materials (non-assembly in Cut-to-Length category with length in BOM notes)
+   - Purchased Assy: Assemblies with external default supplier (purchased complete)
 
 3. **Deduplicate**: Sum quantities for parts appearing multiple times
    - Groups by part_id
@@ -282,7 +318,7 @@ Each item in `bom_items` contains:
 - `part_name`: Part name
 - `full_name`: Full display name (includes variant info)
 - `description`: Part description
-- `part_type`: "Fab Part", "Coml Part", "IMP", "Purchaseable Assembly", or "Unknown"
+- `part_type`: "TLA", "Coml", "Fab", "CtL", "Purchased Assy", "Internal Fab", "Assy", or "Other"
 - `cumulative_qty`: Total quantity needed through BOM hierarchy
 - `unit`/`units`: Unit of measurement
 - `is_assembly`: Boolean - whether part is an assembly

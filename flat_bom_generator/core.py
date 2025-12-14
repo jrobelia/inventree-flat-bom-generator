@@ -43,7 +43,7 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
         },
         "PRIMARY_INTERNAL_SUPPLIER": {
             "name": "Primary Internal Supplier",
-            "description": "Your primary internal manufacturing company/supplier. Parts/assemblies with this supplier will be categorized as Internally Manufactured Parts (IMP).",
+            "description": "Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab.",
             "model": "company.company",
             "default": None,
         },
@@ -53,17 +53,30 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "validator": str,
             "default": "",
         },
-        "FAB_PREFIX": {
-            "name": "Fabricated Part Prefix",
-            "description": 'Part name prefix for fabricated parts (case-insensitive). Default: "fab"',
-            "validator": str,
-            "default": "fab",
+        # Category-based classification settings
+        "FABRICATION_CATEGORY": {
+            "name": "Fabrication Category",
+            "description": "InvenTree category for fabricated parts (internal or external manufacturing, e.g., machine shop, PCB fab)",
+            "model": "part.partcategory",
+            "default": None,
         },
-        "COML_PREFIX": {
-            "name": "Commercial Part Prefix",
-            "description": 'Part name prefix for commercial/COTS parts (case-insensitive). Default: "coml"',
-            "validator": str,
-            "default": "coml",
+        "COMMERCIAL_CATEGORY": {
+            "name": "Commercial Parts Category",
+            "description": "InvenTree category for commercial/COTS purchased parts",
+            "model": "part.partcategory",
+            "default": None,
+        },
+        "ASSEMBLY_CATEGORY": {
+            "name": "Assembly Category",
+            "description": "InvenTree category for assemblies (internal or external build)",
+            "model": "part.partcategory",
+            "default": None,
+        },
+        "CUT_TO_LENGTH_CATEGORY": {
+            "name": "Cut-to-Length Category",
+            "description": "InvenTree category for raw material parts with length requirements (wire, tubing, bar stock). Length must be specified in BOM line item notes field.",
+            "model": "part.partcategory",
+            "default": None,
         },
     }
 
@@ -72,11 +85,17 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
     def setup_urls(self):
         """Configure custom URL endpoints for this plugin.
 
-        In InvenTree 1.1.6, UrlsMixin supports web URLs but not REST API endpoints.
-        The flat BOM functionality is provided via the UI panel (see get_ui_panels()).
+        Note: This endpoint is used by the plugin's frontend UI panel to fetch data.
+        Even though InvenTree 1.1.6 doesn't expose /api/plugin/ as a public REST API,
+        the endpoint is still accessible to the plugin's own frontend code.
         """
-        # Currently no web URLs needed; all functionality is via the UI panel
-        return None
+        from django.urls import path
+        from .views import FlatBOMView
+
+        return [
+            # API endpoint used by the frontend panel to get flattened BOM data
+            path("flat-bom/<int:part_id>/", FlatBOMView.as_view(), name="flat-bom"),
+        ]
 
     # User interface elements (from UserInterfaceMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/ui/

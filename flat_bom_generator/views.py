@@ -11,6 +11,36 @@ from .bom_traversal import get_flat_bom
 logger = logging.getLogger("inventree")
 
 
+def _extract_id_from_value(value, setting_name):
+    """
+    Extract integer ID from various value types (int, str, object with pk/id).
+
+    Args:
+        value: Value to extract ID from (int, str, or object with pk/id attribute)
+        setting_name: Name of setting (for logging purposes)
+
+    Returns:
+        Integer ID if valid, None otherwise
+    """
+    if not value:
+        return None
+
+    if isinstance(value, int):
+        return value
+    elif isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            logger.warning(f"{setting_name} has invalid string value: '{value}'")
+            return None
+    elif hasattr(value, "pk"):
+        return value.pk
+    elif hasattr(value, "id"):
+        return value.id
+
+    return None
+
+
 def get_internal_supplier_ids(plugin):
     """
     Get list of internal supplier IDs from plugin settings.
@@ -31,21 +61,11 @@ def get_internal_supplier_ids(plugin):
     # Get primary internal supplier
     try:
         primary_supplier = plugin.get_setting("PRIMARY_INTERNAL_SUPPLIER")
-        if primary_supplier:
-            # Handle int, str, or object with pk/id attribute
-            if isinstance(primary_supplier, int):
-                internal_ids.append(primary_supplier)
-            elif isinstance(primary_supplier, str):
-                try:
-                    internal_ids.append(int(primary_supplier))
-                except ValueError:
-                    logger.warning(
-                        f"PRIMARY_INTERNAL_SUPPLIER has invalid string value: '{primary_supplier}'"
-                    )
-            elif hasattr(primary_supplier, "pk"):
-                internal_ids.append(primary_supplier.pk)
-            elif hasattr(primary_supplier, "id"):
-                internal_ids.append(primary_supplier.id)
+        supplier_id = _extract_id_from_value(
+            primary_supplier, "PRIMARY_INTERNAL_SUPPLIER"
+        )
+        if supplier_id is not None:
+            internal_ids.append(supplier_id)
     except Exception as e:
         logger.warning(f"Error retrieving PRIMARY_INTERNAL_SUPPLIER: {e}")
 

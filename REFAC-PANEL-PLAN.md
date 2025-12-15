@@ -164,6 +164,34 @@ class BomItemTest(TestCase):
 - When we need to test functions with database access, we'll migrate to `InvenTreeTestCase`
 - Focus on clear, well-tested functions that are easy to understand
 
+### 2025-12-14: Second Refactor (categorization.py - categorize_part)
+
+**Target:** `categorize_part()` function
+
+**What We Did:**
+1. Discovered unused ASSEMBLY_CATEGORY setting during test planning
+2. Removed ASSEMBLY_CATEGORY from plugin settings, views, and docstrings
+3. Clarified that assembly detection uses `Part.assembly` flag only
+4. Created 12 comprehensive unit tests for `categorize_part()` covering:
+   - All 8 category types (TLA, Internal Fab, Purchased Assy, CtL, Coml, Fab, Assy, Other)
+   - Priority order verification
+   - Edge cases (empty defaults, category hierarchies)
+   - Fallback behavior
+5. All 27 tests pass (15 + 12 new)
+6. Committed both cleanup and tests separately
+
+**What We Learned:**
+- Reviewing code before testing reveals opportunities for cleanup
+- Removing unused code makes testing clearer and simpler
+- Complex functions with many conditionals need tests for each path
+- Good test names document the expected behavior
+- Testing reveals what the code actually does vs. what comments say
+
+**Next Steps:**
+- Update refactor plan with completed work
+- Consider frontend testing or more backend functions
+- Look for other cleanup opportunities revealed by testing
+
 ---
 **Tips:**
 - Ask for advice or code review at any step

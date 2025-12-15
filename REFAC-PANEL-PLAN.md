@@ -192,6 +192,32 @@ class BomItemTest(TestCase):
 - Consider frontend testing or more backend functions
 - Look for other cleanup opportunities revealed by testing
 
+### 2025-12-15: Third Refactor (views.py - Extract Helper Function)
+
+**Target:** `get_internal_supplier_ids()` function in [views.py](flat_bom_generator/views.py)
+
+**What We Did:**
+1. Identified code duplication in ID extraction logic
+2. Created `_extract_id_from_value()` helper function
+3. Refactored to use helper function, reducing code duplication
+4. All tests still pass (54/55, 1 skipped)
+
+**Refactoring Pattern Used:**
+- **Extract Function**: Moved repeated logic into reusable helper
+- Handles multiple input types: int, str, objects with pk/id attributes
+- Single responsibility: one function does one thing well
+
+**What We Learned:**
+- Look for repeated conditional logic as refactoring opportunities
+- Helper functions make code more readable and maintainable
+- Small refactorings are safer and easier to verify
+- Tests give confidence that refactoring didn't break anything
+
+**Next Steps:**
+- Continue looking for similar duplication patterns
+- Consider more helper functions in views.py
+- Look at get_category_mappings() for similar patterns
+
 ---
 
 ## Known Issues & Technical Debt

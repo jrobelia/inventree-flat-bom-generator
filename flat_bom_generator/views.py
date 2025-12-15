@@ -90,7 +90,7 @@ def get_category_mappings(plugin):
     Build category mappings from plugin settings.
 
     Retrieves InvenTree category IDs for each part type (Fabrication, Commercial,
-    Assembly, Cut-to-Length) from plugin settings. For each category, includes
+    Cut-to-Length) from plugin settings. For each category, includes
     the category itself plus all descendant (child) categories to support
     hierarchical category structures.
 
@@ -102,7 +102,6 @@ def get_category_mappings(plugin):
         {
             'fabrication': [5, 12, 13],  # Parent + children
             'commercial': [8, 9, 10],
-            'assembly': [15, 16],
             'cut_to_length': [20]
         }
         Empty dict if no categories configured.
@@ -114,7 +113,6 @@ def get_category_mappings(plugin):
     category_settings = {
         "fabrication": "FABRICATION_CATEGORY",
         "commercial": "COMMERCIAL_CATEGORY",
-        "assembly": "ASSEMBLY_CATEGORY",
         "cut_to_length": "CUT_TO_LENGTH_CATEGORY",
     }
 

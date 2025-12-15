@@ -91,7 +91,80 @@
 - Summarize lessons learned and future improvement ideas
 
 ---
+## Testing Strategy
 
+### Current Approach: Python unittest
+We're using **Python's `unittest.TestCase`** for pure logic testing.
+
+**Why**: 
+- No database dependencies yet
+- Testing pure Python functions (regex, calculations, string manipulation)
+- Can run anywhere without InvenTree environment
+- Simple and lightweight for learning
+
+**When to Migrate to Django Tests**:
+When we need to test functions that:
+- Access database models (Part, BomItem, Company)
+- Call Django ORM queries
+- Use InvenTree-specific features
+
+### InvenTree's Testing Pattern (Reference)
+
+**Base Classes** (from InvenTree source):
+- `InvenTreeTestCase` - For Django model/DB tests
+- `InvenTreeAPITestCase` - For API endpoint tests
+- Uses fixtures: `fixtures = ['category', 'part', 'bom', 'location']`
+- Has `setUpTestData()` classmethod for test data setup
+
+**Example Pattern from InvenTree**:
+```python
+from django.test import TestCase
+from part.models import Part, BomItem
+
+class BomItemTest(TestCase):
+    fixtures = ['category', 'part', 'bom']
+    
+    def setUp(self):
+        super().setUp()
+        self.bob = Part.objects.get(id=100)
+        
+    def test_has_bom(self):
+        self.assertTrue(self.bob.has_bom)
+        self.assertEqual(self.bob.bom_count, 4)
+```
+
+**Our Current Tests Are Valid**: InvenTree uses both approaches - pure `unittest.TestCase` for logic, Django tests for models.
+
+---
+
+## Progress Log
+
+### 2025-12-14: First Refactor (categorization.py)
+
+**Target:** `_extract_length_from_notes()` function
+
+**What We Did:**
+1. Created comprehensive unit test suite (`test_categorization.py`) with 15 test cases
+2. Tested all documented use cases and edge cases (empty, None, floats, integers, units, etc.)
+3. Refactored: Moved inline `import re` to module level for better performance
+4. Verified all tests pass (15/15 OK)
+5. Committed with descriptive message
+6. Reviewed InvenTree testing patterns - confirmed our approach is valid for pure functions
+
+**What We Learned:**
+- Start with a small, pure function (no external dependencies)
+- Write tests first to establish baseline behavior
+- Make small, incremental changes
+- Run tests after each change to verify nothing broke
+- Commit immediately after success
+- Our `unittest.TestCase` approach matches InvenTree's pattern for pure logic tests
+
+**Next Steps:**
+- Continue with more pure functions (no DB dependencies)
+- When we need to test functions with database access, we'll migrate to `InvenTreeTestCase`
+- Focus on clear, well-tested functions that are easy to understand
+
+---
 **Tips:**
 - Ask for advice or code review at any step
 - Don’t try to do everything at once—small, tested steps are best

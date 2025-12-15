@@ -32,7 +32,7 @@ def categorize_part(
        - Fabrication: Fabricated non-assembly parts
     4. Internal Assemblies (traverse deeper, not leaf parts):
        - Internal Fab: Assembly in Fabrication category with internal default supplier
-       - Assembly: Assembly in Assembly category or no category
+       - Assembly: Any other assembly (detected by Part.assembly flag)
     5. Fallback: "Other"
 
     Args:
@@ -46,7 +46,6 @@ def categorize_part(
             Example: {
                 'fabrication': [5, 12, 13],  # Parent category + children
                 'commercial': [8, 9],
-                'assembly': [15, 16, 17],
                 'cut_to_length': [20]
             }
         bom_item_notes: Notes field from BOM line item (for CtL length extraction)
@@ -114,7 +113,7 @@ def categorize_part(
         if fab_category_ids and part_category_id in fab_category_ids:
             return "Fab"
 
-    # Any other assembly (in Assembly category, no category, or no supplier info)
+    # Any other assembly (detected by Part.assembly flag, no specific category check)
     if is_assembly:
         return "Assy"
 

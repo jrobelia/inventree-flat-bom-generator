@@ -66,12 +66,6 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "model": "part.partcategory",
             "default": None,
         },
-        "ASSEMBLY_CATEGORY": {
-            "name": "Assembly Category",
-            "description": "InvenTree category for assemblies (internal or external build)",
-            "model": "part.partcategory",
-            "default": None,
-        },
         "CUT_TO_LENGTH_CATEGORY": {
             "name": "Cut-to-Length Category",
             "description": "InvenTree category for raw material parts with length requirements (wire, tubing, bar stock). Length must be specified in BOM line item notes field.",

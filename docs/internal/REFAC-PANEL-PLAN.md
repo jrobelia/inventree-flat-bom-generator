@@ -498,6 +498,11 @@ This refactor teaches:
 
 **Next Steps:**
 - **CRITICAL**: Add views.py integration tests (2-3 hours) - NO tests exist!
+- **NEW BUG FOUND** (Dec 16, 2025): Cut list child quantities not scaling with buildQuantity
+  - Fixed in commit bc7b536 (frontend calculation issue)
+  - Need unit test to catch: Total Qty for cut list children should multiply by buildQuantity
+  - Test case: Parent shows 11180 mm, children show 400 pieces (8 × 50 builds), not just 8 pieces
+  - Location: Frontend calculation in Panel.tsx render logic for is_cut_list_child rows
 - Fix or remove skipped test (test_piece_qty_times_count_rollup)
 - Rewrite test_internal_fab_cutlist.py (tests stub functions, not real code)
 - Phase 3: Implement FlatBOMResponseSerializer (15-20 min)

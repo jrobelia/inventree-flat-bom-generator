@@ -48,6 +48,30 @@
 - Adopt modern React/TypeScript patterns (hooks, context, modularization)
 - Ensure backend logic is clear, testable, and efficient
 - Maintain or improve test coverage
+- **Use InvenTree's built-in export infrastructure** instead of custom CSV export
+- **Implement comprehensive warning system** - See [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md) for planned warnings
+
+---
+
+## Priority Additions
+
+### Use InvenTree Export Plugin System (High Priority)
+**Current**: Custom CSV export in Panel.tsx with manual column handling  
+**Target**: Integrate with InvenTree's DataExportMixin for standardized exports
+
+**Why**: InvenTree has a built-in export infrastructure that:
+- Supports multiple formats (CSV, JSON, XLSX)
+- Handles encoding, escaping, and formatting automatically
+- Provides consistent UI/UX with rest of InvenTree
+- Allows server-side generation (no client memory limits)
+
+**Implementation**:
+1. Add `DataExportMixin` to plugin class
+2. Register flat BOM export endpoint
+3. Replace frontend "Export CSV" button with InvenTree's export dialog
+4. Remove custom `escapeCsvField` and export logic from Panel.tsx
+
+**Reference**: See how standard BOM export works in InvenTree source
 - Document all major changes and rationale
 
 ## Step 1: Code Review
@@ -217,6 +241,61 @@ class BomItemTest(TestCase):
 - Continue looking for similar duplication patterns
 - Consider more helper functions in views.py
 - Look at get_category_mappings() for similar patterns
+
+### 2025-12-15: BOM Warning System Implementation
+
+**Target:** Implement comprehensive warning system for BOM errors and user mistakes
+
+**What We Did:**
+1. **Research Phase**: Created [BOM-ERROR-WARNINGS-RESEARCH.md](BOM-ERROR-WARNINGS-RESEARCH.md) documenting all warning types
+2. **Bug Fix**: Fixed critical bug where assemblies with no children disappeared from flat BOM
+   - Added `assembly_no_children` flag in `get_leaf_parts_only()`
+   - Created 5 unit tests (all passing)
+3. **Warning Implementation**: Implemented three warnings:
+   - Inactive part warnings
+   - Unit mismatch warnings (2 tests)
+   - Max depth exceeded warnings
+4. **Flag Preservation Bug**: Discovered and fixed flags being lost during deduplication
+   - Added flags to `part_info` dictionary in `deduplicate_and_sum()`
+   - Added flags to final `row` dictionary
+5. **UI Enhancement**: Added `max_depth_reached` counter to show BOM traversal depth
+6. **Warning Optimization**: Reduced warning noise from 65 to 5 warnings
+   - Implemented flag prioritization (max_depth takes precedence over no_children)
+   - Implemented summary aggregation (one warning for all max_depth assemblies)
+   - Created 4 unit tests for warning logic (all passing)
+7. **Architecture Documentation**: Created [ARCHITECTURE-WARNINGS.md](ARCHITECTURE-WARNINGS.md)
+   - Documents flag prioritization pattern
+   - Documents summary vs per-item warning strategy
+   - Documents data flow: CREATE → PROPAGATE → PRESERVE → CONSUME
+8. **UI Layout Improvement**: Made stats section responsive and compact
+   - Multi-line labels to reduce horizontal space
+   - Reordered: BOM Depth before Internal Fab Processed
+   - Added wrapping for smaller screens
+9. **Current Test Status**: 82 tests passing (1 skipped - pre-existing known issue)
+
+**Refactoring Patterns Used:**
+- **Flag Prioritization**: `flag = condition_to_warn and not higher_priority_condition`
+- **Summary Aggregation**: Check collection before iterating, generate one warning
+- **Explicit Field Propagation**: Must copy flags at each transformation stage
+- **Data Flow Lifecycle**: CREATE → PROPAGATE → PRESERVE → CONSUME
+
+**What We Learned:**
+- Flags/metadata need explicit propagation through transformation pipelines
+- Summary warnings reduce noise better than per-item warnings for systemic issues
+- Flag prioritization prevents overlapping/duplicate warnings
+- Unit tests should validate decision logic, not just happy paths
+- Architecture documentation is critical for understanding patterns
+- TDD (Test-Driven Development) catches bugs early
+- Small, incremental changes with tests after each step
+
+**Deployment:**
+- Version 0.9.2 deployed to staging
+- Warning system verified working in production
+
+**Next Steps:**
+- Consider implementing additional warnings from research doc (invalid quantities, etc.)
+- Clean up debug logging statements
+- Continue refactoring with test coverage
 
 ---
 

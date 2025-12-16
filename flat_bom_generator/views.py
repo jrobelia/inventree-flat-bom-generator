@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .bom_traversal import get_flat_bom
+from .categorization import _check_unit_mismatch
 
 logger = logging.getLogger("inventree")
 
@@ -218,7 +219,7 @@ class FlatBOMView(APIView):
         from part.models import Part
         from plugin.registry import registry
 
-        # Get optional max_depth parameter
+        # Get optional max_depth parameter from query (overrides plugin setting)
         max_depth = request.query_params.get("max_depth", None)
         if max_depth is not None:
             try:
@@ -231,6 +232,16 @@ class FlatBOMView(APIView):
 
         # Get plugin settings
         plugin = registry.get_plugin("flat-bom-generator")
+
+        # If max_depth not provided in query, use plugin setting
+        if max_depth is None:
+            max_depth_setting = plugin.get_setting("MAX_DEPTH", 0)
+            max_depth = (
+                int(max_depth_setting)
+                if max_depth_setting and int(max_depth_setting) > 0
+                else None
+            )
+
         expand_purchased_assemblies = False
         internal_supplier_ids = []
         category_mappings = {}
@@ -282,18 +293,35 @@ class FlatBOMView(APIView):
             logger.info(
                 f"[FlatBOM] Starting BOM traversal for part {part_id} ({part.name})"
             )
-            flat_bom, total_imps_processed = get_flat_bom(
-                part_id,
-                max_depth=max_depth,
-                expand_purchased_assemblies=expand_purchased_assemblies,
-                internal_supplier_ids=internal_supplier_ids,
-                category_mappings=category_mappings,
-                enable_ifab_cuts=enable_ifab_cuts,
-                ifab_units=ifab_units,
+            flat_bom, total_ifps_processed, ctl_warnings, max_depth_reached = (
+                get_flat_bom(
+                    part_id,
+                    max_depth=max_depth,
+                    expand_purchased_assemblies=expand_purchased_assemblies,
+                    internal_supplier_ids=internal_supplier_ids,
+                    category_mappings=category_mappings,
+                    enable_ifab_cuts=enable_ifab_cuts,
+                    ifab_units=ifab_units,
+                )
             )
             logger.info(
-                f"[FlatBOM] Traversal complete: {len(flat_bom)} unique parts, {total_imps_processed} IMPs processed"
+                f"[FlatBOM] Traversal complete: {len(flat_bom)} unique parts, {total_ifps_processed} IFPs processed, max depth: {max_depth_reached}"
             )
+
+            # Start with CtL warnings from deduplicate_and_sum
+            warnings = ctl_warnings.copy()
+
+            # Check if any parts were stopped by max_depth - generate ONE summary warning
+            parts_at_max_depth = [
+                item for item in flat_bom if item.get("max_depth_exceeded")
+            ]
+            if parts_at_max_depth:
+                warnings.append({
+                    "type": "max_depth_reached",
+                    "part_id": None,
+                    "part_name": "Multiple assemblies",
+                    "message": f"BOM traversal stopped at depth {max_depth_reached}. {len(parts_at_max_depth)} assemblies not fully expanded. Increase 'Maximum Traversal Depth' setting to see sub-components.",
+                })
 
             # Enrich with additional data for UI display
             enriched_bom = []
@@ -311,6 +339,59 @@ class FlatBOMView(APIView):
                         part_obj.allocation_count()
                     )  # Stock allocated to builds + sales orders
                     available = part_obj.available_stock  # total_stock - allocated
+
+                    # Check for assembly with no children (BOM definition issue)
+                    if item.get("assembly_no_children"):
+                        part_full_name = (
+                            part_obj.full_name
+                            if hasattr(part_obj, "full_name")
+                            else part_obj.name
+                        )
+                        part_type = item.get("part_type", "Unknown")
+                        warnings.append({
+                            "type": "assembly_no_children",
+                            "part_id": item["part_id"],
+                            "part_name": part_full_name,
+                            "message": f"{part_type} part has no BOM items defined",
+                        })
+
+                    # Check for inactive parts
+                    if not part_obj.active:
+                        part_full_name = (
+                            part_obj.full_name
+                            if hasattr(part_obj, "full_name")
+                            else part_obj.name
+                        )
+                        warnings.append({
+                            "type": "inactive_part",
+                            "part_id": item["part_id"],
+                            "part_name": part_full_name,
+                            "message": "Part is marked inactive and may not be available for production",
+                        })
+
+                    # Note: max_depth_exceeded is handled by summary warning above
+                    # (one warning for all assemblies instead of per-part warnings)
+
+                    # Check for unit mismatch in BOM notes (non-CtL parts only)
+                    # CtL parts already checked above to catch all cut list variants
+                    if item.get("part_type") != "CtL":
+                        bom_notes = item.get("note", "")
+                        part_units = part_obj.units or ""
+
+                        unit_warning = _check_unit_mismatch(bom_notes, part_units)
+
+                        if unit_warning:
+                            part_full_name = (
+                                part_obj.full_name
+                                if hasattr(part_obj, "full_name")
+                                else part_obj.name
+                            )
+                            warnings.append({
+                                "type": "unit_mismatch",
+                                "part_id": item["part_id"],
+                                "part_name": part_full_name,
+                                "message": unit_warning,
+                            })
 
                     enriched_item = {
                         **item,  # Include all fields from flat_bom
@@ -338,14 +419,20 @@ class FlatBOMView(APIView):
                     )
                     enriched_bom.append(item)
 
+            logger.info(f"[FlatBOM] Total warnings collected: {len(warnings)}")
+            for idx, warning in enumerate(warnings):
+                logger.info(f"[FlatBOM] Warning {idx + 1}: {warning}")
+
             return Response(
                 {
                     "part_id": part_id,
                     "part_name": part.name,
                     "ipn": part.IPN or "",
                     "total_unique_parts": len(enriched_bom),
-                    "total_imps_processed": total_imps_processed,
+                    "total_ifps_processed": total_ifps_processed,
+                    "max_depth_reached": max_depth_reached,
                     "bom_items": enriched_bom,
+                    "metadata": {"warnings": warnings},
                 },
                 status=status.HTTP_200_OK,
             )

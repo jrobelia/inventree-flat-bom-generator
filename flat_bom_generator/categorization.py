@@ -153,3 +153,69 @@ def _extract_length_from_notes(notes: str) -> float:
             return None
 
     return None
+
+
+def _extract_length_with_unit(notes: str) -> dict:
+    """
+    Extract numeric length value AND adjacent unit from BOM notes field.
+
+    Looks for number followed immediately by common length units.
+    Used for detecting unit mismatches between notes and part native unit.
+
+    Handles formats:
+    - "100mm" → {"value": 100.0, "unit": "mm"}
+    - "50.5 inches" → {"value": 50.5, "unit": "inches"}
+    - "Cut 12mm from stock" → {"value": 12.0, "unit": "mm"}
+    - "100" → {"value": 100.0, "unit": None}
+    - "No numbers" → {"value": None, "unit": None}
+
+    Args:
+        notes: BOM line item notes string
+
+    Returns:
+        Dict with "value" (float or None) and "unit" (str or None)
+    """
+    if not notes:
+        return {"value": None, "unit": None}
+
+    # Pattern: number optionally followed by space and unit
+    # Captures: (number) (optional space) (unit)
+    # Common length units: mm, millimeters, cm, centimeters, m, meters, in, inches, ft, feet
+    # NOTE: Order matters! Put longer matches BEFORE shorter ones (inches? before in)
+    pattern = r"(\d+\.?\d*|\.\d+)\s*(millimeters?|centimeters?|meters?|inches?|feet|mm|cm|in|ft|m)?"
+    match = re.search(pattern, notes.strip(), re.IGNORECASE)
+
+    if match:
+        try:
+            value = float(match.group(1))
+            unit = match.group(2).lower() if match.group(2) else None
+            return {"value": value, "unit": unit}
+        except (ValueError, AttributeError):
+            return {"value": None, "unit": None}
+
+    return {"value": None, "unit": None}
+
+
+def _check_unit_mismatch(notes: str, part_unit: str) -> str:
+    """
+    Check if BOM notes contain a unit that differs from part's native unit.
+
+    Only checks the unit immediately adjacent to the first number in notes,
+    ignoring other unit references elsewhere in the text.
+
+    Args:
+        notes: BOM line item notes string
+        part_unit: Part's native unit from InvenTree
+
+    Returns:
+        Warning message if mismatch detected, None otherwise
+    """
+    if not notes or not part_unit:
+        return None
+
+    extracted = _extract_length_with_unit(notes)
+
+    if extracted["unit"] and extracted["unit"] != part_unit.lower():
+        return f"BOM notes specify '{extracted['unit']}' but part uses '{part_unit}'"
+
+    return None

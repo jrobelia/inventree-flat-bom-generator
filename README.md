@@ -1,6 +1,6 @@
 # Flat BOM Generator
 
-InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation.
+InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation.  This is the first of three plugins I would like to develop to enhance InvenTree's manufacturing planning capabilities for assemblies with many layers of nesting sub-assemblies.  They create actionable but temporary lists that can be used for manufacturing and purchasing purposes.  This plugin focuses on generating a flat BOM for high level planning and purchasing purposes based on an assembly BOM.  The other two plugins would focus on semi-automated BO and PO generation based on a top level Build Order, possibly using project based part allocation.
 
 ## What This Plugin Adds
 

@@ -24,6 +24,7 @@ import {
 import {
   IconAdjustments,
   IconAlertCircle,
+  IconAlertTriangle,
   IconCornerDownRight,
   IconDownload,
   IconRefresh,
@@ -89,13 +90,24 @@ interface BomItem {
   cut_unit?: string;
 }
 
+interface Warning {
+  type: string;
+  part_id: number;
+  part_name: string;
+  message: string;
+}
+
 interface FlatBomResponse {
   part_id: number;
   part_name: string;
   ipn: string;
   total_unique_parts: number;
-  total_imps_processed: number;
+  total_ifps_processed: number;
+  max_depth_reached: number;
   bom_items: BomItem[];
+  metadata?: {
+    warnings?: Warning[];
+  };
 }
 
 /**
@@ -157,6 +169,9 @@ function FlatBOMGeneratorPanel({
       );
 
       if (response.status === 200) {
+        console.log('[FlatBOM] API Response:', response.data);
+        console.log('[FlatBOM] Metadata:', response.data.metadata);
+        console.log('[FlatBOM] Warnings:', response.data.metadata?.warnings);
         setBomData(response.data);
       } else {
         setError(`API returned status ${response.status}`);
@@ -975,28 +990,74 @@ function FlatBOMGeneratorPanel({
 
       {bomData && !loading && (
         <Stack gap='sm'>
+          {/* Warnings Section */}
+          {bomData?.metadata?.warnings &&
+            bomData.metadata.warnings.length > 0 && (
+              <Alert
+                icon={<IconAlertTriangle size={16} />}
+                title={`${bomData.metadata.warnings.length} Warning${bomData.metadata.warnings.length > 1 ? 's' : ''} Found`}
+                color='yellow'
+                withCloseButton
+                onClose={() => {
+                  // Clear warnings from bomData to hide the alert
+                  setBomData((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          metadata: { ...prev.metadata, warnings: [] }
+                        }
+                      : null
+                  );
+                }}
+              >
+                <Stack gap='xs'>
+                  {bomData.metadata.warnings.map((warning, idx) => (
+                    <Text key={idx} size='sm'>
+                      <strong>{warning.part_name}</strong>: {warning.message}
+                    </Text>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+
           <Paper p='sm' withBorder>
-            <Group justify='space-between' align='flex-start'>
-              <Group gap='xl'>
-                <div>
-                  <Text size='xs' c='dimmed'>
-                    Total Parts
+            <Group justify='space-between' align='flex-start' wrap='wrap'>
+              <Group gap='md' wrap='wrap'>
+                <div style={{ minWidth: '70px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    Total
+                    <br />
+                    Parts
                   </Text>
                   <Text size='lg' fw={700}>
                     {bomData.total_unique_parts}
                   </Text>
                 </div>
-                <div>
-                  <Text size='xs' c='dimmed'>
-                    Internal Fab Processed
+                <div style={{ minWidth: '70px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    BOM
+                    <br />
+                    Depth
                   </Text>
-                  <Text size='lg' fw={700} c='cyan'>
-                    {bomData.total_imps_processed}
+                  <Text size='lg' fw={700} c='violet'>
+                    {bomData.max_depth_reached}
                   </Text>
                 </div>
-                <div>
-                  <Text size='xs' c='dimmed'>
-                    Out of Stock
+                <div style={{ minWidth: '80px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    Internal Fab
+                    <br />
+                    Processed
+                  </Text>
+                  <Text size='lg' fw={700} c='cyan'>
+                    {bomData.total_ifps_processed}
+                  </Text>
+                </div>
+                <div style={{ minWidth: '70px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    Out of
+                    <br />
+                    Stock
                   </Text>
                   <Text size='lg' fw={700} c='red'>
                     {
@@ -1005,9 +1066,11 @@ function FlatBOMGeneratorPanel({
                     }
                   </Text>
                 </div>
-                <div>
-                  <Text size='xs' c='dimmed'>
-                    On Order
+                <div style={{ minWidth: '70px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    On
+                    <br />
+                    Order
                   </Text>
                   <Text size='lg' fw={700} c='blue'>
                     {
@@ -1016,9 +1079,11 @@ function FlatBOMGeneratorPanel({
                     }
                   </Text>
                 </div>
-                <div>
-                  <Text size='xs' c='dimmed'>
-                    Need to Order
+                <div style={{ minWidth: '70px' }}>
+                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
+                    Need to
+                    <br />
+                    Order
                   </Text>
                   <Text size='lg' fw={700} c='orange'>
                     {
@@ -1037,7 +1102,7 @@ function FlatBOMGeneratorPanel({
                   </Text>
                 </div>
               </Group>
-              <Group gap='xs' align='flex-end'>
+              <Group gap='xs' align='flex-end' wrap='wrap'>
                 <NumberInput
                   label='Build Quantity'
                   value={buildQuantity}

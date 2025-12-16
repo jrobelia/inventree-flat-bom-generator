@@ -148,27 +148,7 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Enable Internal Fab Cuts** | When enabled, parts categorized as Internal Fab with cut-to-length data will have their cuts aggregated and displayed. | `False` |
 | **Internal Fab Cut Units** | Unit to use for internal fab cut list aggregation (e.g., "mm", "inch", "cm"). Only applies when Enable Internal Fab Cuts is enabled. | `mm` |
 
-**Part Type Categorization:**
-- Parts are automatically categorized based on these settings
-- **Fab Part** (blue badge): In Fabrication category, non-assembly
-- **Coml Part** (green badge): In Commercial category, non-assembly  
-- **Internal Fab** (cyan badge): Assembly in Fabrication category with internal default supplier, will be expanded to show components
-- **Purchaseable Assembly** (orange badge): Assembly with external default supplier, treated as purchaseable unit
-- **Unknown** (gray badge): Doesn't match any category (common if categories not configured)
-- **Standard Assemblies**: Assembly without default supplier, not categorized because they are expanded during traversal and not displayed in the final flat BOM
-
-## Part Categorization Reference
-
-The plugin uses the following logic to categorize parts and determine whether they appear in the flat BOM:
-
-| Part Type | Category | is_assembly | default_supplier | supplier source | Appears in Flat BOM | Description |
-|-----------|----------|-------------|------------------|-----------------|---------------------|-------------|
-| **Coml** | Commercial | FALSE | any/none | any | ✅ YES | Off-the-shelf parts you buy but didn't design |
-| **Internal Fab** | Fabricated | TRUE | required | internal | ❌ NO (expands) | CNC, 3D print, cut pieces - BOM must contain materials part is made from |
-| **CtL** | Fabricated → Cut to Length | FALSE | any/none | any | ✅ YES | Wire, bar stock, etc. - Length stored in BOM line item note field |
-| **Fab** | Fabricated | FALSE | any/none | any | ✅ YES | Machining, PCB - Standard part made externally from a drawing |
-| **Assy** | Assembly | TRUE | none/internal | internal | ❌ NO (expands) | Standard assembly done in-house |
-| **Purchased Assy** | Assembly | TRUE | required | external | ✅ YES | PCBA, wire harness, etc. - Purchased complete with external supplier |
+**Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 
 ### Cut-to-Length Part Support
 
@@ -243,17 +223,31 @@ Parent: OA-00409 | CTL Tubing, Silicone, Blue, 1/4" OD x 1/8" ID
 
 ### Category Configuration Behavior
 
+**Part Categorization Logic:**
+
+The plugin categorizes parts based on category settings, assembly status, and default supplier:
+
+| Part Type | Category | is_assembly | default_supplier | Appears in Flat BOM | Badge Color | Description |
+|-----------|----------|-------------|------------------|---------------------|-------------|-------------|
+| **Coml** | Commercial | FALSE | any/none | ✅ YES | Green | Off-the-shelf commercial parts |
+| **Fab** | Fabricated | FALSE | any/none | ✅ YES | Blue | Machining, PCB fabrication |
+| **CtL** | Cut-to-Length | FALSE | any/none | ✅ YES | Teal | Wire, bar stock (length in BOM notes) |
+| **Purchased Assy** | any | TRUE | external | ✅ YES | Orange | PCBA, purchased complete with external supplier |
+| **Internal Fab** | Fabricated | TRUE | internal | ❌ NO (expands) | Cyan | CNC, 3D print - BOM shows raw materials |
+| **Assy** | any | TRUE | none/internal | ❌ NO (expands) | Violet | Standard assembly built in-house |
+| **Other** | unconfigured | FALSE | any/none | ✅ YES | Gray | Parts not matching configured categories |
+
+**Configuration Impact:**
+
 **When all categories are configured:**
-- Plugin uses InvenTree category structure to classify parts
-- Supports hierarchical categories (parent + all child categories)
-- Non-assembly parts: Classified as Coml, Fab, or CtL based on their category
-- Assembly parts: Classified based on default supplier (Purchased Assy, Internal Fab, or Assy)
+- Plugin uses InvenTree category hierarchy to classify parts
+- Supports parent + child categories (entire tree)
+- All part types correctly identified
 
 **When categories are NOT configured:**
-- **Assemblies still work**: Purchased Assy and Internal Fab rely on `is_assembly` flag and default supplier, not categories
-- **Non-assemblies become "Other"**: Without category mappings, non-assembly parts cannot be classified as Coml, Fab, or CtL
-- **Result**: Only assemblies with suppliers will be correctly filtered; non-assemblies may all appear as "Other"
-- **Recommendation**: Configure at minimum the Fabricated and Commercial categories for proper classification
+- **Assemblies still work**: Classification relies on `is_assembly` flag and default supplier
+- **Non-assemblies become "Other"**: No category mappings means Coml, Fab, CtL cannot be identified
+- **Recommendation**: Configure at minimum Fabricated and Commercial categories
 
 **Partial configuration scenarios:**
 

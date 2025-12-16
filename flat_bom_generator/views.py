@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from .bom_traversal import get_flat_bom
 from .categorization import _check_unit_mismatch
-from .serializers import BOMWarningSerializer
+from .serializers import BOMWarningSerializer, FlatBOMItemSerializer
 
 logger = logging.getLogger("inventree")
 
@@ -410,8 +410,9 @@ class FlatBOMView(APIView):
                             serializer.is_valid(raise_exception=True)
                             warnings.append(serializer.validated_data)
 
-                    enriched_item = {
-                        **item,  # Include all fields from flat_bom
+                    # Serialize enriched item using FlatBOMItemSerializer
+                    enriched_data = {
+                        **item,  # All fields from flat_bom (part_id, total_qty, ipn, etc.)
                         "full_name": part_obj.full_name
                         if hasattr(part_obj, "full_name")
                         else part_obj.name,
@@ -428,7 +429,9 @@ class FlatBOMView(APIView):
                         if hasattr(part_obj, "get_absolute_url")
                         else f"/part/{part_obj.pk}/",
                     }
-                    enriched_bom.append(enriched_item)
+                    serializer = FlatBOMItemSerializer(data=enriched_data)
+                    serializer.is_valid(raise_exception=True)
+                    enriched_bom.append(serializer.validated_data)
 
                 except Part.DoesNotExist:
                     logger.warning(

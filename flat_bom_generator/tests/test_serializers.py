@@ -152,7 +152,7 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "image": None,
             "thumbnail": None,
             "link": "/part/123/",
-            "units": "pcs",
+            "unit": "pcs",
             # Part properties (required)
             "is_assembly": False,
             "purchaseable": True,

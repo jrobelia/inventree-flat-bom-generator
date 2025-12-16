@@ -318,7 +318,6 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "part_type": "Fab",
       "total_qty": 2.0,
       "unit": "pcs",
-      "units": "pcs",
       "is_assembly": false,
       "purchaseable": true,
       "default_supplier_id": 789,
@@ -384,7 +383,7 @@ Each item in `bom_items` contains:
 - `description`: Part description
 - `part_type`: "TLA", "Coml", "Fab", "CtL", "Purchased Assy", "Internal Fab", "Assy", or "Other"
 - `total_qty`: Total quantity needed through BOM hierarchy (aggregated from all BOM levels)
-- `unit`/`units`: Unit of measurement
+- `unit`: Unit of measurement (e.g., "pcs", "mm", "kg")
 - `is_assembly`: Boolean - whether part is an assembly
 - `purchaseable`: Boolean - whether part can be purchased
 - `has_default_supplier`: Boolean - whether part has default supplier configured

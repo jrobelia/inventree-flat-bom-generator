@@ -873,15 +873,29 @@ function FlatBOMGeneratorPanel({
           const balance = stockValue - totalRequired;
           if (balance < 0) {
             return (
-              <Badge color='red' variant='filled'>
-                {balance.toFixed(2)}
-              </Badge>
+              <Group gap='xs' justify='space-between' wrap='nowrap'>
+                <Badge color='red' variant='filled'>
+                  {balance.toFixed(2)}
+                </Badge>
+                {record.unit && (
+                  <Text size='xs' c='dimmed'>
+                    [{record.unit}]
+                  </Text>
+                )}
+              </Group>
             );
           }
           return (
-            <Badge color='green' variant='filled'>
-              +{balance.toFixed(2)}
-            </Badge>
+            <Group gap='xs' justify='space-between' wrap='nowrap'>
+              <Badge color='green' variant='filled'>
+                +{balance.toFixed(2)}
+              </Badge>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
           );
         }
       }

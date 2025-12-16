@@ -123,8 +123,8 @@ class FlatBOMItemSerializer(serializers.Serializer):
         required=True, help_text="Relative URL to part detail page"
     )
 
-    units = serializers.CharField(
-        required=True, allow_blank=True, help_text="Part units (mm, pcs, etc.)"
+    unit = serializers.CharField(
+        required=True, allow_blank=True, help_text="Part unit (mm, pcs, etc.)"
     )
 
     # Part properties
@@ -202,7 +202,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "image",
             "thumbnail",
             "link",
-            "units",
+            "unit",
             # Part properties
             "is_assembly",
             "purchaseable",

@@ -424,7 +424,8 @@ class FlatBOMView(APIView):
                         "on_order": on_order,
                         "allocated": allocated,
                         "available": available,
-                        "units": part_obj.units or "",
+                        "unit": part_obj.units
+                        or "",  # Frontend expects 'unit' not 'units'
                         "link": part_obj.get_absolute_url()
                         if hasattr(part_obj, "get_absolute_url")
                         else f"/part/{part_obj.pk}/",

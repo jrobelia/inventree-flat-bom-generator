@@ -25,16 +25,23 @@ InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. T
 - `InvenTreeTestCase` - For basic unit tests
 - `InvenTreeAPITestCase` - For API endpoint tests
 
+**Virtual Environment:**
+- Django and djangorestframework are installed in `.venv`
+- Always activate `.venv` before running tests: `& ".venv\Scripts\Activate.ps1"`
+- Test serializers require Django environment (configured in test file)
+
 **Test Execution**:
 ```bash
+# From plugin directory with venv activated (RECOMMENDED)
+cd plugins/FlatBOMGenerator
+& ".venv\Scripts\Activate.ps1"
+python -m unittest flat_bom_generator.tests.test_shortfall_calculation -v
+
 # From toolkit root - use automated script
 .\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator"
 
 # Or manually with InvenTree invoke command (if in InvenTree dev environment)
 invoke dev.test -r flat_bom_generator.tests.test_shortfall_calculation
-
-# Or fallback to Python unittest
-python -m unittest flat_bom_generator.tests.test_shortfall_calculation -v
 ```
 
 **Environment Setup**:

@@ -95,6 +95,11 @@
   - Clarify function responsibilities
   - Add docstrings and type hints
   - Split large functions if needed
+- Example (serializers.py):
+  - Replace manual dictionary construction in views.py
+  - Create serializers for BOM items, warnings, and responses
+  - Improve type safety and maintainability
+  - Separate data transformation from business logic
 
 ## Step 3: Plan Refactor Steps
 - For each target area:
@@ -296,6 +301,131 @@ class BomItemTest(TestCase):
 - Consider implementing additional warnings from research doc (invalid quantities, etc.)
 - Clean up debug logging statements
 - Continue refactoring with test coverage
+
+---
+
+## Serializer Refactoring Plan
+
+### Goal
+Replace manual dictionary construction in views.py with Django REST Framework serializers to improve:
+- Code maintainability and readability
+- Type safety and validation
+- Separation of concerns (data transformation vs business logic)
+- Testability
+
+### Current Pain Points
+
+**In views.py (lines 325-430):**
+```python
+# Manual dictionary construction - repetitive and error-prone
+enriched_item = {
+    **item,
+    "full_name": part_obj.full_name if hasattr(part_obj, "full_name") else part_obj.name,
+    "image": part_obj.image.url if part_obj.image else None,
+    "thumbnail": part_obj.image.thumbnail.url if part_obj.image else None,
+    # ... 10+ more fields manually mapped
+}
+```
+
+**Issues:**
+- Repetitive `if hasattr()` and `if x else None` checks
+- Hard to test data transformation logic
+- Manual field mapping is error-prone
+- No type validation
+- Violates DRY (Don't Repeat Yourself)
+- Business logic mixed with data serialization
+
+### Proposed Serializers
+
+#### 1. `BOMWarningSerializer`
+**Purpose**: Serialize warning messages with consistent structure
+
+**Fields:**
+- `type` (CharField) - Warning category (unit_mismatch, inactive_part, etc.)
+- `part_id` (IntegerField, optional) - Associated part ID
+- `part_name` (CharField, optional) - Human-readable part name
+- `message` (CharField) - User-facing warning text
+
+**Benefit**: Consistent warning format, easy to add new warning types
+
+#### 2. `FlatBOMItemSerializer`
+**Purpose**: Serialize enriched BOM item data for frontend
+
+**Fields:**
+- All fields from `flat_bom` traversal output
+- Part model fields: `full_name`, `image`, `thumbnail`, `units`
+- Stock fields: `in_stock`, `on_order`, `allocated`, `available`
+- Navigation: `link` to part detail page
+
+**Methods:**
+- `get_full_name()` - Handle full_name fallback logic
+- `get_image()` - Safe URL extraction with None handling
+- `get_thumbnail()` - Safe thumbnail URL extraction
+
+**Benefit**: All field mapping logic in one place, easy to test
+
+#### 3. `FlatBOMResponseSerializer`
+**Purpose**: Wrap complete API response structure
+
+**Fields:**
+- `part_id` (IntegerField) - Root part ID
+- `part_name` (CharField) - Root part name
+- `ipn` (CharField) - Root part IPN
+- `bom_items` (List[FlatBOMItemSerializer]) - Flattened BOM
+- `metadata` (Dict) - Counters and stats
+  - `total_unique_parts`
+  - `total_ifps_processed`
+  - `max_depth_reached`
+  - `warnings` (List[BOMWarningSerializer])
+
+**Benefit**: Single source of truth for API contract, auto-generates API docs
+
+### Implementation Plan
+
+**Phase 1: Create Serializers (No Breaking Changes)**
+1. Create `BOMWarningSerializer` in serializers.py
+2. Create `FlatBOMItemSerializer` in serializers.py
+3. Create `FlatBOMResponseSerializer` in serializers.py
+4. Add docstrings explaining each field
+5. Run tests to ensure no regressions
+
+**Phase 2: Refactor views.py to Use Serializers**
+1. Replace manual warning dict construction with `BOMWarningSerializer`
+2. Replace enriched_item dict construction with `FlatBOMItemSerializer`
+3. Replace Response() dict with `FlatBOMResponseSerializer`
+4. Remove redundant field mapping code
+5. Run tests and verify API output unchanged
+
+**Phase 3: Add Serializer Tests**
+1. Test `BOMWarningSerializer` with various warning types
+2. Test `FlatBOMItemSerializer` with Part objects
+3. Test edge cases: missing images, None values, empty fields
+4. Test `FlatBOMResponseSerializer` integration
+
+**Phase 4: Documentation**
+1. Update PLUGIN-CONTEXT.md with serializer architecture
+2. Document serializer patterns learned
+3. Add to refactor plan progress log
+
+### When to Do This
+
+**Good time to implement:**
+- After current warning system is stable
+- Before adding new API endpoints
+- When we need to modify API response structure
+- As part of views.py refactoring
+
+**Dependencies:**
+- None - can be done incrementally
+- Serializers work alongside existing code during transition
+
+### Learning Opportunities
+
+This refactor teaches:
+- Django REST Framework serializer patterns
+- Separation of concerns in API design
+- How to write testable data transformation code
+- Industry-standard API development practices
 
 ---
 

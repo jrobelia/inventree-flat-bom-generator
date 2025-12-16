@@ -11,25 +11,11 @@
   - Refactor one small section at a time (e.g., a single function or component).
   - After each change, run your tests to confirm nothing broke.
 
-2. **Check for Tests BEFORE Refactoring (Test-First Workflow)**
-  - **BEFORE touching any code**, check if tests exist for what you're about to refactor
-  - If tests exist: Run them to establish baseline (they should pass)
-  - If NO tests exist: **Write tests FIRST** to capture current behavior
-  - THEN refactor the code
-  - Run tests again - they should still pass (proves you didn't break anything)
-  - **Why**: You can't verify a refactor is safe without tests. Writing tests first documents expected behavior and catches regressions immediately.
+2. **Follow Test-First Workflow**
+  - See [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) for complete test-first workflow
+  - Check if tests exist → Evaluate quality → Improve/Create → Refactor → Verify
 
-3. **Evaluate Existing Test Quality**
-  - Just because tests exist doesn't mean they're good tests
-  - Review existing tests for:
-    - **Coverage**: Do they test the actual behavior you're refactoring?
-    - **Thoroughness**: Do they cover edge cases, error conditions, and different inputs?
-    - **Accuracy**: Are they testing the right things or just implementation details?
-    - **Up-to-date**: Do they reflect current code behavior or are they outdated?
-  - If tests are weak or incomplete, **improve them BEFORE refactoring**
-  - Better to spend 10 minutes strengthening tests than hours debugging a broken refactor
-
-4. **Write Tests Before and After Refactoring**
+3. **Write Tests Before and After Refactoring**
   - If a function isn't tested, write a simple test for its current behavior before changing it.
   - After refactoring, make sure the test still passes.
 
@@ -144,187 +130,57 @@
 - Summarize lessons learned and future improvement ideas
 
 ---
-## Testing Strategy
+## Testing
 
-### Current Approach: Python unittest
-We're using **Python's `unittest.TestCase`** for pure logic testing.
+**Test Status**: 106 tests (105 passing, 1 skipped)
 
-**Why**: 
-- No database dependencies yet
-- Testing pure Python functions (regex, calculations, string manipulation)
-- Can run anywhere without InvenTree environment
-- Simple and lightweight for learning
+**Documentation**:
+- [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) - Test execution, strategy, and test-first workflow
+- [TEST-QUALITY-REVIEW.md](TEST-QUALITY-REVIEW.md) - Quality analysis and improvement roadmap
 
-**When to Migrate to Django Tests**:
-When we need to test functions that:
-- Access database models (Part, BomItem, Company)
-- Call Django ORM queries
-- Use InvenTree-specific features
-
-### InvenTree's Testing Pattern (Reference)
-
-**Base Classes** (from InvenTree source):
-- `InvenTreeTestCase` - For Django model/DB tests
-- `InvenTreeAPITestCase` - For API endpoint tests
-- Uses fixtures: `fixtures = ['category', 'part', 'bom', 'location']`
-- Has `setUpTestData()` classmethod for test data setup
-
-**Example Pattern from InvenTree**:
-```python
-from django.test import TestCase
-from part.models import Part, BomItem
-
-class BomItemTest(TestCase):
-    fixtures = ['category', 'part', 'bom']
-    
-    def setUp(self):
-        super().setUp()
-        self.bob = Part.objects.get(id=100)
-        
-    def test_has_bom(self):
-        self.assertTrue(self.bob.has_bom)
-        self.assertEqual(self.bob.bom_count, 4)
-```
-
-**Our Current Tests Are Valid**: InvenTree uses both approaches - pure `unittest.TestCase` for logic, Django tests for models.
+**Quick Reference - Test-First Workflow**:
+1. Check if tests exist for code you're refactoring
+2. Evaluate test quality (coverage, thoroughness, accuracy)
+3. Improve/create tests BEFORE refactoring
+4. Refactor code
+5. Verify tests still pass
 
 ---
 
-## Progress Log
+## Progress Summary
 
-### 2025-12-14: First Refactor (categorization.py)
+**Completed Refactoring Sessions** (Detailed history in git commits)
 
-**Target:** `_extract_length_from_notes()` function
+**2025-12-14**: Pure function refactoring
+- Refactored `_extract_length_from_notes()` and `categorize_part()`
+- Created 27 comprehensive unit tests
+- Removed unused ASSEMBLY_CATEGORY setting
+- Learned: Start with pure functions, test before refactoring
 
-**What We Did:**
-1. Created comprehensive unit test suite (`test_categorization.py`) with 15 test cases
-2. Tested all documented use cases and edge cases (empty, None, floats, integers, units, etc.)
-3. Refactored: Moved inline `import re` to module level for better performance
-4. Verified all tests pass (15/15 OK)
-5. Committed with descriptive message
-6. Reviewed InvenTree testing patterns - confirmed our approach is valid for pure functions
+**2025-12-15**: Warning system implementation (v0.9.2)
+- Implemented 4 warning types with flag propagation
+- Fixed assembly_no_children bug
+- Created ARCHITECTURE-WARNINGS.md documenting patterns
+- Reduced warning noise from 65 to 5 through prioritization
+- Added 82 passing tests (1 skipped)
 
-**What We Learned:**
-- Start with a small, pure function (no external dependencies)
-- Write tests first to establish baseline behavior
-- Make small, incremental changes
-- Run tests after each change to verify nothing broke
-- Commit immediately after success
-- Our `unittest.TestCase` approach matches InvenTree's pattern for pure logic tests
+**2025-12-15 Evening**: Serializer refactoring Phase 2 (v0.9.2)
+- **Phase 2 Complete**: Implemented FlatBOMItemSerializer (24 fields)
+- Replaced manual dict construction in views.py
+- Created 23 comprehensive serializer tests
+- **Found 2 bugs through testing**: note field requirements, image URL field types
+- **Production validated**: Deployed to staging, tested with 117 BOM items
+- Created TEST-QUALITY-REVIEW.md identifying critical test gaps
+- Established test-first workflow guidelines
 
-**Next Steps:**
-- Continue with more pure functions (no DB dependencies)
-- When we need to test functions with database access, we'll migrate to `InvenTreeTestCase`
-- Focus on clear, well-tested functions that are easy to understand
+**Key Insights Learned**:
+- Test-first approach catches bugs immediately
+- 106 passing tests don't guarantee refactored code works
+- Test quality matters as much as test quantity
+- Views.py completely untested despite refactoring
+- Django REST Framework available in InvenTree (no dependency issues)
 
-### 2025-12-14: Second Refactor (categorization.py - categorize_part)
-
-**Target:** `categorize_part()` function
-
-**What We Did:**
-1. Discovered unused ASSEMBLY_CATEGORY setting during test planning
-2. Removed ASSEMBLY_CATEGORY from plugin settings, views, and docstrings
-3. Clarified that assembly detection uses `Part.assembly` flag only
-4. Created 12 comprehensive unit tests for `categorize_part()` covering:
-   - All 8 category types (TLA, Internal Fab, Purchased Assy, CtL, Coml, Fab, Assy, Other)
-   - Priority order verification
-   - Edge cases (empty defaults, category hierarchies)
-   - Fallback behavior
-5. All 27 tests pass (15 + 12 new)
-6. Committed both cleanup and tests separately
-
-**What We Learned:**
-- Reviewing code before testing reveals opportunities for cleanup
-- Removing unused code makes testing clearer and simpler
-- Complex functions with many conditionals need tests for each path
-- Good test names document the expected behavior
-- Testing reveals what the code actually does vs. what comments say
-
-**Next Steps:**
-- Update refactor plan with completed work
-- Consider frontend testing or more backend functions
-- Look for other cleanup opportunities revealed by testing
-
-### 2025-12-15: Third Refactor (views.py - Extract Helper Function)
-
-**Target:** `get_internal_supplier_ids()` function in [views.py](flat_bom_generator/views.py)
-
-**What We Did:**
-1. Identified code duplication in ID extraction logic
-2. Created `_extract_id_from_value()` helper function
-3. Refactored to use helper function, reducing code duplication
-4. All tests still pass (54/55, 1 skipped)
-
-**Refactoring Pattern Used:**
-- **Extract Function**: Moved repeated logic into reusable helper
-- Handles multiple input types: int, str, objects with pk/id attributes
-- Single responsibility: one function does one thing well
-
-**What We Learned:**
-- Look for repeated conditional logic as refactoring opportunities
-- Helper functions make code more readable and maintainable
-- Small refactorings are safer and easier to verify
-- Tests give confidence that refactoring didn't break anything
-
-**Next Steps:**
-- Continue looking for similar duplication patterns
-- Consider more helper functions in views.py
-- Look at get_category_mappings() for similar patterns
-
-### 2025-12-15: BOM Warning System Implementation
-
-**Target:** Implement comprehensive warning system for BOM errors and user mistakes
-
-**What We Did:**
-1. **Research Phase**: Created [BOM-ERROR-WARNINGS-RESEARCH.md](BOM-ERROR-WARNINGS-RESEARCH.md) documenting all warning types
-2. **Bug Fix**: Fixed critical bug where assemblies with no children disappeared from flat BOM
-   - Added `assembly_no_children` flag in `get_leaf_parts_only()`
-   - Created 5 unit tests (all passing)
-3. **Warning Implementation**: Implemented three warnings:
-   - Inactive part warnings
-   - Unit mismatch warnings (2 tests)
-   - Max depth exceeded warnings
-4. **Flag Preservation Bug**: Discovered and fixed flags being lost during deduplication
-   - Added flags to `part_info` dictionary in `deduplicate_and_sum()`
-   - Added flags to final `row` dictionary
-5. **UI Enhancement**: Added `max_depth_reached` counter to show BOM traversal depth
-6. **Warning Optimization**: Reduced warning noise from 65 to 5 warnings
-   - Implemented flag prioritization (max_depth takes precedence over no_children)
-   - Implemented summary aggregation (one warning for all max_depth assemblies)
-   - Created 4 unit tests for warning logic (all passing)
-7. **Architecture Documentation**: Created [ARCHITECTURE-WARNINGS.md](ARCHITECTURE-WARNINGS.md)
-   - Documents flag prioritization pattern
-   - Documents summary vs per-item warning strategy
-   - Documents data flow: CREATE → PROPAGATE → PRESERVE → CONSUME
-8. **UI Layout Improvement**: Made stats section responsive and compact
-   - Multi-line labels to reduce horizontal space
-   - Reordered: BOM Depth before Internal Fab Processed
-   - Added wrapping for smaller screens
-9. **Current Test Status**: 82 tests passing (1 skipped - pre-existing known issue)
-
-**Refactoring Patterns Used:**
-- **Flag Prioritization**: `flag = condition_to_warn and not higher_priority_condition`
-- **Summary Aggregation**: Check collection before iterating, generate one warning
-- **Explicit Field Propagation**: Must copy flags at each transformation stage
-- **Data Flow Lifecycle**: CREATE → PROPAGATE → PRESERVE → CONSUME
-
-**What We Learned:**
-- Flags/metadata need explicit propagation through transformation pipelines
-- Summary warnings reduce noise better than per-item warnings for systemic issues
-- Flag prioritization prevents overlapping/duplicate warnings
-- Unit tests should validate decision logic, not just happy paths
-- Architecture documentation is critical for understanding patterns
-- TDD (Test-Driven Development) catches bugs early
-- Small, incremental changes with tests after each step
-
-**Deployment:**
-- Version 0.9.2 deployed to staging
-- Warning system verified working in production
-
-**Next Steps:**
-- Consider implementing additional warnings from research doc (invalid quantities, etc.)
-- Clean up debug logging statements
-- Continue refactoring with test coverage
+**Current Status**: Phase 2 complete, ready for Phase 3
 
 ---
 
@@ -453,60 +309,18 @@ This refactor teaches:
 
 ---
 
-## Known Issues & Technical Debt
+## Known Issues & Next Steps
 
-### Pre-existing Test Failure (Documented 2025-12-15)
+**See [TEST-QUALITY-REVIEW.md](TEST-QUALITY-REVIEW.md) for detailed analysis.**
 
-**Test**: `test_piece_qty_times_count_rollup` in [test_internal_fab_cut_rollup.py](flat_bom_generator/tests/test_internal_fab_cut_rollup.py)
+**Critical Priorities** (from test quality review):
+- 🔴 Add views.py integration tests (2-3 hours) - ZERO tests exist for API endpoint
+- 🔴 Fix or remove skipped test (test_piece_qty_times_count_rollup)
+- 🔴 Rewrite test_internal_fab_cutlist.py (tests stub functions, not real code)
+- 🟡 Add core BOM traversal tests (get_flat_bom, deduplicate_and_sum)
+- 🟡 Expand cut-to-length test coverage
 
-**Issue**: Test expects `internal_fab_cut_list` to be populated but receives empty list
-
-**Status**: Marked with `@unittest.skip` to allow continued development
-
-**Next Steps**:
-- Investigate why `deduplicate_and_sum()` doesn't populate `internal_fab_cut_list` for Internal Fab children
-- Check if this is a regression or if test expectations are incorrect
-- Review Internal Fab cut breakdown feature logic in [bom_traversal.py](flat_bom_generator/bom_traversal.py)
-- Fix or update test expectations based on findings
-
-**Impact**: Low - This is an advanced Internal Fab feature, core functionality works
-
-**Test Results**: 82/83 tests passing (1 skipped)
-
-### Test Coverage Gap Identified (2025-12-15)
-
-**Issue**: No tests exist for views.py API endpoint logic
-
-**Current Test Coverage:**
-- ✅ Pure functions (categorization, length extraction, unit checks)
-- ✅ BOM traversal logic (bom_traversal.py - get_flat_bom, deduplicate_and_sum)
-- ✅ Warning flag logic (assembly_no_children, max_depth)
-- ✅ Cut list calculations (Internal Fab feature)
-- ✅ Shortfall calculations
-- ❌ **NO tests for FlatBOMAPIView endpoint**
-- ❌ **NO tests for enrichment logic in views.py**
-- ❌ **NO tests for serializers (BOMWarningSerializer, FlatBOMItemSerializer)**
-
-**Why This Matters:**
-- We modified views.py enriched_item construction with serializers
-- Passing tests only validates BOM traversal, not the API response format
-- Cannot verify API contract remains unchanged
-- Frontend integration issues would only be caught in production
-
-**Mitigation Plan:**
-1. Create unit tests for serializers (test_serializers.py)
-   - Test BOMWarningSerializer with various warning types
-   - Test FlatBOMItemSerializer with mock Part data
-   - Test field validation and edge cases
-2. Create integration tests for views.py (test_views_integration.py)
-   - Mock Part and Stock queries
-   - Test complete API response structure
-   - Verify enrichment logic works end-to-end
-3. Update test documentation with coverage expectations
-
-**Impact**: Medium - Serializer changes untested, but follow established pattern
-
-**Next Steps**: Implement serializer unit tests and views integration tests
+**Current Test Status**: 106 tests (105 passing, 1 skipped)
 
 ---
 
@@ -565,11 +379,140 @@ This refactor teaches:
 - Phase 4: Add serializer-specific unit tests
 - Consider moving URL construction logic to serializer methods
 
+### 2025-12-15 Evening: Test-Driven Serializer Development & Production Validation
+
+**Target:** Create comprehensive tests for serializers and validate in production
+
+**What We Did:**
+1. **Created Comprehensive Test Suite** (test_serializers.py - 323 lines):
+   - **BOMWarningSerializerTests** (7 tests):
+     - All 4 warning types with full data
+     - Each warning type individually tested
+     - Required vs optional field validation
+     - None/null value handling
+     - Summary warnings (no part_id)
+     - Missing required fields error handling
+     - Empty string rejection
+   - **FlatBOMItemSerializerTests** (16 tests):
+     - All 24 fields with complete data
+     - All 8 part_type categories (TLA, FAB, COML, IMP, CTL, Assy, Purch Assy, Other)
+     - Required fields only (minimal data)
+     - Optional fields with None values
+     - Zero, decimal, and integer quantities
+     - Unit notation handling
+     - Negative and positive shortfalls
+     - Optional cut_list data
+     - Optional internal_fab_cut_list data
+     - Image field handling (relative URLs as CharField)
+     - Note field handling (allow_blank, allow_null)
+     - Missing required fields validation
+     - Wrong type validation errors
+   - Django settings configuration for standalone testing
+   - All 23 tests passing
+
+2. **Bug Discovery & Fixes Through Testing**:
+   - **Bug 1**: `note` field incorrectly marked `required=True`
+     - Fixed: `required=False, allow_null=True, allow_blank=True`
+   - **Bug 2**: `image` and `thumbnail` fields were `URLField`
+     - Fixed: Changed to `CharField` (InvenTree returns relative URLs like `/media/...`)
+   - Tests caught both bugs immediately on first run
+
+3. **Production Validation**:
+   - Built plugin v0.9.2
+   - Deployed to staging server via Deploy-Plugin.ps1
+   - Tested with part ID 13 (OpenCPC assembly)
+   - API processed 117 BOM items without errors
+   - Console validation showed 23-24 fields per item
+   - All warnings properly formatted (4 warnings: 2 unit_mismatch, 1 inactive_part, 1 assembly_no_children)
+   - Confirmed Django REST Framework available in InvenTree 1.1.6
+   - No `rest_framework` import errors
+   - UI displayed correctly with all columns
+
+4. **Test Quality Documentation**:
+   - Created **TEST-QUALITY-REVIEW.md** (500+ lines):
+     - Comprehensive analysis of all 106 tests across 9 test files
+     - Quality ratings: 62 high-quality tests, 10 medium, 12 low-quality
+     - **Critical gaps identified**:
+       - ❌ ZERO tests for views.py API endpoint (just refactored!)
+       - ❌ ZERO tests for core BOM traversal (get_flat_bom, deduplicate_and_sum)
+       - ❌ Some tests use stub functions instead of real code
+       - ⚠️ 1 test skipped for months (needs investigation)
+     - Anti-patterns documented: duplicating code, magic numbers, external CSV dependencies
+     - Prioritized recommendations with time estimates
+     - Test quality checklist for future work
+   - Updated **TEST-PLAN.md** (now reflects 106 tests, not "minimal"):
+     - Updated overview: 106 tests (105 passing, 1 skipped), grade C+
+     - Added detailed test file inventory with quality ratings
+     - Added test improvement roadmap (3 critical, 3 high, 3 medium priority items)
+     - Added CI/CD considerations section (post-refactor decision framework)
+     - Updated manual UI verification checklist
+     - Added test quality standards and evaluation criteria
+
+5. **Refactor Guidelines Updated** (REFAC-PANEL-PLAN.md):
+   - Added Guideline #2: "Check for Tests BEFORE Refactoring (Test-First Workflow)"
+   - Added Guideline #3: "Evaluate Existing Test Quality"
+   - Documented workflow: Check → Evaluate → Improve/Create → Refactor → Verify
+
+**Test-First Workflow Established:**
+```
+1. Check if tests exist for code to refactor
+2. Evaluate test quality (coverage, thoroughness, accuracy, up-to-date)
+3. Improve/create tests BEFORE refactoring
+4. Refactor code
+5. Verify tests still pass
+```
+
+**What We Learned:**
+- **Test-first approach catches bugs immediately** - Both serializer bugs found on first test run
+- **Passing tests don't guarantee refactored code works** - 83 passing tests validated BOM traversal, NOT API endpoint
+- User's concern about production deployment was valid - always test what you refactor
+- Test quality matters as much as test quantity - some tests validate "fantasy code" (stubs)
+- InvenTree 1.1.6 doesn't expose plugin API publicly - only testable via UI/frontend
+- Django REST Framework IS available in InvenTree - plugins inherit it
+- Production validation is essential - serializers work correctly with 117 real BOM items
+
+**Refactoring Patterns Used:**
+- **Test-Driven Refactoring**: Write tests → Find bugs → Fix → Validate
+- **Comprehensive Edge Case Testing**: Zero values, None, empty strings, wrong types
+- **Field Type Validation**: Explicit type checking reveals assumptions (URLField vs CharField)
+- **Standalone Test Configuration**: Django settings in test file for DRF serializers
+- **Production Validation**: Deploy → Test UI → Check console → Verify API response
+
+**Test Results:**
+- 106 tests total (105 passing, 1 skipped)
+- 23 new serializer tests (all passing)
+- 2 bugs found and fixed
+- Production validated with 117 BOM items
+
+**Documentation:**
+- TEST-QUALITY-REVIEW.md: 500+ lines analyzing all tests
+- TEST-PLAN.md: Updated to reflect 106 tests and CI/CD guidance
+- REFAC-PANEL-PLAN.md: Test-first workflow guidelines
+
+**Deployment:**
+- Version 0.9.2 deployed to staging
+- Tested with part ID 13 (OpenCPC)
+- 117 BOM items processed successfully
+- All 24 fields validated
+- 4 warnings properly formatted
+
+**Next Steps:**
+- **CRITICAL**: Add views.py integration tests (2-3 hours) - NO tests exist!
+- Fix or remove skipped test (test_piece_qty_times_count_rollup)
+- Rewrite test_internal_fab_cutlist.py (tests stub functions, not real code)
+- Phase 3: Implement FlatBOMResponseSerializer (15-20 min)
+- Add core BOM traversal tests (get_flat_bom, deduplicate_and_sum)
+
+**Key Insight:**
+The test quality review revealed that while we have 106 tests, the most critical code paths (views.py, core traversal) are completely untested. This validates the importance of the test-first workflow we've now documented.
+
 ---
 **Tips:**
 - Ask for advice or code review at any step
 - Don't try to do everything at once—small, tested steps are best
 - Use this plan as a living document: update as you go
+- **Always check test quality, not just test count**
+- **Write tests for what you're refactoring, not just what's easy to test**
 
 ---
 

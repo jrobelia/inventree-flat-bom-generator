@@ -14,8 +14,19 @@ InvenTree's built-in BOM view shows the hierarchical structure. This plugin **fl
 
 - **Automatic Leaf-Part Extraction**: Traverses the entire BOM tree and extracts only the purchaseable leaf components (Fab Parts, Commercial Parts, Purchaseable Assemblies), filtering out intermediate assemblies
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
+- **Cut-to-Length Part Support**: Custom handling for cut-to-length raw materials (wire, tubing, bar stock) with per-cut quantity breakdown
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
+
+### User Interface
+
+- **Single-Page View**: See all purchaseable components in one table instead of navigating through BOM levels
+- **Interactive Controls**: Adjust build quantity and instantly see scaled requirements across all parts
+- **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order) in real-time
+- **CSV Export**: Export the complete flat BOM with all calculated quantities for purchasing workflows
+
+*Screenshot: Main panel view with controls and BOM table*  
+![FlatBOMGenerator panel showing refresh button, controls, statistics panel, and full BOM table](imgs/flat-bom-panel-overview.png)
 
 ### Warning System
 
@@ -27,16 +38,8 @@ The plugin automatically detects and flags potential BOM issues:
 - **Max Depth Exceeded**: Alerts when BOM traversal hits the configured depth limit (prevents infinite loops)
 
 Warnings appear in a summary panel and help identify data quality issues before manufacturing.
-
-### User Interface
-
-- **Single-Page View**: See all purchaseable components in one table instead of navigating through BOM levels
-- **Interactive Controls**: Adjust build quantity and instantly see scaled requirements across all parts
-- **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order) in real-time
-- **CSV Export**: Export the complete flat BOM with all calculated quantities for purchasing workflows
-
-*Screenshot: Main panel view with controls and BOM table*  
-![FlatBOMGenerator panel showing generate button, controls, statistics panel, and full BOM table](imgs/flat-bom-panel-overview.png)
+*Screenshot: warnings at top of table*  
+![FlatBOMGenerator panel showing warnings](imgs/flat-bom-panel-warnings.png)
 
 ### Why This Matters
 
@@ -141,7 +144,6 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Additional Internal Suppliers** | Comma-separated list of additional internal supplier IDs (e.g., "5,12"). Parts with these suppliers are also treated as internal. Leave empty if you only have one internal supplier. | Empty |
 | **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) will be classified as Fab or Internal Fab. Required for proper categorization. | None |
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) will be classified as Coml. Required for proper categorization. | None |
-| **Assembly Category** | InvenTree category for assemblies. Used to identify assembly parts. Optional - assemblies are also identified by the `is_assembly` flag. | None |
 | **Cut-to-Length Category** | InvenTree category for cut-to-length raw materials (wire, bar stock, etc.). Parts in this category with length in BOM notes will be classified as CtL. Optional but recommended if you use cut-to-length parts. | None |
 | **Enable Internal Fab Cuts** | When enabled, parts categorized as Internal Fab with cut-to-length data will have their cuts aggregated and displayed. | `False` |
 | **Internal Fab Cut Units** | Unit to use for internal fab cut list aggregation (e.g., "mm", "inch", "cm"). Only applies when Enable Internal Fab Cuts is enabled. | `mm` |
@@ -167,6 +169,46 @@ The plugin uses the following logic to categorize parts and determine whether th
 | **Fab** | Fabricated | FALSE | any/none | any | ✅ YES | Machining, PCB - Standard part made externally from a drawing |
 | **Assy** | Assembly | TRUE | none/internal | internal | ❌ NO (expands) | Standard assembly done in-house |
 | **Purchased Assy** | Assembly | TRUE | required | external | ✅ YES | PCBA, wire harness, etc. - Purchased complete with external supplier |
+
+### Cut-to-Length Part Support
+
+**Feature Overview**: The plugin provides custom support for cut-to-length (CtL) raw materials like wire, tubing, and bar stock.
+
+**Important Limitation**: This is a **workaround** to InvenTree's standard part system and does not integrate with InvenTree's built-in inventory or stocking features. CtL parts will not act correctly inside of InvenTree's stock levels, allocations, or purchasing workflows in terms of qty at cut length.  They can still be used to order in bulk.
+
+**Intended Use Case**:
+Assemblies with cut lists that specify raw material quantities by cut length:
+- Example: "Qty 5 @ 30 inches" means 5 pieces, each 30 inches long
+- Example: "Qty 8 @ 21.20 mm" means 8 pieces, each 21.20 mm long
+
+**How It Works**:
+1. Create a part in the Cut-to-Length category (configured in plugin settings)
+2. Add the part to your assembly BOM
+3. In the BOM line item **note field**, specify cut lengths in the format: `length: XX [unit]`
+4. The plugin will:
+   - Display the parent material with total quantity needed
+   - Show child rows for each cut length with piece counts
+   - Scale piece counts automatically with build quantity
+
+**Example BOM Structure**:
+```
+Parent: OA-00409 | CTL Tubing, Silicone, Blue, 1/4" OD x 1/8" ID
+  Total Qty: 11180.00 [mm]
+  
+  Child: CTL - CUT
+    8 pieces × 21.20 [mm] (for 1 unit) → 400 pieces (for 50 units)
+  
+  Child: CTL - CUT  
+    4 pieces × 12.00 [mm] (for 1 unit) → 200 pieces (for 50 units)
+```
+
+**Limitations**:
+- CtL parts do not show up as cut pieces in InvenTree stock levels
+- Cannot create purchase orders directly from CtL cut requirements
+- No integration with InvenTree's allocation system
+- Manual tracking required for raw material inventory
+
+**When to Use**: Use CtL support when you need to track cut piece requirements for manufacturing planning, but manage raw material purchasing and inventory outside the plugin.
 
 ### Understanding Default Suppliers
 

@@ -4,7 +4,7 @@
 
 > Personal project for automated flat BOM generation. Currently in testing phase and undergoing refactoring to improve code quality. Feedback and bug reports welcome!
 
-InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation.  This is the first of three plugins I would like to develop to enhance InvenTree's manufacturing planning capabilities for assemblies with many layers of nesting sub-assemblies.  They create actionable but temporary lists that can be used for manufacturing and purchasing purposes.  This plugin focuses on generating a flat BOM for high level planning and purchasing purposes based on an assembly BOM.  The other two plugins would focus on semi-automated BO and PO generation based on a top level Build Order, possibly using the same default supplier logic and adding project based part allocation.
+InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation. **The plugin is accessed via a "Flat BOM" panel on the part detail page of any assembly.**
 
 ## What This Plugin Adds
 
@@ -305,4 +305,24 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - Where Stock Used = Available (if allocations enabled) or Total Stock (if disabled)
 - Negative value indicates deficit (need to order)
 - Positive value indicates surplus (extra stock after build)
+
+## Future Work
+
+### Refactoring Plans
+
+**Current Status**: The plugin is functional but undergoing code quality improvements. Ongoing refactoring work includes:
+
+- **Serializer Implementation**: Replacing manual dictionary construction with Django REST Framework serializers for improved type safety and maintainability
+- **Test Coverage Expansion**: Adding integration tests for API endpoints and core BOM traversal functions (currently 106 tests with identified gaps)
+- **Code Organization**: Breaking down large components and improving separation of concerns
+
+### Related Plugins (Planned)
+
+This is the first of three planned plugins to enhance InvenTree's manufacturing planning capabilities for assemblies with nested sub-assemblies:
+
+1. **Flat BOM Generator** (this plugin) - High-level planning and purchasing focused on generating actionable flat BOMs from assembly structures
+2. **Build Order Generator** (planned) - Semi-automated build order creation from top-level build orders, with dependency tracking and scheduling
+3. **Purchase Order Generator** (planned) - Automated PO generation based on flat BOMs, using default supplier logic and project-based part allocation
+
+These plugins create actionable but temporary lists for manufacturing and purchasing workflows without modifying core InvenTree data structures.
 

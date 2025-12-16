@@ -1,4 +1,8 @@
-# Flat BOM Generator
+# Flat BOM Generator for InvenTree
+
+**Version:** 0.9.2 | **InvenTree:** 1.1.6+
+
+> Personal project for automated flat BOM generation. Currently in testing phase and undergoing refactoring to improve code quality. Feedback and bug reports welcome!
 
 InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation.  This is the first of three plugins I would like to develop to enhance InvenTree's manufacturing planning capabilities for assemblies with many layers of nesting sub-assemblies.  They create actionable but temporary lists that can be used for manufacturing and purchasing purposes.  This plugin focuses on generating a flat BOM for high level planning and purchasing purposes based on an assembly BOM.  The other two plugins would focus on semi-automated BO and PO generation based on a top level Build Order, possibly using project based part allocation.
 
@@ -10,8 +14,19 @@ InvenTree's built-in BOM view shows the hierarchical structure. This plugin **fl
 
 - **Automatic Leaf-Part Extraction**: Traverses the entire BOM tree and extracts only the purchaseable leaf components (Fab Parts, Commercial Parts, Purchaseable Assemblies), filtering out intermediate assemblies
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
-- **Flexible Shortfall Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
-- **On-Order Awareness**: Choose whether to include incoming purchase orders in your shortfall calculations
+- **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
+- **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
+
+### Warning System
+
+The plugin automatically detects and flags potential BOM issues:
+
+- **Unit Mismatch Detection**: Flags when parts at the same BOM level use different units (e.g., mixing "pcs" and "grams")
+- **Inactive Part Detection**: Warns when BOM contains inactive parts that may not be orderable
+- **Assembly Without Children**: Identifies assemblies marked as assemblies but with no BOM items defined
+- **Max Depth Exceeded**: Alerts when BOM traversal hits the configured depth limit (prevents infinite loops)
+
+Warnings appear in a summary panel and help identify data quality issues before manufacturing.
 
 ### User Interface
 
@@ -19,6 +34,9 @@ InvenTree's built-in BOM view shows the hierarchical structure. This plugin **fl
 - **Interactive Controls**: Adjust build quantity and instantly see scaled requirements across all parts
 - **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order) in real-time
 - **CSV Export**: Export the complete flat BOM with all calculated quantities for purchasing workflows
+
+*Screenshot: Main panel view with controls and BOM table*  
+![FlatBOMGenerator panel showing generate button, controls, statistics panel, and full BOM table](imgs/flat-bom-panel-overview.png)
 
 ### Why This Matters
 
@@ -125,14 +143,16 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) will be classified as Coml. Required for proper categorization. | None |
 | **Assembly Category** | InvenTree category for assemblies. Used to identify assembly parts. Optional - assemblies are also identified by the `is_assembly` flag. | None |
 | **Cut-to-Length Category** | InvenTree category for cut-to-length raw materials (wire, bar stock, etc.). Parts in this category with length in BOM notes will be classified as CtL. Optional but recommended if you use cut-to-length parts. | None |
+| **Enable Internal Fab Cuts** | When enabled, parts categorized as Internal Fab with cut-to-length data will have their cuts aggregated and displayed. | `False` |
+| **Internal Fab Cut Units** | Unit to use for internal fab cut list aggregation (e.g., "mm", "inch", "cm"). Only applies when Enable Internal Fab Cuts is enabled. | `mm` |
 
 **Part Type Categorization:**
 - Parts are automatically categorized based on these settings
-- **Fab Part** (blue badge): Starts with fab prefix, non-assembly
-- **Coml Part** (green badge): Starts with coml prefix, non-assembly
-- **IMP** (cyan badge): Has internal default supplier, will be expanded to show components
+- **Fab Part** (blue badge): In Fabrication category, non-assembly
+- **Coml Part** (green badge): In Commercial category, non-assembly  
+- **Internal Fab** (cyan badge): Assembly in Fabrication category with internal default supplier, will be expanded to show components
 - **Purchaseable Assembly** (orange badge): Assembly with external default supplier, treated as purchaseable unit
-- **Unknown** (gray badge): Doesn't match any category (common if not using prefix naming)
+- **Unknown** (gray badge): Doesn't match any category (common if categories not configured)
 - **Standard Assemblies**: Assembly without default supplier, not categorized because they are expanded during traversal and not displayed in the final flat BOM
 
 ## Part Categorization Reference
@@ -147,6 +167,37 @@ The plugin uses the following logic to categorize parts and determine whether th
 | **Fab** | Fabricated | FALSE | any/none | any | ✅ YES | Machining, PCB - Standard part made externally from a drawing |
 | **Assy** | Assembly | TRUE | none/internal | internal | ❌ NO (expands) | Standard assembly done in-house |
 | **Purchased Assy** | Assembly | TRUE | required | external | ✅ YES | PCBA, wire harness, etc. - Purchased complete with external supplier |
+
+### Understanding Default Suppliers
+
+**Critical Concept:** Default suppliers determine how assemblies are treated during BOM traversal.
+
+**Why This Matters:**
+- **External Default Supplier** → Assembly appears in flat BOM as a purchaseable unit (Purchased Assy)
+- **Internal Default Supplier** → Assembly is expanded, showing its component parts (Internal Fab)
+- **No Default Supplier** → Assembly is expanded, showing its component parts (Standard Assy)
+
+**Example Scenarios:**
+
+1. **PCBA with External Supplier**: A circuit board assembled by a contract manufacturer
+   - `is_assembly` = TRUE
+   - `default_supplier` = "ACME PCB Assembly Co"
+   - **Result**: Appears in flat BOM as "Purchased Assy", BOM is NOT expanded
+   - **Why**: You purchase it complete, don't need to buy individual resistors/capacitors
+
+2. **Internal Fabrication Assembly**: A CNC machined part made in-house
+   - `is_assembly` = TRUE  
+   - `default_supplier` = Your internal supplier company
+   - **Result**: Does NOT appear in flat BOM, BOM IS expanded
+   - **Why**: Plugin shows raw materials needed (bar stock, etc.), not the fabricated part itself
+
+3. **Standard Assembly**: A sub-assembly built in-house
+   - `is_assembly` = TRUE
+   - `default_supplier` = None
+   - **Result**: Does NOT appear in flat BOM, BOM IS expanded
+   - **Why**: Plugin shows component parts you need to order, not the sub-assembly
+
+**Configuration Tip:** Set default suppliers correctly to control BOM traversal behavior. This is more important than category configuration for assemblies.
 
 ### Category Configuration Behavior
 
@@ -183,7 +234,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 1. **Navigate** to any assembly part in InvenTree
 2. **Click** "Generate Flat BOM" to analyze the complete hierarchy
 3. **Adjust** build quantity to see scaled requirements
-4. **Toggle** allocation and on-order checkboxes to customize shortfall calculation
+4. **Toggle** allocation and on-order checkboxes to customize Build Margin calculation
 5. **Search** and filter the results table
 6. **Export** to CSV for further analysis or purchasing
 
@@ -193,37 +244,48 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 - Set the number of units you plan to build
 - All quantities scale automatically
 
-**Include Allocations in Shortfall** (Checkbox)
-- ✅ Checked: Shortfall based on available stock (total - allocations) - *Realistic view*
-- ☐ Unchecked: Shortfall based on total stock - *Optimistic view*
+**Include Allocations in Build Margin** (Checkbox)
+- ✅ Checked: Build Margin based on available stock (total - allocations) - *Realistic view*
+- ☐ Unchecked: Build Margin based on total stock - *Optimistic view*
 
-**Include On Order in Shortfall** (Checkbox)  
-- ✅ Checked: Incoming stock reduces shortfall - *Standard planning*
+**Include On Order in Build Margin** (Checkbox)  
+- ✅ Checked: Incoming stock increases Build Margin - *Standard planning*
 - ☐ Unchecked: Ignore incoming stock - *Conservative planning*
+
+*Screenshot: Build quantity input and checkbox controls*  
+![Build quantity multiplier and checkbox controls for customizing calculations](imgs/build-controls.png)
 
 ### Statistics Panel
 
 - **Total Parts**: Number of unique purchaseable components
-- **Internal Fab Processed**: Number of internally fabricated assemblies (Internal Fab) expanded during BOM traversal
+- **Internal Fab Processed**: Number of Internal Fabricated Part assemblies expanded during BOM traversal
 - **Out of Stock**: Parts with zero inventory
 - **On Order**: Parts with incoming purchase orders
-- **Need to Order**: Parts with shortfall (respects checkbox settings)
+- **Need to Order**: Parts with Build Margin deficit (respects checkbox settings)
+
+*Screenshot: Statistics panel with counters*  
+![Statistics panel displaying Total Unique Parts, Internal Fab Processed, and Need to Order counters](imgs/statistics-panel.png)
 
 ### Table Columns
 
 | Column | Description |
 |--------|-------------|
-| **Component** | Full part name with thumbnail image (clickable link) |
+| **Component** | Full part name with IPN prefix and variant (includes thumbnail image, clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
 | **Type** | Color-coded badge: Coml (green), Fab (blue), CtL (teal), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
-| **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
-| **Shortfall** | Deficit to fulfill build (respects allocation and on-order checkboxes) |
+| **Building** | Stock currently in production builds (cyan badge if > 0) |
+| **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
+| **Available** | Stock available after subtracting allocations (green if sufficient, orange if partial, red if none) |
+| **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
 All columns are **sortable** and the table is **paginated** (10/25/50/100/All per page).
+
+*Screenshot: BOM table showing all columns with various part types and stock levels*  
+![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)
 
 ## API Endpoint
 
@@ -245,7 +307,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
   "part_name": "Main Assembly",
   "ipn": "ASM-001",
   "total_unique_parts": 45,
-  "total_imps_processed": 12,
+  "total_ifps_processed": 12,
   "bom_items": [
     {
       "part_id": 456,
@@ -254,7 +316,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "full_name": "FAB-100 | Bracket, Mounting, Steel | A ",
       "description": "Steel mounting bracket",
       "part_type": "Fab",
-      "cumulative_qty": 2.0,
+      "total_qty": 2.0,
       "unit": "pcs",
       "units": "pcs",
       "is_assembly": false,
@@ -307,8 +369,10 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 **Available** = Total Stock - Allocated
 
-**Shortfall** = Total Required - Stock Used - (On Order if enabled)
-- Where Stock Used = Available (if allocations enabled) or Total (if disabled)
+**Build Margin** = Stock Used + (On Order if enabled) - Total Required
+- Where Stock Used = Available (if allocations enabled) or Total Stock (if disabled)
+- Negative value indicates deficit (need to order)
+- Positive value indicates surplus (extra stock after build)
 
 ### API Response Fields
 
@@ -319,12 +383,12 @@ Each item in `bom_items` contains:
 - `full_name`: Full display name (includes variant info)
 - `description`: Part description
 - `part_type`: "TLA", "Coml", "Fab", "CtL", "Purchased Assy", "Internal Fab", "Assy", or "Other"
-- `cumulative_qty`: Total quantity needed through BOM hierarchy
+- `total_qty`: Total quantity needed through BOM hierarchy (aggregated from all BOM levels)
 - `unit`/`units`: Unit of measurement
 - `is_assembly`: Boolean - whether part is an assembly
 - `purchaseable`: Boolean - whether part can be purchased
+- `has_default_supplier`: Boolean - whether part has default supplier configured
 - `default_supplier_id`: ID of default supplier (null if none)
-- `reference`: BOM reference designator (e.g., "U1, U2")
 - `note`: BOM item notes
 - `level`: Depth in original BOM tree
 - `in_stock`: Total inventory

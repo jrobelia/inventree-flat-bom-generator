@@ -164,6 +164,19 @@ cython_debug/
 # PyPI publishing plan (optional/future reference)
 PYPI-PUBLISHING-PLAN.md
 
+# Personal development / planning docs (keep in dev branch)
+# Uncomment these before making repo public:
+# docs/REFAC-PANEL-PLAN.md
+# docs/TEST-QUALITY-REVIEW.md
+# docs/BOM-ERROR-WARNINGS-RESEARCH.md
+# docs/WARNINGS-ROADMAP.md
+
+# Temporary test data files
+*.json.bak
+flatbom_response.json
+latest_bom.json
+test_output/
+
 # Additional ignores for tooling, caches, and frontend build artifacts
 # Node / frontend
 node_modules/

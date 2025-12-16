@@ -46,6 +46,12 @@ docs/                        # Documentation, planning, & reference
 ├── PYPI-PUBLISHING-PLAN.md
 └── Flat BOM Generator Table.csv  # Reference output format
 
+imgs/                        # Screenshots for README.md
+├── flat-bom-panel-overview.png
+├── build-controls.png
+├── statistics-panel.png
+└── data-table-view.png
+
 tools/                       # Development utilities
 ├── README.md
 ├── import requests.py       # InvenTree API test script

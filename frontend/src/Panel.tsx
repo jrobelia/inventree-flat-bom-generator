@@ -623,10 +623,12 @@ function FlatBOMGeneratorPanel({
         render: (record) => {
           const totalRequired = record.total_qty * buildQuantity;
           if (record.is_cut_list_child) {
+            // Cut list children: multiply pieces by buildQuantity
+            const totalPieces = record.total_qty * buildQuantity;
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
                 <Text size='sm' fw={700}>
-                  {record.total_qty.toFixed(0)}
+                  {totalPieces.toFixed(0)}
                 </Text>
                 <Text size='xs' c='dimmed'>
                   pieces
@@ -705,7 +707,11 @@ function FlatBOMGeneratorPanel({
           } else if (record.in_stock < totalRequired) {
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
-                <Badge color='orange' variant='light'>
+                <Badge
+                  color='orange'
+                  variant='light'
+                  style={{ minWidth: 'fit-content' }}
+                >
                   {record.in_stock.toFixed(2)}
                 </Badge>
                 {record.unit && (
@@ -718,7 +724,11 @@ function FlatBOMGeneratorPanel({
           } else {
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
-                <Badge color='green' variant='filled'>
+                <Badge
+                  color='green'
+                  variant='filled'
+                  style={{ minWidth: 'fit-content' }}
+                >
                   {record.in_stock.toFixed(2)}
                 </Badge>
                 {record.unit && (
@@ -751,7 +761,10 @@ function FlatBOMGeneratorPanel({
                 <Badge
                   color='yellow'
                   variant='light'
-                  style={{ opacity: isDimmed ? 0.4 : 1 }}
+                  style={{
+                    opacity: isDimmed ? 0.4 : 1,
+                    minWidth: 'fit-content'
+                  }}
                 >
                   {record.allocated.toFixed(2)}
                 </Badge>
@@ -809,7 +822,10 @@ function FlatBOMGeneratorPanel({
                 <Badge
                   color='blue'
                   variant='light'
-                  style={{ opacity: isDimmed ? 0.4 : 1 }}
+                  style={{
+                    opacity: isDimmed ? 0.4 : 1,
+                    minWidth: 'fit-content'
+                  }}
                 >
                   {record.on_order.toFixed(2)}
                 </Badge>
@@ -874,7 +890,11 @@ function FlatBOMGeneratorPanel({
           if (balance < 0) {
             return (
               <Group gap='xs' justify='space-between' wrap='nowrap'>
-                <Badge color='red' variant='filled'>
+                <Badge
+                  color='red'
+                  variant='filled'
+                  style={{ minWidth: 'fit-content' }}
+                >
                   {balance.toFixed(2)}
                 </Badge>
                 {record.unit && (
@@ -887,7 +907,11 @@ function FlatBOMGeneratorPanel({
           }
           return (
             <Group gap='xs' justify='space-between' wrap='nowrap'>
-              <Badge color='green' variant='filled'>
+              <Badge
+                color='green'
+                variant='filled'
+                style={{ minWidth: 'fit-content' }}
+              >
                 +{balance.toFixed(2)}
               </Badge>
               {record.unit && (

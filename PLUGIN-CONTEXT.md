@@ -23,8 +23,11 @@ flat_bom_generator/
 ├── views.py                 # FlatBOMView API endpoint
 ├── bom_traversal.py         # Core BOM algorithms
 ├── categorization.py        # Part type classification
+├── serializers.py           # API data serializers
 ├── static/                  # Compiled frontend assets
 └── tests/                   # Unit tests
+    ├── test_*.py            # Test modules
+    └── test_data/           # Test input data (CSV files)
 
 frontend/
 ├── src/
@@ -34,19 +37,19 @@ frontend/
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
-docs/                        # Research & planning documents
+docs/                        # Documentation & reference
+├── README.md                # Documentation overview
 ├── BOM-ERROR-WARNINGS-RESEARCH.md
 ├── WARNINGS-ROADMAP.md
 ├── ARCHITECTURE-WARNINGS.md
 ├── REFAC-PANEL-PLAN.md
-└── PYPI-PUBLISHING-PLAN.md
+├── PYPI-PUBLISHING-PLAN.md
+└── Flat BOM Generator Table.csv  # Reference output format
 
 tools/                       # Development utilities
+├── README.md
 ├── import requests.py       # InvenTree API test script
 └── set_default_supplier.py  # Bulk supplier assignment
-
-test_data/                   # Test data files
-└── Flat BOM Generator Table.csv
 ```
 
 ---

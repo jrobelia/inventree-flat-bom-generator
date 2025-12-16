@@ -4,6 +4,12 @@ This folder contains research, architectural documentation, and planning documen
 
 ## Files
 
+### Reference Documentation
+- **[Flat BOM Generator Table.csv](Flat%20BOM%20Generator%20Table.csv)** - Example output format
+  - Shows expected flat BOM structure
+  - Reference for CSV export format
+  - Documents all output columns
+
 ### Architecture Documentation
 - **[ARCHITECTURE-WARNINGS.md](ARCHITECTURE-WARNINGS.md)** - Warning system architecture patterns and data flow
   - Flag prioritization pattern

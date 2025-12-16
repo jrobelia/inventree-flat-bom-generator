@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from .bom_traversal import get_flat_bom
 from .categorization import _check_unit_mismatch
+from .serializers import BOMWarningSerializer
 
 logger = logging.getLogger("inventree")
 
@@ -316,12 +317,16 @@ class FlatBOMView(APIView):
                 item for item in flat_bom if item.get("max_depth_exceeded")
             ]
             if parts_at_max_depth:
-                warnings.append({
-                    "type": "max_depth_reached",
-                    "part_id": None,
-                    "part_name": "Multiple assemblies",
-                    "message": f"BOM traversal stopped at depth {max_depth_reached}. {len(parts_at_max_depth)} assemblies not fully expanded. Increase 'Maximum Traversal Depth' setting to see sub-components.",
-                })
+                serializer = BOMWarningSerializer(
+                    data={
+                        "type": "max_depth_reached",
+                        "part_id": None,
+                        "part_name": "Multiple assemblies",
+                        "message": f"BOM traversal stopped at depth {max_depth_reached}. {len(parts_at_max_depth)} assemblies not fully expanded. Increase 'Maximum Traversal Depth' setting to see sub-components.",
+                    }
+                )
+                serializer.is_valid(raise_exception=True)
+                warnings.append(serializer.validated_data)
 
             # Enrich with additional data for UI display
             enriched_bom = []
@@ -348,12 +353,16 @@ class FlatBOMView(APIView):
                             else part_obj.name
                         )
                         part_type = item.get("part_type", "Unknown")
-                        warnings.append({
-                            "type": "assembly_no_children",
-                            "part_id": item["part_id"],
-                            "part_name": part_full_name,
-                            "message": f"{part_type} part has no BOM items defined",
-                        })
+                        serializer = BOMWarningSerializer(
+                            data={
+                                "type": "assembly_no_children",
+                                "part_id": item["part_id"],
+                                "part_name": part_full_name,
+                                "message": f"{part_type} part has no BOM items defined",
+                            }
+                        )
+                        serializer.is_valid(raise_exception=True)
+                        warnings.append(serializer.validated_data)
 
                     # Check for inactive parts
                     if not part_obj.active:
@@ -362,12 +371,16 @@ class FlatBOMView(APIView):
                             if hasattr(part_obj, "full_name")
                             else part_obj.name
                         )
-                        warnings.append({
-                            "type": "inactive_part",
-                            "part_id": item["part_id"],
-                            "part_name": part_full_name,
-                            "message": "Part is marked inactive and may not be available for production",
-                        })
+                        serializer = BOMWarningSerializer(
+                            data={
+                                "type": "inactive_part",
+                                "part_id": item["part_id"],
+                                "part_name": part_full_name,
+                                "message": "Part is marked inactive and may not be available for production",
+                            }
+                        )
+                        serializer.is_valid(raise_exception=True)
+                        warnings.append(serializer.validated_data)
 
                     # Note: max_depth_exceeded is handled by summary warning above
                     # (one warning for all assemblies instead of per-part warnings)
@@ -386,12 +399,16 @@ class FlatBOMView(APIView):
                                 if hasattr(part_obj, "full_name")
                                 else part_obj.name
                             )
-                            warnings.append({
-                                "type": "unit_mismatch",
-                                "part_id": item["part_id"],
-                                "part_name": part_full_name,
-                                "message": unit_warning,
-                            })
+                            serializer = BOMWarningSerializer(
+                                data={
+                                    "type": "unit_mismatch",
+                                    "part_id": item["part_id"],
+                                    "part_name": part_full_name,
+                                    "message": unit_warning,
+                                }
+                            )
+                            serializer.is_valid(raise_exception=True)
+                            warnings.append(serializer.validated_data)
 
                     enriched_item = {
                         **item,  # Include all fields from flat_bom

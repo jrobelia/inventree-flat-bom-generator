@@ -68,8 +68,8 @@ class InternalFabCutListAdvancedTests(unittest.TestCase):
         """
         import csv
         import os
-        # Load the BOM CSV from the workspace
-        bom_path = os.path.join(os.path.dirname(__file__), 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
+        # Load the BOM CSV from tests/test_data folder
+        bom_path = os.path.join(os.path.dirname(__file__), 'test_data', 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
         rows = []
         with open(bom_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -90,8 +90,8 @@ class InternalFabCutListAdvancedTests(unittest.TestCase):
         import csv
         import os
         import re
-        # Load the BOM CSV from the workspace
-        bom_path = os.path.join(os.path.dirname(__file__), 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
+        # Load the BOM CSV from tests/test_data folder
+        bom_path = os.path.join(os.path.dirname(__file__), 'test_data', 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
         rows = []
         with open(bom_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -154,8 +154,8 @@ class InternalFabCutListAdvancedTests(unittest.TestCase):
         """
         import csv
         import os
-        # Load the BOM CSV from the workspace
-        bom_path = os.path.join(os.path.dirname(__file__), 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
+        # Load the BOM CSV from tests/test_data folder
+        bom_path = os.path.join(os.path.dirname(__file__), 'test_data', 'InvenTree_BomItem_2025-12-14_J48BLGx.csv')
         rows = []
         with open(bom_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)

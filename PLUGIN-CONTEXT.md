@@ -37,7 +37,7 @@ frontend/
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
-docs/                        # Documentation & reference
+docs/                        # Documentation, planning, & reference
 ├── README.md                # Documentation overview
 ├── BOM-ERROR-WARNINGS-RESEARCH.md
 ├── WARNINGS-ROADMAP.md

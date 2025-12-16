@@ -113,6 +113,12 @@
 - Refactor one area at a time
 - Run tests and check UI after each change
 - Document changes in code and this plan
+- **Watch for warning opportunities**: As you refactor, identify:
+  - BOM structure issues that could cause incorrect output
+  - Plugin settings that could be misconfigured
+  - Data transformations where user input could cause errors
+  - Edge cases in algorithms that need user awareness
+  - Add warnings for plugin-specific issues only (not general InvenTree concerns)
 
 ## Step 5: Final Review & Documentation
 - Review for code clarity, maintainability, and test coverage

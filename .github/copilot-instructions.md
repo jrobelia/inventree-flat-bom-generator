@@ -10,9 +10,9 @@
 
 When working in this plugin workspace, **always review these files first**:
 
-1. **[PLUGIN-CONTEXT.md](../PLUGIN-CONTEXT.md)** - Plugin architecture, tech stack, development patterns
-2. **[docs/REFAC-PANEL-PLAN.md](../docs/REFAC-PANEL-PLAN.md)** - Current refactoring status and plan
-3. **[docs/TEST-QUALITY-REVIEW.md](../docs/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
+1. **[ARCHITECTURE.md](../ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
+2. **[docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md)** - Current refactoring status and plan
+3. **[docs/internal/TEST-QUALITY-REVIEW.md](../docs/internal/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
 4. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
 
 ---
@@ -47,7 +47,7 @@ When working in this plugin workspace, **always review these files first**:
 - Created comprehensive test suite (23 serializer tests)
 - Production validated on staging server
 
-See [docs/REFAC-PANEL-PLAN.md](../docs/REFAC-PANEL-PLAN.md) for detailed status.
+See [docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md) for detailed status.
 
 ---
 
@@ -56,7 +56,7 @@ See [docs/REFAC-PANEL-PLAN.md](../docs/REFAC-PANEL-PLAN.md) for detailed status.
 This plugin follows **single source of truth** principle:
 
 **Each document has ONE focused purpose:**
-- **PLUGIN-CONTEXT.md** → Plugin architecture, tech stack, patterns, backend/frontend structure
+- **ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
 - **docs/TEST-PLAN.md** → Testing strategy, workflow, test-first approach, CI/CD
 - **docs/TEST-QUALITY-REVIEW.md** → Test quality analysis, gaps, prioritized improvements
 - **docs/REFAC-PANEL-PLAN.md** → What to refactor, how to refactor, current status, next steps
@@ -165,7 +165,7 @@ npm run dev
 - Uses Django's unittest.TestCase
 - Some tests use CSV data files in test_data/
 
-See [PLUGIN-CONTEXT.md](../PLUGIN-CONTEXT.md) for complete architecture details.
+See [ARCHITECTURE.md](../ARCHITECTURE.md) for complete architecture details.
 
 ---
 

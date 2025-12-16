@@ -329,55 +329,6 @@ All columns are **sortable** and the table is **paginated** (10/25/50/100/All pe
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)
 
-## API Endpoint
-
-### Get Flat BOM
-
-```
-GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
-```
-
-**Performance Warning:** Each API call performs a complete recursive BOM traversal with no caching. For large assemblies, response times can be several seconds.
-
-**Query Parameters:**
-- `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
-
-**Response:**
-```json
-{
-  "part_id": 123,
-  "part_name": "Main Assembly",
-  "ipn": "ASM-001",
-  "total_unique_parts": 45,
-  "total_ifps_processed": 12,
-  "bom_items": [
-    {
-      "part_id": 456,
-      "ipn": "FAB-100",
-      "part_name": "Bracket, Mounting, Steel",
-      "full_name": "FAB-100 | Bracket, Mounting, Steel | A ",
-      "description": "Steel mounting bracket",
-      "part_type": "Fab",
-      "total_qty": 2.0,
-      "unit": "pcs",
-      "is_assembly": false,
-      "purchaseable": true,
-      "default_supplier_id": 789,
-      "reference": "U1, U2",
-      "note": "",
-      "level": 1,
-      "in_stock": 50.0,
-      "on_order": 100.0,
-      "allocated": 10.0,
-      "available": 40.0,
-      "image": "/media/part_images/fab-100.jpg",
-      "thumbnail": "/media/part_images/fab-100_thumbnail.jpg",
-      "link": "/part/456/"
-    }
-  ]
-}
-```
-
 ## How It Works
 
 ### BOM Traversal Algorithm
@@ -414,29 +365,4 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - Where Stock Used = Available (if allocations enabled) or Total Stock (if disabled)
 - Negative value indicates deficit (need to order)
 - Positive value indicates surplus (extra stock after build)
-
-### API Response Fields
-
-Each item in `bom_items` contains:
-- `part_id`: Part database ID
-- `ipn`: Internal Part Number
-- `part_name`: Part name
-- `full_name`: Full display name (includes variant info)
-- `description`: Part description
-- `part_type`: "TLA", "Coml", "Fab", "CtL", "Purchased Assy", "Internal Fab", "Assy", or "Other"
-- `total_qty`: Total quantity needed through BOM hierarchy (aggregated from all BOM levels)
-- `unit`: Unit of measurement (e.g., "pcs", "mm", "kg")
-- `is_assembly`: Boolean - whether part is an assembly
-- `purchaseable`: Boolean - whether part can be purchased
-- `has_default_supplier`: Boolean - whether part has default supplier configured
-- `default_supplier_id`: ID of default supplier (null if none)
-- `note`: BOM item notes
-- `level`: Depth in original BOM tree
-- `in_stock`: Total inventory
-- `on_order`: Quantity on incomplete purchase orders
-- `allocated`: Stock reserved for builds/sales
-- `available`: Total stock minus allocated
-- `image`: Full-size image URL (null if none)
-- `thumbnail`: Thumbnail image URL (null if none)
-- `link`: URL to part detail page
 

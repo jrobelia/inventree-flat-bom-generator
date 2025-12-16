@@ -61,74 +61,20 @@ Consider using the optional `max_depth` parameter for very deep BOMs to limit tr
 
 ## Installation
 
-### Option 1: Install from Git (Recommended for Production)
+### Install from GitHub
 
-**For Docker:**
+Add the following line to your InvenTree `plugins.txt` file (or install directly via pip):
+
 ```bash
-# Add to your InvenTree data/plugins.txt file:
 git+https://github.com/jrobelia/inventree-flat-bom-generator.git
-
-# Then restart InvenTree
-docker-compose restart
 ```
 
-**For Bare Metal:**
-```bash
-# Install directly via pip
-pip install git+https://github.com/jrobelia/inventree-flat-bom-generator.git
+Then restart InvenTree and enable the plugin:
 
-# Then restart InvenTree
-```
-
-**Enable the plugin:**
-- Navigate to **Settings → Plugins** in InvenTree
-- Find "Flat BOM Generator" in the list
-- Toggle to enable and restart InvenTree
-
-### Option 2: Development Installation (Editable Mode)
-
-**For Docker:**
-
-1. **On your Docker host**, navigate to your InvenTree installation directory:
-   ```bash
-   cd /path/to/inventree  # Directory containing docker-compose.yml
-   ```
-
-2. **Clone into the plugins directory:**
-   ```bash
-   git clone https://github.com/jrobelia/inventree-flat-bom-generator.git data/plugins/inventree-flat-bom-generator
-   ```
-
-3. **Install in editable mode:**
-   ```bash
-   docker-compose exec inventree-server pip install -e /home/inventree/data/plugins/inventree-flat-bom-generator
-   ```
-
-4. **Restart InvenTree:**
-   ```bash
-   docker-compose restart
-   ```
-
-**For Bare Metal:**
-
-1. **Navigate to the InvenTree data directory:**
-   ```bash
-   cd /path/to/inventree/data  # Your InvenTree data folder
-   ```
-
-2. **Clone and install:**
-   ```bash
-   git clone https://github.com/jrobelia/inventree-flat-bom-generator.git plugins/inventree-flat-bom-generator
-   cd plugins/inventree-flat-bom-generator
-   pip install -e .
-   ```
-
-3. **Restart InvenTree**
-
-**Enable the plugin:**
-- Navigate to **Settings → Plugins** in InvenTree
-- Find "Flat BOM Generator" in the list  
-- Toggle to enable and restart InvenTree
+1. Navigate to **Settings → Plugins** in InvenTree
+2. Find "Flat BOM Generator" in the list
+3. Toggle to enable
+4. Restart InvenTree
 
 ## Configuration
 

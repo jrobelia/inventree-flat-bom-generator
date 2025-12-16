@@ -316,6 +316,17 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - **Test Coverage Expansion**: Adding integration tests for API endpoints and core BOM traversal functions (currently 106 tests with identified gaps)
 - **Code Organization**: Breaking down large components and improving separation of concerns
 
+### Feature Enhancements
+
+These features are planned for future releases:
+
+-**Support for optional parts**: Filtering out optional BOM items from flat BOM view?
+
+-**Support for substitute parts**: Display substitutes some how in flat BOM view?
+
+-**Support for consumable parts**: Filtering out of consumables from flat BOM view?
+
+
 ### Related Plugins (Planned)
 
 This is the first of three planned plugins to enhance InvenTree's manufacturing planning capabilities for assemblies with nested sub-assemblies:

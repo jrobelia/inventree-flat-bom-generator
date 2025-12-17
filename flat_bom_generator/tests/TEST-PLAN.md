@@ -15,19 +15,23 @@ This test plan documents the **current test suite** and **testing strategy** for
 - **10-15 minute manual UI verification** - Quick smoke test checklist for deployment
 - **Manual test execution** - Currently no CI/CD (see Section 11 for post-refactor considerations)
 
-**Key Documents**:
-- **TEST-QUALITY-REVIEW.md** - Comprehensive analysis of all 106 tests with improvement roadmap
-- **REFAC-PANEL-PLAN.md** - Serializer refactoring plan with test-first guidelines
-- **Integration Testing Status**: See toolkit docs:
+**Related Documents**:
+- **[REFAC-PANEL-PLAN.md](../../docs/internal/REFAC-PANEL-PLAN.md)** - Refactoring priorities, test-first workflow, serializer refactoring status
+- **[TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)** - Detailed test quality analysis, improvement roadmap, quality checklist
+- **Integration Testing Setup**: See toolkit docs:
   - `docs/toolkit/INVENTREE-DEV-SETUP.md` - InvenTree dev environment setup
+  - `docs/toolkit/INTEGRATION-TESTING-SUMMARY.md` - 6-hour investigation of plugin URL limitation
   - `docs/toolkit/INTEGRATION-TESTING-SETUP-SUMMARY.md` - Current status and known issues
+  - `docs/toolkit/TESTING-STRATEGY.md` - Unit vs integration testing philosophy
 
 ## Test Framework
 
+**⚠️ CRITICAL**: InvenTree does NOT support plugin URL testing via Django test client. Plugin URLs return 404 in tests. See "API Endpoint Testing Strategy" section below.
+
 InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. Tests should inherit from:
 
-- `InvenTreeTestCase` - For basic unit tests
-- `InvenTreeAPITestCase` - For API endpoint tests
+- `InvenTreeTestCase` - For basic unit tests and direct function testing
+- `InvenTreeAPITestCase` - For non-plugin API endpoints (plugin URLs not accessible in tests)
 
 **Virtual Environment:**
 - Django and djangorestframework are installed in `.venv`
@@ -84,6 +88,56 @@ See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/lates
 
 ---
 
+## API Endpoint Testing Strategy
+
+**The Problem**: InvenTree's plugin system does NOT expose plugin URLs to Django's test client. HTTP requests to plugin endpoints return 404 in tests.
+
+**The Solution**: Test business logic directly, not via HTTP.
+
+### What We CAN Test (Integration Tests)
+
+1. **View Functions Directly**:
+   ```python
+   from flat_bom_generator.views import FlatBOMView
+   from django.test import RequestFactory
+   
+   def test_view_with_valid_part(self):
+       factory = RequestFactory()
+       request = factory.get('/fake-url')
+       view = FlatBOMView()
+       response = view.get(request, part_id=self.part.pk)
+       self.assertEqual(response.status_code, 200)
+   ```
+
+2. **Business Logic Functions**:
+   ```python
+   from flat_bom_generator.bom_traversal import get_flat_bom
+   
+   def test_get_flat_bom_with_real_parts(self):
+       result, imp_count, warnings, max_depth = get_flat_bom(self.part.pk)
+       self.assertIsInstance(result, list)
+   ```
+
+3. **Serializers with Real Data**:
+   ```python
+   from flat_bom_generator.serializers import FlatBOMItemSerializer
+   
+   def test_serializer_validates_real_part(self):
+       serializer = FlatBOMItemSerializer(data=test_data)
+       self.assertTrue(serializer.is_valid())
+   ```
+
+### What We CANNOT Test (Requires Manual Testing)
+
+- ❌ HTTP requests to `/api/plugin/flat-bom-generator/flat-bom/{id}/`
+- ❌ URL routing and middleware
+- ❌ Authentication/permissions on plugin endpoints
+- ✅ **Manual Test Instead**: Use InvenTree UI or API client (Postman/curl) on running server
+
+**Reference**: See [TESTING-STRATEGY.md](../../../../../docs/toolkit/TESTING-STRATEGY.md) for complete integration testing guidance.
+
+---
+
 ## 1. Current Test Suite (106 Tests)
 
 ### 1.1 Test Files Overview
@@ -106,146 +160,63 @@ See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/lates
 
 ### 1.2 Critical Coverage Gaps
 
-**IDENTIFIED**: December 15, 2025 (see TEST-QUALITY-REVIEW.md for details)
+**For detailed test quality analysis and improvement roadmap, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)**
 
-🔴 **CRITICAL - NO TESTS**:
-- **views.py API endpoint** - ZERO tests for `FlatBOMAPIView.get()` (just refactored with serializers!)
-- **Core BOM traversal** - `get_flat_bom()` and `deduplicate_and_sum()` untested
-- **Error conditions** - No tests for missing part_id, database errors, validation failures
-
-🟡 **HIGH PRIORITY - Weak Coverage**:
-- **Cut-to-length** - Only 1 test, missing edge cases
-- **Internal fab** - Tests use stub functions instead of real code
-- **Full BOM test** - Magic numbers without explanation
-- **Skipped test** - Needs investigation and fix
+**Summary of Critical Gaps**:
+- 🔴 **views.py** - ZERO tests for `FlatBOMAPIView.get()` endpoint logic
+- 🔴 **Core BOM traversal** - `get_flat_bom()` and `deduplicate_and_sum()` untested
+- 🔴 **Error conditions** - No tests for missing part_id, database errors, validation failures
+- 🟡 **Cut-to-length** - Only 1 test, needs expansion (5-10 more tests)
+- 🟡 **Internal fab** - Tests use stub functions instead of real code (complete rewrite needed)
+- 🟡 **Skipped test** - `test_piece_qty_times_count_rollup` needs investigation
 
 ---
 
-### 1.3 Test Quality Standards
+### 1.3 Test-First Workflow & Quality Standards
 
-**Test-First Workflow** (per REFAC-PANEL-PLAN.md guidelines):
-1. ✅ Check if tests exist for code you're refactoring
-2. ✅ Evaluate test quality (coverage, thoroughness, accuracy, up-to-date)
-3. ✅ Improve/create tests BEFORE refactoring
-4. ✅ Refactor code
-5. ✅ Verify tests still pass
+**For complete test-first workflow, see [REFAC-PANEL-PLAN.md](../../docs/internal/REFAC-PANEL-PLAN.md) → Testing section**
 
-**Quality Criteria** (what makes a good test):
-- **Coverage**: Tests validate what you claim to test (not stub functions)
-- **Thoroughness**: Edge cases, error conditions, boundary values covered
-- **Accuracy**: Tests actual behavior, not implementation details
-- **Clarity**: Test names and assertions explain what's being validated
-- **Maintainability**: No magic numbers, external file dependencies, or duplicated production logic
-- **Isolation**: Tests don't depend on each other or external state
+**For test quality checklist, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md) → Test Quality Checklist section**
+
+**Quick Reference**: Before refactoring any code:
+1. Check if tests exist
+2. Evaluate test quality
+3. Improve/create tests FIRST
+4. Refactor code
+5. Verify tests pass
 
 ---
 
 ## 2. Detailed Test Documentation
 
-### 2.1 Serializer Tests (test_serializers.py)
+**For comprehensive file-by-file test analysis, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)**
 
-**File**: `flat_bom_generator/tests/test_serializers.py`  
-**Status**: ✅ Implemented (23 tests, all passing)  
-**Quality**: ⭐⭐⭐ High - Comprehensive validation of all fields, edge cases, error conditions
+The TEST-QUALITY-REVIEW document provides:
+- Detailed analysis of all 106 tests across 9 test files
+- Quality ratings and what's good/bad about each test file
+- Specific improvement recommendations with time estimates
+- Test anti-patterns to avoid
+- Complete test quality checklist
 
-#### BOMWarningSerializer Tests (7 tests)
+**Quick Summary of Test Files** (see TEST-QUALITY-REVIEW.md for full details):
 
-Tests validation of warning messages returned in API responses:
-- `test_valid_warning_all_fields()` - All 4 warning types with full data
-- `test_warning_types()` - Each warning type individually
-- `test_required_fields()` - Validates required vs optional fields
-- `test_optional_fields_omitted()` - Tests None/null values
-- `test_summary_warning()` - Tests warnings without specific part_id
-- `test_invalid_data_missing_fields()` - Tests validation errors
-- `test_empty_strings_rejected()` - Tests empty string validation
-
-#### FlatBOMItemSerializer Tests (16 tests)
-
-Tests validation of enriched BOM item data in API responses:
-- `test_valid_item_all_fields()` - All 24 fields with complete data
-- `test_part_types()` - All 8 part_type categories
-- `test_required_fields_only()` - Minimal required data
-- `test_optional_fields_none()` - Tests None/null handling
-- `test_quantity_types()` - Zero, decimal, integer quantities
-- `test_unit_field()` - Unit notation handling
-- `test_shortfall_calculation()` - Negative and positive shortfalls
-- `test_cut_list_data()` - Optional cut_list field
-- `test_internal_fab_cut_list()` - Optional internal_fab field
-- `test_image_fields()` - Relative URL handling (CharField, not URLField)
-- `test_note_field()` - Optional notes (allow_blank, allow_null)
-- `test_invalid_missing_required()` - Validation errors
-- `test_invalid_wrong_types()` - Type validation
-
-**Bug Fixes Discovered Through Tests**:
-1. `note` field was `required=True` → Changed to `required=False, allow_null=True, allow_blank=True`
-2. `image` and `thumbnail` were `URLField` → Changed to `CharField` (for relative URLs like `/media/...`)
-
----
-
-### 2.2 Shortfall Calculation Tests (test_shortfall_calculation.py)
-
-**File**: `flat_bom_generator/tests/test_shortfall_calculation.py`  
-**Status**: ✅ Implemented (21 tests, all passing)  
-**Quality**: ⭐⭐⭐ High - Comprehensive edge case coverage
-
-**Purpose**: Verify the 4 shortfall calculation scenarios based on checkbox combinations + edge cases.
-
-**Note**: Tests duplicate production calculation logic (should import actual functions instead).
-
-#### Test Scenarios
-
-| Scenario | Include Allocations | Include On Order | Formula | Status |
-|----------|-------------------|------------------|---------|--------|
-| 1 | ❌ No | ❌ No | `max(0, required - in_stock)` | ✅ Pass |
-| 2 | ✅ Yes | ❌ No | `max(0, required - (in_stock - allocated))` | ✅ Pass |
-| 3 | ❌ No | ✅ Yes | `max(0, required - (in_stock + on_order))` | ✅ Pass |
-| 4 | ✅ Yes | ✅ Yes | `max(0, required - (in_stock - allocated + on_order))` | ✅ Pass |
-
-**Test Cases**:
-- `test_scenario_1_neither_checked()` - Optimistic view (neither box checked)
-- `test_scenario_2_allocations_only()` - Realistic view of available stock
-- `test_scenario_3_on_order_only()` - Assume incoming stock helps
-- `test_scenario_4_both_checked()` - Full realistic planning
-
----
-
-### 2.3 Other Test Files
-
-**Categorization Tests** (test_categorization.py) - 18 tests, ⭐⭐⭐ High Quality
-- Tests FAB/COML/IMP part category detection based on category path
-- Comprehensive edge case coverage
-
-**Assembly Tests** (test_assembly_no_children.py) - 4 tests, ⭐⭐ Medium Quality  
-- Verifies assemblies without children are included in flat BOM
-- Tests both "Assembly" and "Part Assembly" category types
-- Needs: Reduce duplicate tree structure creation
-
-**Max Depth Warnings** (test_max_depth_warnings.py) - 5 tests, ⭐⭐ Medium Quality
-- Tests max_depth warning flag propagation to child parts
-- Needs: Test actual view behavior, not just duplicated logic
-
-**Cut-to-Length** (test_cut_to_length_aggregation.py) - 1 test, ⭐⭐ Medium Quality
-- Tests basic cut-to-length aggregation
-- **Needs expansion**: Add 5-10 tests for edge cases (zero quantities, unit conversion, missing units)
-
-**Internal Fab Cutlist** (test_internal_fab_cutlist.py) - 9 tests, ⭐ Low Quality
-- **CRITICAL ISSUE**: Tests stub functions, not real production code
-- Uses external CSV files (brittle, hard to understand)
-- **Action Required**: Rewrite to test actual `get_flat_bom()` behavior
-
-**Full BOM Part 13** (test_full_bom_part_13.py) - 3 tests, ⭐ Low Quality
-- Tests with magic number (expects 9 unique parts, no explanation)
-- **Action Required**: Delete or rewrite with clear expected values
-
-**Internal Fab Cut Rollup** (test_internal_fab_cut_rollup.py) - 22 tests, ⭐ Low Quality
-- **1 test skipped** (`test_piece_qty_times_count_rollup`) for months
-- **Action Required**: Investigate and fix or remove
+| File | Tests | Quality | Key Issues/Notes |
+|------|-------|---------|------------------|
+| test_serializers.py | 23 | ⭐⭐⭐ High | Comprehensive field validation, found 2 bugs |
+| test_shortfall_calculation.py | 21 | ⭐⭐⭐ High | All 4 checkbox scenarios + edge cases |
+| test_categorization.py | 18 | ⭐⭐⭐ High | Pure functions well tested |
+| test_assembly_no_children.py | 4 | ⭐⭐ Medium | Good but has duplicate tree structure |
+| test_max_depth_warnings.py | 5 | ⭐⭐ Medium | Tests logic duplication, not actual code |
+| test_cut_to_length_aggregation.py | 1 | ⭐⭐ Medium | **Needs 5-10 more tests** |
+| test_internal_fab_cutlist.py | 9 | ⭐ Low | **Tests stub functions, needs rewrite** |
+| test_full_bom_part_13.py | 3 | ⭐ Low | **Magic numbers, needs rewrite or delete** |
+| test_internal_fab_cut_rollup.py | 22 | ⭐ Low | **1 test skipped for months** |
 
 ---
 
 ## 3. Test Improvement Roadmap
 
-**See TEST-QUALITY-REVIEW.md for complete analysis**
+**For complete improvement roadmap with time estimates, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md) → Recommendations by Priority**
 
 ### 3.1 Critical Priority (Do First)
 

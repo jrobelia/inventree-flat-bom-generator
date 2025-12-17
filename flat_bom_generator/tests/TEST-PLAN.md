@@ -8,7 +8,8 @@
 
 This test plan documents the **current test suite** and **testing strategy** for the FlatBOMGenerator plugin:
 
-- **106 automated tests** across 9 test files (unit + integration tests)
+- **106 automated unit tests** (105 passing, 1 skipped)
+- **14 integration tests created** (framework working, URL registration issue)
 - **Test-first workflow** - Check/create/improve tests BEFORE refactoring
 - **Test quality evaluation** - Assess coverage, thoroughness, accuracy before changes
 - **10-15 minute manual UI verification** - Quick smoke test checklist for deployment
@@ -17,6 +18,9 @@ This test plan documents the **current test suite** and **testing strategy** for
 **Key Documents**:
 - **TEST-QUALITY-REVIEW.md** - Comprehensive analysis of all 106 tests with improvement roadmap
 - **REFAC-PANEL-PLAN.md** - Serializer refactoring plan with test-first guidelines
+- **Integration Testing Status**: See toolkit docs:
+  - `docs/toolkit/INVENTREE-DEV-SETUP.md` - InvenTree dev environment setup
+  - `docs/toolkit/INTEGRATION-TESTING-SETUP-SUMMARY.md` - Current status and known issues
 
 ## Test Framework
 
@@ -32,17 +36,42 @@ InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. T
 
 **Test Execution**:
 ```bash
+# UNIT TESTS (Fast, no InvenTree required)
 # From plugin directory with venv activated (RECOMMENDED)
 cd plugins/FlatBOMGenerator
 & ".venv\Scripts\Activate.ps1"
 python -m unittest flat_bom_generator.tests.test_shortfall_calculation -v
 
 # From toolkit root - use automated script
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator"
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
+
+# INTEGRATION TESTS (Requires InvenTree dev environment + plugin installed)
+# Prerequisites:
+#   1. Run Setup-InvenTreeDev.ps1 (one-time)
+#   2. Run Link-PluginToDev.ps1 (creates Junction AND pip installs plugin)
+#   3. Activate plugin in InvenTree admin panel (Active=True)
+
+# From toolkit root
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
 
 # Or manually with InvenTree invoke command (if in InvenTree dev environment)
-invoke dev.test -r flat_bom_generator.tests.test_shortfall_calculation
+# (Note: invoke has PTY issues on Windows, use Test-Plugin.ps1 script instead)
+cd inventree-dev\InvenTree
+invoke dev.test -r FlatBOMGenerator.flat_bom_generator.tests.integration
 ```
+
+**Critical**: Integration tests require plugin to be:
+1. **Linked** via Junction (file access)
+2. **Installed** via `pip install -e .` (entry point registration)
+3. **Activated** in InvenTree admin panel (Active=True in database)
+
+See `docs/toolkit/INTEGRATION-TESTING-SUMMARY.md` → "What We Learned" for details.
+
+**Integration Testing Status**:
+- ✅ **Framework Working**: 14 tests discovered and executed
+- ✅ **URL Registration Fixed**: Plugin requires `pip install -e .` in InvenTree venv (not just Junction)
+- **Setup**: Run `Link-PluginToDev.ps1` which creates Junction AND pip installs plugin
+- **Details**: See `docs/toolkit/INTEGRATION-TESTING-SETUP-SUMMARY.md` → "What We Learned" section
 
 **Environment Setup**:
 ```powershell
@@ -580,8 +609,16 @@ Ask yourself:
 
 ## References
 
-- **Test Quality Review**: `docs/TEST-QUALITY-REVIEW.md` - Complete analysis of all 106 tests
-- **Refactoring Guidelines**: `docs/REFAC-PANEL-PLAN.md` - Test-first workflow
+**Plugin-Specific Documentation:**
+- **Test Quality Review**: `docs/internal/TEST-QUALITY-REVIEW.md` - Complete analysis of all tests
+- **Refactoring Guidelines**: `docs/internal/REFAC-PANEL-PLAN.md` - Test-first workflow
+
+**Toolkit Testing Documentation** (in toolkit root):
+- **[docs/toolkit/TESTING-STRATEGY.md](../../../../../docs/toolkit/TESTING-STRATEGY.md)** - Unit vs integration testing philosophy
+- **[docs/toolkit/INVENTREE-DEV-SETUP.md](../../../../../docs/toolkit/INVENTREE-DEV-SETUP.md)** - InvenTree dev environment setup guide
+- **[docs/toolkit/INTEGRATION-TESTING-SUMMARY.md](../../../../../docs/toolkit/INTEGRATION-TESTING-SUMMARY.md)** - What we built, quick start
+
+**External Resources:**
 - **InvenTree Plugin Testing**: https://docs.inventree.org/en/latest/plugins/test/
 - **Django TestCase**: https://docs.djangoproject.com/en/stable/topics/testing/
 - **Python unittest**: https://docs.python.org/3/library/unittest.html

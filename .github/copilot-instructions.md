@@ -87,11 +87,26 @@ For toolkit-level guidance (deployment, build commands, general patterns):
 
 **Testing:**
 ```powershell
-# Run all tests
-python -m unittest discover
+# Run unit tests (fast, no database)
+python -m unittest discover -s flat_bom_generator/tests/unit -v
 
-# Run specific test file
-python -m unittest flat_bom_generator.tests.test_serializers -v
+# Run integration tests (requires InvenTree dev setup)
+cd ..\..\inventree-dev\InvenTree
+& .venv\Scripts\Activate.ps1
+invoke dev.test -r FlatBOMGenerator.tests.integration -v
+
+# Or use toolkit script (recommended)
+cd ..\..  # Back to toolkit root
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -All
+```
+
+**Integration Testing Setup (one-time):**
+```powershell
+# From toolkit root
+.\scripts\Setup-InvenTreeDev.ps1
+.\scripts\Link-PluginToDev.ps1 -Plugin "FlatBOMGenerator"
 ```
 
 **Build & Deploy:**

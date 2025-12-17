@@ -30,7 +30,11 @@ if not settings.configured:
     )
     django.setup()
 
-from flat_bom_generator.serializers import BOMWarningSerializer, FlatBOMItemSerializer
+from flat_bom_generator.serializers import (
+    BOMWarningSerializer,
+    FlatBOMItemSerializer,
+    FlatBOMResponseSerializer,
+)
 
 
 class BOMWarningSerializerTests(unittest.TestCase):
@@ -318,6 +322,193 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
                 serializer = FlatBOMItemSerializer(data=data)
                 self.assertTrue(serializer.is_valid(), f"Failed for {part_type}: {serializer.errors}")
                 self.assertEqual(serializer.validated_data["part_type"], part_type)
+
+
+class FlatBOMResponseSerializerTests(unittest.TestCase):
+    """Test FlatBOMResponseSerializer validation and complete response structure."""
+
+    def get_valid_bom_item(self):
+        """Helper to create valid BOM item dict."""
+        return {
+            "part_id": 456,
+            "ipn": "FAB-100",
+            "part_name": "Bracket",
+            "full_name": "FAB-100 | Bracket, Mounting",
+            "description": "Steel mounting bracket",
+            "part_type": "Fab",
+            "total_qty": 2.0,
+            "unit": "pcs",
+            "is_assembly": False,
+            "purchaseable": True,
+            "default_supplier_id": None,
+            "note": "",
+            "level": 1,
+            "in_stock": 50.0,
+            "on_order": 0.0,
+            "allocated": 10.0,
+            "available": 40.0,
+            "image": None,
+            "thumbnail": None,
+            "link": "/part/456/",
+        }
+
+    def get_valid_warning(self):
+        """Helper to create valid warning dict."""
+        return {
+            "type": "unit_mismatch",
+            "part_id": 789,
+            "part_name": "Test Part",
+            "message": "Unit mismatch detected",
+        }
+
+    def test_complete_response_all_fields(self):
+        """Complete response with all fields should serialize successfully."""
+        data = {
+            "part_id": 123,
+            "part_name": "Main Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 45,
+            "total_ifps_processed": 12,
+            "max_depth_reached": 5,
+            "bom_items": [self.get_valid_bom_item()],
+            "metadata": {"warnings": [self.get_valid_warning()]},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Errors: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["part_id"], 123)
+        self.assertEqual(serializer.validated_data["total_unique_parts"], 45)
+        self.assertIsInstance(serializer.validated_data["bom_items"], list)
+        self.assertEqual(len(serializer.validated_data["bom_items"]), 1)
+
+    def test_empty_bom_items(self):
+        """Response with empty bom_items list should be valid."""
+        data = {
+            "part_id": 123,
+            "part_name": "Simple Part",
+            "ipn": "PART-001",
+            "total_unique_parts": 0,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 0,
+            "bom_items": [],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Errors: {serializer.errors}")
+        self.assertEqual(len(serializer.validated_data["bom_items"]), 0)
+
+    def test_multiple_bom_items(self):
+        """Response with multiple BOM items should serialize correctly."""
+        item1 = self.get_valid_bom_item()
+        item2 = self.get_valid_bom_item()
+        item2["part_id"] = 457
+        item2["ipn"] = "COML-200"
+        item2["part_type"] = "Coml"
+
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 2,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 2,
+            "bom_items": [item1, item2],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Errors: {serializer.errors}")
+        self.assertEqual(len(serializer.validated_data["bom_items"]), 2)
+
+    def test_multiple_warnings(self):
+        """Response with multiple warnings should serialize correctly."""
+        warning1 = self.get_valid_warning()
+        warning2 = {
+            "type": "inactive_part",
+            "part_id": 790,
+            "part_name": "Inactive Part",
+            "message": "Part is inactive",
+        }
+
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 1,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 1,
+            "bom_items": [self.get_valid_bom_item()],
+            "metadata": {"warnings": [warning1, warning2]},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Errors: {serializer.errors}")
+        self.assertEqual(len(serializer.validated_data["metadata"]["warnings"]), 2)
+
+    def test_empty_ipn(self):
+        """Response with empty IPN string should be valid."""
+        data = {
+            "part_id": 123,
+            "part_name": "Part Without IPN",
+            "ipn": "",  # Empty string is valid
+            "total_unique_parts": 0,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 0,
+            "bom_items": [],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Errors: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["ipn"], "")
+
+    def test_missing_required_field(self):
+        """Missing required field should fail validation."""
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            # Missing ipn
+            "total_unique_parts": 1,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 1,
+            "bom_items": [],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("ipn", serializer.errors)
+
+    def test_invalid_bom_item(self):
+        """Invalid BOM item should fail validation."""
+        invalid_item = {"part_id": "not-a-number"}  # Missing required fields
+
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 1,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 1,
+            "bom_items": [invalid_item],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("bom_items", serializer.errors)
+
+    def test_invalid_warning(self):
+        """Invalid warning should fail validation."""
+        invalid_warning = {"type": "bad_warning"}  # Missing required fields
+
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 0,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 0,
+            "bom_items": [],
+            "metadata": {"warnings": [invalid_warning]},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("metadata", serializer.errors)
 
 
 if __name__ == "__main__":

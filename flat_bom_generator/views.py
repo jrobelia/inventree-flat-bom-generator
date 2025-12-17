@@ -8,7 +8,11 @@ from rest_framework.views import APIView
 
 from .bom_traversal import get_flat_bom
 from .categorization import _check_unit_mismatch
-from .serializers import BOMWarningSerializer, FlatBOMItemSerializer
+from .serializers import (
+    BOMWarningSerializer,
+    FlatBOMItemSerializer,
+    FlatBOMResponseSerializer,
+)
 
 logger = logging.getLogger("inventree")
 
@@ -444,17 +448,24 @@ class FlatBOMView(APIView):
             for idx, warning in enumerate(warnings):
                 logger.info(f"[FlatBOM] Warning {idx + 1}: {warning}")
 
+            # Prepare response data
+            response_data = {
+                "part_id": part_id,
+                "part_name": part.name,
+                "ipn": part.IPN or "",
+                "total_unique_parts": len(enriched_bom),
+                "total_ifps_processed": total_ifps_processed,
+                "max_depth_reached": max_depth_reached,
+                "bom_items": enriched_bom,
+                "metadata": {"warnings": warnings},
+            }
+
+            # Validate with serializer
+            serializer = FlatBOMResponseSerializer(data=response_data)
+            serializer.is_valid(raise_exception=True)
+
             return Response(
-                {
-                    "part_id": part_id,
-                    "part_name": part.name,
-                    "ipn": part.IPN or "",
-                    "total_unique_parts": len(enriched_bom),
-                    "total_ifps_processed": total_ifps_processed,
-                    "max_depth_reached": max_depth_reached,
-                    "bom_items": enriched_bom,
-                    "metadata": {"warnings": warnings},
-                },
+                serializer.validated_data,
                 status=status.HTTP_200_OK,
             )
 

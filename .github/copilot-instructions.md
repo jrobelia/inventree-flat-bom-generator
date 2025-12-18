@@ -19,7 +19,7 @@
 1. **[ARCHITECTURE.md](../ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
 2. **[docs/internal/DEPLOYMENT-WORKFLOW.md](../docs/internal/DEPLOYMENT-WORKFLOW.md)** - **Deployment checklist and testing workflow (READ THIS)**
 3. **[docs/internal/TEST-WRITING-METHODOLOGY.md](../docs/internal/TEST-WRITING-METHODOLOGY.md)** - **Code-first approach for writing/validating tests (ESSENTIAL FOR TEST WORK)**
-4. **[docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md)** - Current refactoring status and plan
+4. **[docs/internal/ROADMAP.md](../docs/internal/ROADMAP.md)** - Current refactoring status and plan
 5. **[docs/internal/TEST-QUALITY-REVIEW.md](../docs/internal/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
 6. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
 
@@ -58,7 +58,7 @@
 - **Code-first test methodology established** (TEST-WRITING-METHODOLOGY.md) - read code THEN write tests
 - Validated test_internal_fab_cutlist.py with code-first approach (found 51 lines dead code)
 
-See [docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md) for detailed status.
+See [docs/internal/ROADMAP.md](../docs/internal/ROADMAP.md) for detailed status.
 
 ---
 
@@ -70,7 +70,7 @@ This plugin follows **single source of truth** principle:
 - **ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
 - **docs/TEST-PLAN.md** → Testing strategy, workflow, test-first approach, CI/CD
 - **docs/TEST-QUALITY-REVIEW.md** → Test quality analysis, gaps, prioritized improvements
-- **docs/REFAC-PANEL-PLAN.md** → What to refactor, how to refactor, current status, next steps
+- **docs/ROADMAP.md** → What to refactor, how to refactor, current status, next steps
 - **README.md** → User-facing: features, installation, usage
 
 **Key Principles:**

@@ -115,10 +115,10 @@ frontend/
 
 docs/                        # Documentation, planning, & reference
 ├── README.md                # Documentation overview
-├── BOM-ERROR-WARNINGS-RESEARCH.md
+├── WARNINGS-RESEARCH.md
 ├── WARNINGS-ROADMAP.md
 ├── ARCHITECTURE-WARNINGS.md
-├── REFAC-PANEL-PLAN.md
+├── ROADMAP.md
 ├── PYPI-PUBLISHING-PLAN.md
 └── Flat BOM Generator Table.csv  # Reference output format
 

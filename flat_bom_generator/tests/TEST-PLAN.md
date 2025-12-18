@@ -18,7 +18,7 @@ This test plan documents the **current test suite** and **testing strategy** for
 
 **Related Documents**:
 - **[TEST-WRITING-METHODOLOGY.md](../../docs/internal/TEST-WRITING-METHODOLOGY.md)** - Code-first approach for validating tests
-- **[REFAC-PANEL-PLAN.md](../../docs/internal/REFAC-PANEL-PLAN.md)** - Refactoring priorities, test-first workflow, serializer refactoring status
+- **[ROADMAP.md](../../docs/internal/ROADMAP.md)** - Refactoring priorities, test-first workflow, serializer refactoring status
 - **[TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)** - Detailed test quality analysis, improvement roadmap, quality checklist
 - **Integration Testing Setup**: See toolkit docs:
   - `docs/toolkit/INVENTREE-DEV-SETUP.md` - InvenTree dev environment setup
@@ -175,7 +175,7 @@ See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/lates
 
 ### 1.3 Test-First Workflow & Quality Standards
 
-**For complete test-first workflow, see [REFAC-PANEL-PLAN.md](../../docs/internal/REFAC-PANEL-PLAN.md) → Testing section**
+**For complete test-first workflow, see [ROADMAP.md](../../docs/internal/ROADMAP.md) → Testing section**
 
 **For test quality checklist, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md) → Test Quality Checklist section**
 
@@ -471,7 +471,7 @@ class MyFeatureTests(InvenTreeTestCase):
 - Use Django ORM to create test data (creates temporary test database)
 - Use `setUpTestData()` for data that doesn't change between tests
 - Use standard `unittest` assertions
-- Follow test-first workflow (see REFAC-PANEL-PLAN.md guidelines)
+- Follow test-first workflow (see ROADMAP.md guidelines)
 
 **Test Quality Checklist**:
 - [ ] Tests validate actual behavior, not implementation details
@@ -583,7 +583,7 @@ Ask yourself:
 
 **Plugin-Specific Documentation:**
 - **Test Quality Review**: `docs/internal/TEST-QUALITY-REVIEW.md` - Complete analysis of all tests
-- **Refactoring Guidelines**: `docs/internal/REFAC-PANEL-PLAN.md` - Test-first workflow
+- **Refactoring Guidelines**: `docs/internal/ROADMAP.md` - Test-first workflow
 
 **Toolkit Testing Documentation** (in toolkit root):
 - **[docs/toolkit/TESTING-STRATEGY.md](../../../../../docs/toolkit/TESTING-STRATEGY.md)** - Unit vs integration testing philosophy

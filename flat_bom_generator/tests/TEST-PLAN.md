@@ -1,21 +1,23 @@
 # FlatBOMGenerator Plugin - Test Plan
 
-**Last Updated**: December 15, 2025  
-**Test Count**: 106 tests (105 passing, 1 skipped)  
-**Overall Grade**: C+ (good foundation, significant gaps)
+**Last Updated**: December 18, 2025  
+**Test Count**: 121 tests (14 view integration tests + 107 business logic tests)  
+**Overall Grade**: B+ (good foundation, internal fab tests upgraded)
 
 ## Overview
 
 This test plan documents the **current test suite** and **testing strategy** for the FlatBOMGenerator plugin:
 
-- **106 automated unit tests** (105 passing, 1 skipped)
+- **107 automated unit tests** (all passing)
 - **14 integration tests created** (framework working, URL registration issue)
 - **Test-first workflow** - Check/create/improve tests BEFORE refactoring
 - **Test quality evaluation** - Assess coverage, thoroughness, accuracy before changes
+- **Code-first methodology** - Walk through actual code before writing tests
 - **10-15 minute manual UI verification** - Quick smoke test checklist for deployment
 - **Manual test execution** - Currently no CI/CD (see Section 11 for post-refactor considerations)
 
 **Related Documents**:
+- **[TEST-WRITING-METHODOLOGY.md](../../docs/internal/TEST-WRITING-METHODOLOGY.md)** - Code-first approach for validating tests
 - **[REFAC-PANEL-PLAN.md](../../docs/internal/REFAC-PANEL-PLAN.md)** - Refactoring priorities, test-first workflow, serializer refactoring status
 - **[TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)** - Detailed test quality analysis, improvement roadmap, quality checklist
 - **Integration Testing Setup**: See toolkit docs:
@@ -26,9 +28,7 @@ This test plan documents the **current test suite** and **testing strategy** for
 
 ## Test Framework
 
-**⚠️ CRITICAL**: InvenTree does NOT support plugin URL testing via Django test client. Plugin URLs return 404 in tests. See "API Endpoint Testing Strategy" section below.
-
-InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. Tests should inherit from:
+**⚠️ CRITICAL**: InvenTree does NOT support plugin URL testing via Django test client. Plugin URLs return 404 in tests. See "API Endpoint Testing Strategy" section below.InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. Tests should inherit from:
 
 - `InvenTreeTestCase` - For basic unit tests and direct function testing
 - `InvenTreeAPITestCase` - For non-plugin API endpoints (plugin URLs not accessible in tests)
@@ -144,6 +144,7 @@ See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/lates
 
 | File | Tests | Status | Quality | Purpose |
 |------|-------|--------|---------|---------|
+| `test_view_function.py` | 14 | ✅ Pass* | ⭐⭐⭐ High | Test FlatBOMView API endpoint (view layer) |
 | `test_serializers.py` | 23 | ✅ Pass | ⭐⭐⭐ High | Validate DRF serializers for API responses |
 | `test_shortfall_calculation.py` | 21 | ✅ Pass | ⭐⭐⭐ High | Test 4 checkbox scenarios + edge cases |
 | `test_categorization.py` | 18 | ✅ Pass | ⭐⭐⭐ High | Test FAB/COML/IMP detection logic |
@@ -163,7 +164,7 @@ See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/lates
 **For detailed test quality analysis and improvement roadmap, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)**
 
 **Summary of Critical Gaps**:
-- 🔴 **views.py** - ZERO tests for `FlatBOMAPIView.get()` endpoint logic
+- ✅ **views.py** - 14 integration tests for `FlatBOMView.get()` endpoint (completed Dec 17, 2025)
 - 🔴 **Core BOM traversal** - `get_flat_bom()` and `deduplicate_and_sum()` untested
 - 🔴 **Error conditions** - No tests for missing part_id, database errors, validation failures
 - 🟡 **Cut-to-length** - Only 1 test, needs expansion (5-10 more tests)

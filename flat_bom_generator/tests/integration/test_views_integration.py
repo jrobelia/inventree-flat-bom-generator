@@ -48,7 +48,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         
         BOM Structure:
             TLA-001 (Top Level Assembly)
-            ├── IMP-001 (Internal Make Part) × 2
+            ├── IFP-001 (Internal Fab Part) × 2
             │   ├── FAB-100 (Fabricated Part) × 4
             │   └── COML-100 (Commercial Part) × 2
             └── COML-200 (Commercial Part) × 10
@@ -85,11 +85,11 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             is_template=False
         )
         
-        cls.imp = Part.objects.create(
+        cls.ifp = Part.objects.create(
             name='Subassembly',
-            IPN='IMP-001',
+            IPN='IFP-001',
             category=cls.assemblies_cat,
-            description='Internal make subassembly',
+            description='Internal fab part subassembly',
             active=True,
             assembly=True,
             is_template=False
@@ -128,7 +128,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         # Create BOM relationships
         BomItem.objects.create(
             part=cls.tla,
-            sub_part=cls.imp,
+            sub_part=cls.ifp,
             quantity=2,
             reference='U1, U2'
         )
@@ -139,13 +139,13 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             reference='C1-C10'
         )
         BomItem.objects.create(
-            part=cls.imp,
+            part=cls.ifp,
             sub_part=cls.fab,
             quantity=4,
             reference='BRK1-BRK4'
         )
         BomItem.objects.create(
-            part=cls.imp,
+            part=cls.ifp,
             sub_part=cls.coml1,
             quantity=2,
             reference='R1, R2'
@@ -197,7 +197,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         
         # Assemblies should NOT be included
         self.assertNotIn(self.tla.pk, part_ids)
-        self.assertNotIn(self.imp.pk, part_ids)
+        self.assertNotIn(self.ifp.pk, part_ids)
     
     def test_get_flat_bom_aggregates_quantities_correctly(self):
         """get_flat_bom should correctly aggregate quantities through hierarchy."""
@@ -252,8 +252,8 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             'part_type': 'TLA',
             'total_qty': 1,
             'children': {
-                str(self.imp.pk): {
-                    'part_id': self.imp.pk,
+                str(self.ifp.pk): {
+                    'part_id': self.ifp.pk,
                     'part_type': 'Assy',
                     'total_qty': 2,
                     'children': {
@@ -290,9 +290,9 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         self.assertIn(self.fab.pk, part_ids)
         self.assertIn(self.coml1.pk, part_ids)
         
-        # Assemblies should NOT be included
+        # Assemblies should NOT be included (only leaf parts)
         self.assertNotIn(self.tla.pk, part_ids)
-        self.assertNotIn(self.imp.pk, part_ids)
+        self.assertNotIn(self.ifp.pk, part_ids)
     
     # === Serializer Tests ===
     
@@ -348,7 +348,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             {'type': 'unit_mismatch', 'part_id': self.fab.pk, 'part_name': 'FAB-100', 'message': 'Unit mismatch'},
             {'type': 'inactive_part', 'part_id': self.fab.pk, 'part_name': 'FAB-100', 'message': 'Part inactive'},
             {'type': 'assembly_no_children', 'part_id': self.tla.pk, 'part_name': 'TLA-001', 'message': 'No children'},
-            {'type': 'max_depth_exceeded', 'part_id': self.imp.pk, 'part_name': 'IMP-001', 'message': 'Max depth'},
+            {'type': 'max_depth_exceeded', 'part_id': self.ifp.pk, 'part_name': 'IFP-001', 'message': 'Max depth'},
         ]
         
         for warning_data in warning_types:

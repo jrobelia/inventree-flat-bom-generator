@@ -64,6 +64,10 @@ def get_internal_supplier_ids(plugin):
 
     internal_ids = []
 
+    # Handle None plugin (test environment)
+    if plugin is None:
+        return []
+
     # Get primary internal supplier
     try:
         primary_supplier = plugin.get_setting("PRIMARY_INTERNAL_SUPPLIER")
@@ -135,7 +139,9 @@ def get_category_mappings(plugin):
     from part.models import PartCategory
 
     category_mappings = {}
-
+    # Handle None plugin (test environment)
+    if plugin is None:
+        return {}
     category_settings = {
         "fabrication": "FABRICATION_CATEGORY",
         "commercial": "COMMERCIAL_CATEGORY",
@@ -240,7 +246,7 @@ class FlatBOMView(APIView):
 
         # If max_depth not provided in query, use plugin setting
         if max_depth is None:
-            max_depth_setting = plugin.get_setting("MAX_DEPTH", 0)
+            max_depth_setting = plugin.get_setting("MAX_DEPTH", 0) if plugin else 0
             max_depth = (
                 int(max_depth_setting)
                 if max_depth_setting and int(max_depth_setting) > 0

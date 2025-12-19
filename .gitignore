@@ -202,3 +202,6 @@ pnpm-lock.yaml
 
 # Personal development notes (not needed by other users)
 docs/internal/
+
+# Personal utility scripts (one-time use, may contain sensitive operations)
+tools/

@@ -510,6 +510,102 @@ class FlatBOMResponseSerializerTests(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("metadata", serializer.errors)
 
+    def test_negative_quantities_in_bom_item(self):
+        """Negative quantities should be accepted (represent stock shortfalls)."""
+        data = FlatBOMItemSerializerTests().get_valid_bom_item_data()
+        data["available"] = -5.0  # Negative available (over-allocated)
+        serializer = FlatBOMItemSerializer(data=data)
+        # DRF FloatField accepts negative by default
+        self.assertTrue(serializer.is_valid(), f"Should accept negative: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["available"], -5.0)
+
+    def test_empty_string_ipn_allowed(self):
+        """IPN can be empty string (allow_blank=True)."""
+        data = FlatBOMItemSerializerTests().get_valid_bom_item_data()
+        data["ipn"] = ""
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["ipn"], "")
+
+    def test_empty_string_unit_allowed(self):
+        """Unit can be empty string (some parts have no unit)."""
+        data = FlatBOMItemSerializerTests().get_valid_bom_item_data()
+        data["unit"] = ""
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["unit"], "")
+
+    def test_empty_string_description_allowed(self):
+        """Description can be empty string (allow_blank=True)."""
+        data = FlatBOMItemSerializerTests().get_valid_bom_item_data()
+        data["description"] = ""
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["description"], "")
+
+    def test_metadata_with_multiple_warning_lists(self):
+        """Metadata can have multiple keys, but all values must be lists of warnings.
+        
+        The metadata field is DictField(child=ListField(child=BOMWarningSerializer())),
+        which means every value must be a list of valid warnings.
+        """
+        valid_warning = FlatBOMResponseSerializerTests().get_valid_warning()
+        
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 1,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 1,
+            "bom_items": [FlatBOMResponseSerializerTests().get_valid_bom_item()],
+            "metadata": {
+                "warnings": [valid_warning],
+                "errors": [valid_warning],  # Additional warning list (valid)
+            },
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Should accept multiple warning lists: {serializer.errors}")
+
+    def test_metadata_with_invalid_value_type_fails(self):
+        """Metadata values must be lists of warnings - other types should fail.
+        
+        Since metadata is DictField(child=ListField(child=BOMWarningSerializer())),
+        values must be lists of valid warning dicts.
+        """
+        data = {
+            "part_id": 123,
+            "part_name": "Assembly",
+            "ipn": "ASM-001",
+            "total_unique_parts": 1,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 1,
+            "bom_items": [FlatBOMResponseSerializerTests().get_valid_bom_item()],
+            "metadata": {
+                "warnings": [FlatBOMResponseSerializerTests().get_valid_warning()],
+                "invalid_string": "not_a_list",  # Invalid: string instead of list
+            },
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("metadata", serializer.errors)
+
+    def test_response_with_zero_statistics(self):
+        """Response with all zero statistics should be valid."""
+        data = {
+            "part_id": 999,
+            "part_name": "Empty Assembly",
+            "ipn": "EMPTY-001",
+            "total_unique_parts": 0,
+            "total_ifps_processed": 0,
+            "max_depth_reached": 0,
+            "bom_items": [],
+            "metadata": {"warnings": []},
+        }
+        serializer = FlatBOMResponseSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["total_unique_parts"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

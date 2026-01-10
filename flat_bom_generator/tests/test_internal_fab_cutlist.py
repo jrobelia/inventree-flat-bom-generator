@@ -236,6 +236,99 @@ class InternalFabCutListRollupTests(unittest.TestCase):
 class InternalFabCutListEdgeCasesTests(unittest.TestCase):
     """Test edge cases and special conditions."""
 
+    def test_empty_leaves_list(self):
+        """Empty leaves list returns empty result."""
+        deduplicate_and_sum.ifab_units = {"mm", "in", "cm", "ft"}
+        deduplicate_and_sum.enable_ifab_cuts = True
+        result = deduplicate_and_sum([])
+        self.assertEqual(result, [])
+
+    def test_cut_length_none(self):
+        """
+        Internal fab part with cut_length=None skips internal_fab_cut_list logic.
+        
+        Code behavior (line 526): elif from_ifab and cut_length is not None:
+        If cut_length is None, skips to else block (line 558), uses cumulative_qty only.
+        """
+        leaves = [
+            {
+                "part_id": 500,
+                "ipn": "IFP-001",
+                "part_name": "Internal Fab Part No Cut",
+                "description": "",
+                "cumulative_qty": 10.0,
+                "cut_length": None,
+                "unit": "mm",
+                "part_type": "Coml",
+                "from_internal_fab_parent": True,
+                "quantity": 1,
+                "is_assembly": False,
+                "purchaseable": True,
+            }
+        ]
+        deduplicate_and_sum.ifab_units = {"mm", "in", "cm", "ft"}
+        deduplicate_and_sum.enable_ifab_cuts = True
+        result = deduplicate_and_sum(leaves)
+
+        row = next((r for r in result if r["part_id"] == 500), None)
+        self.assertIsNotNone(row)
+        # Falls through to else: totals[key] += leaf["cumulative_qty"]
+        self.assertEqual(row["total_qty"], 10.0)
+        # No internal_fab_cut_list since cut_length is None
+        self.assertIsNone(row.get("internal_fab_cut_list"))
+
+    def test_piece_count_greater_than_one(self):
+        """
+        Test piece_count_inc > 1 (leaf["quantity"] > 1).
+        
+        Total calculation: cut_length × piece_count_inc
+        Example: 35mm × 2 = 70mm per occurrence
+        """
+        leaves = [
+            {
+                "part_id": 700,
+                "ipn": "IFP-003",
+                "part_name": "Multi-Count Part",
+                "description": "",
+                "cumulative_qty": 140.0,  # Ignored for internal fab
+                "cut_length": 35.0,
+                "unit": "mm",
+                "part_type": "Coml",
+                "from_internal_fab_parent": True,
+                "quantity": 2,  # piece_count_inc = 2
+                "is_assembly": False,
+                "purchaseable": True,
+            },
+            {
+                "part_id": 700,
+                "ipn": "IFP-003",
+                "part_name": "Multi-Count Part",
+                "description": "",
+                "cumulative_qty": 210.0,  # Ignored for internal fab
+                "cut_length": 35.0,
+                "unit": "mm",
+                "part_type": "Coml",
+                "from_internal_fab_parent": True,
+                "quantity": 3,  # piece_count_inc = 3
+                "is_assembly": False,
+                "purchaseable": True,
+            },
+        ]
+        deduplicate_and_sum.ifab_units = {"mm", "in", "cm", "ft"}
+        deduplicate_and_sum.enable_ifab_cuts = True
+        result = deduplicate_and_sum(leaves)
+
+        row = next((r for r in result if r["part_id"] == 700), None)
+        self.assertIsNotNone(row)
+        # Total: 35×2 + 35×3 = 70 + 105 = 175
+        self.assertEqual(row["total_qty"], 175.0)
+
+        cut_list = row.get("internal_fab_cut_list", [])
+        self.assertEqual(len(cut_list), 1)
+        self.assertEqual(cut_list[0]["piece_qty"], 35.0)
+        # Count: 2 + 3 = 5
+        self.assertEqual(cut_list[0]["count"], 5)
+
     def test_zero_cut_length(self):
         """Part with zero cut_length still creates cut_list entry."""
         leaves = [

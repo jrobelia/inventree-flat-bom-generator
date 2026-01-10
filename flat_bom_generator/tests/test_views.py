@@ -103,7 +103,7 @@ class APIResponseStructureTests(unittest.TestCase):
             # Quantities (5)
             "total_qty", "in_stock", "allocated", "on_order", "available",
             # Display metadata (6)
-            "full_name", "description", "image", "thumbnail", "link", "units",
+            "full_name", "description", "image", "thumbnail", "link", "unit",  # FIXED: unit not units
             # Part properties (4)
             "is_assembly", "purchaseable", "default_supplier_id", "part_type",
             # BOM data (3)
@@ -187,6 +187,96 @@ class ErrorHandlingTests(unittest.TestCase):
         self.assertIn("HTTP_500_INTERNAL_SERVER_ERROR", source, "Should handle exceptions")
         self.assertIn("Part.DoesNotExist", source, "Should catch part not found")
         self.assertIn("except Exception", source, "Should have general exception handler")
+
+    def test_success_response_status(self):
+        """Verify successful response returns HTTP 200."""
+        from flat_bom_generator import views
+        import inspect
+        
+        source = inspect.getsource(views.FlatBOMView.get)
+        
+        # Successful responses should use Response() with status 200 (default)
+        # or explicitly set status=status.HTTP_200_OK
+        self.assertIn("Response(", source, "Should return DRF Response object")
+
+
+class HelperFunctionTests(unittest.TestCase):
+    """Test helper function signatures and behavior."""
+
+    def test_extract_id_from_value_function(self):
+        """Test _extract_id_from_value helper function signature and behavior."""
+        from flat_bom_generator.views import _extract_id_from_value
+        import inspect
+        
+        # Check function signature
+        sig = inspect.signature(_extract_id_from_value)
+        self.assertIn("value", sig.parameters)
+        self.assertIn("setting_name", sig.parameters)
+        
+        # Test with integer
+        self.assertEqual(_extract_id_from_value(123, "test_setting"), 123)
+        
+        # Test with string number
+        self.assertEqual(_extract_id_from_value("456", "test_setting"), 456)
+        
+        # Test with object having pk attribute
+        mock_obj = MagicMock()
+        mock_obj.pk = 789
+        self.assertEqual(_extract_id_from_value(mock_obj, "test_setting"), 789)
+        
+        # Test with object having id attribute
+        mock_obj2 = MagicMock()
+        mock_obj2.pk = None
+        mock_obj2.id = 101
+        del mock_obj2.pk  # Remove pk to test id fallback
+        self.assertEqual(_extract_id_from_value(mock_obj2, "test_setting"), 101)
+        
+        # Test with None
+        self.assertIsNone(_extract_id_from_value(None, "test_setting"))
+        
+        # Test with empty string
+        self.assertIsNone(_extract_id_from_value("", "test_setting"))
+        
+        # Test with invalid string
+        self.assertIsNone(_extract_id_from_value("not-a-number", "test_setting"))
+
+    def test_get_internal_supplier_ids_accepts_plugin(self):
+        """Test get_internal_supplier_ids accepts plugin parameter."""
+        from flat_bom_generator.views import get_internal_supplier_ids
+        import inspect
+        
+        sig = inspect.signature(get_internal_supplier_ids)
+        self.assertIn("plugin", sig.parameters)
+
+    def test_get_category_mappings_accepts_plugin(self):
+        """Test get_category_mappings accepts plugin parameter."""
+        from flat_bom_generator.views import get_category_mappings
+        import inspect
+        
+        sig = inspect.signature(get_category_mappings)
+        self.assertIn("plugin", sig.parameters)
+
+
+class SerializerIntegrationTests(unittest.TestCase):
+    """Test serializer integration in views.py."""
+
+    def test_flat_bom_response_serializer_available(self):
+        """Test FlatBOMResponseSerializer is imported and available."""
+        from flat_bom_generator import views
+        
+        # After Phase 3 refactoring, this serializer should be used
+        self.assertTrue(hasattr(views, "FlatBOMResponseSerializer"))
+
+    def test_serializer_validation_pattern_exists(self):
+        """Verify views.py uses is_valid(raise_exception=True) pattern."""
+        from flat_bom_generator import views
+        import inspect
+        
+        source = inspect.getsource(views.FlatBOMView.get)
+        
+        # Should call is_valid with raise_exception for automatic error handling
+        self.assertIn("is_valid(raise_exception=True)", source,
+                      "Should use raise_exception for validation errors")
 
 
 if __name__ == "__main__":

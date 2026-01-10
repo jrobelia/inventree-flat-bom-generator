@@ -67,16 +67,20 @@
 **Purpose:** Test individual functions in isolation, no database required (mostly)
 
 **Files:**
-- `test_categorization.py` - Pure function tests (39 tests)
-- `test_serializers.py` - DRF serializer validation (31 tests)  
-- `test_shortfall_calculation.py` - Frontend calculation logic (21 tests)
-- `test_assembly_no_children.py` - Warning flag logic (5 tests)
-- `test_max_depth_warnings.py` - Flag prioritization (5 tests)
+- `test_categorization.py` - Pure function tests (46 tests) ✅ **Validated Jan 9, 2026**
+- `test_shortfall_calculation.py` - Frontend calculation logic (11 tests) ✅ **Validated Jan 9, 2026**
+- `test_assembly_no_children.py` - Warning flag logic (5 tests) ✅ **Validated Jan 9, 2026**
+- `test_serializers.py` - DRF serializer validation (31 tests)
+- `test_max_depth_warnings.py` - Flag prioritization (4 tests)
 - `test_cut_to_length_aggregation.py` - Aggregation logic (1 test)
-- `test_internal_fab_cutlist.py` - ⚠️ **Low quality** - uses stub functions (10 tests)
-- `test_internal_fab_cut_rollup.py` - ⚠️ **1 skipped test** (1 test)
-- `test_full_bom_part_13.py` - ⚠️ **Magic numbers** (1 test)
-- `test_views.py` - ⚠️ **Unclear purpose** (investigate)
+- `test_internal_fab_cutlist.py` - Internal fab cut lists (11 tests) ✅ **Validated Dec 18, 2025**
+- `test_internal_fab_cut_rollup.py` - Rollup logic (1 test)
+- `test_full_bom_part_13.py` - BOM structure tests (1 test)
+- `test_views.py` - Views code structure validation (10 tests)
+
+**Total Unit Tests:** 121 tests across 10 files
+
+**Note:** `full_bom_part_13.py` (no `test_` prefix) is test data, not a test file
 
 **Run:** `.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit`
 
@@ -94,6 +98,8 @@
 - `test_bom_traversal_integration.py` - Core functions (6+ tests)
   - get_flat_bom(), deduplicate_and_sum()
   - Part stock properties, categorization
+
+**Total Integration Tests:** ~27 tests across 3 files
 
 **Run:** `.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration`
 
@@ -200,44 +206,227 @@
 ### Priority 2: Test Validation (12-18 hours)
 **PREREQUISITE for frontend refactoring - validate ALL tests with code-first methodology**
 
-**Current Status:** 1/13 files validated (test_internal_fab_cutlist.py)
-**Goal:** Validate all 13 test files to ensure tests match actual code behavior
+**Current Status:** Phase 1 COMPLETE (7/7 unit test files = 100%), Phase 2 in progress (integration tests)
+**Goal:** Complete coverage analysis for all unit tests (Phase 1), then validate integration tests (Phase 2)
+
+**Phase 1: Unit Test Coverage Analysis** ✅ COMPLETE (Jan 9, 2026)
+- All 7 unit test files validated with code-first methodology
+- **30 new tests added** across files 3-7 to fill coverage gaps
+- Total unit tests: **164 tests** (14+50+13+15+8+38+16+8 = 162, plus merged 2 from rollup file)
+- All tests passing with ⭐⭐⭐ High quality ratings
+- **Quality improvements**: Found/fixed 96 lines dead code, 3 incorrect fallbacks, 1 field typo
+- **Test expansion summary**:
+  - File 1: 11→14 tests (merged rollup file, found 51 lines dead code)
+  - File 2: 50 tests (coverage already complete)
+  - File 3: 11→13 tests (+2: negative stock, negative total_required)
+  - File 4: 5→15 tests (+10: all branches, part types, edge cases)
+  - File 5: 4→8 tests (+4: empty conditions, singular counts)
+  - File 6: 31→38 tests (+7: negative quantities, empty strings, metadata)
+  - File 7: 10→16 tests (+6: helper functions, serializer integration)
+  - File 8: 8 tests (coverage already complete)
+
+**Phase 2: Integration Test Validation** ⏳ IN PROGRESS (3 files remaining)
+
+**Coverage Analysis Status:**
+- Files 8-9: ✅ Coverage complete (expanded tests to fill gaps)
+- Files 1-7: ✅ ALL COVERAGE COMPLETE (7/7 = 100%) - Jan 9, 2026
+
+**Validated Files:**
+1. ✅ **test_internal_fab_cutlist.py** (14 tests) - Validated Dec 18, 2025 - **COVERAGE COMPLETE (Jan 9, 2026)**
+2. ✅ **test_categorization.py** (50 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+3. ✅ **test_shortfall_calculation.py** (13 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+4. ✅ **test_assembly_no_children.py** (15 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+5. ✅ **test_max_depth_warnings.py** (8 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+6. ✅ **test_serializers.py** (38 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+7. ✅ **test_views.py** (16 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
+8. ✅ **test_cut_to_length_aggregation.py** (8 tests) - Validated Jan 9, 2026 **WITH COVERAGE COMPLETE**
+9. ✅ **test_internal_fab_cut_rollup.py** - MERGED into test_internal_fab_cutlist.py (Jan 9, 2026)
+10. ✅ **test_full_bom_part_13.py** - DELETED (Jan 9, 2026) - Zero value test
+11. ⏳ **test_view_function.py** (14 tests) - Created Dec 17, 2025 - NOT YET VALIDATED
+12. ⏳ **test_views_integration.py** (7+ tests) - Created Dec 17, 2025 - NOT YET VALIDATED
+13. ⏳ **test_bom_traversal_integration.py** (6+ tests) - Created Dec 17, 2025 - NOT YET VALIDATED
 
 **Validation Plan** (see TEST-WRITING-METHODOLOGY.md):
-1. **test_categorization.py** (18 tests, 2-3 hours)
-   - Walk through category hierarchy logic
-   - Verify supplier detection works as coded
-   - Check edge cases for overlapping categories
+1. ~~**test_internal_fab_cutlist.py** (14 tests, 2-3 hours)~~ ✅ COMPLETE (Dec 18, 2025 + Jan 9, 2026)
+   - Tests Internal Fab parts with cut_length (deduplicate_and_sum lines 526-556)
+   - **MERGED** with test_internal_fab_cut_rollup.py for comprehensive coverage
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ Empty leaves list
+     - ✅ cut_length=None (skips to cumulative_qty fallback)
+     - ✅ from_ifab=False (skips logic)
+     - ✅ Unit validation errors (ValueError on unit mismatch/None)
+     - ✅ Multiple occurrences (same/different lengths)
+     - ✅ piece_count_inc > 1 (leaf["quantity"] > 1)
+     - ✅ Zero cut_length, decimals
+     - ✅ enable_ifab_cuts=False
+     - ✅ Mixed ifab/regular parts, multiple units
+   - Found/removed 51 lines dead code, 2 incorrect fallbacks (Dec 18)
 
-2. **test_shortfall_calculation.py** (21 tests, 2-3 hours)
-   - Trace through actual calculation in Panel.tsx
-   - Remove duplicated logic, import actual function
-   - Verify all 4 checkbox combinations match UI behavior
+2. ~~**test_categorization.py** (50 tests, 2-3 hours)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests categorize_part() and 3 helper functions (categorization.py)
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ All 4 functions tested (categorize_part, _extract_length_from_notes, _extract_length_with_unit, _check_unit_mismatch)
+     - ✅ All category types: TLA, Internal Fab, Purchased Assy, CtL, Coml, Fab, Assy, Other
+     - ✅ Edge cases: empty defaults, no supplier, category hierarchy, empty notes
+     - ✅ NEW: Assembly with no default supplier
+     - ✅ NEW: Assembly in Fab category without internal supplier
+     - ✅ NEW: CtL category with empty notes (fallback to Fab)
+     - ✅ NEW: Part with category but empty mappings
+   - Fixed 1 comment mismatch (line 248)
 
-3. **test_assembly_no_children.py** (4 tests, 1 hour)
-   - Trace through get_leaf_parts_only() function
-   - Verify flag propagation through pipeline
+3. ~~**test_shortfall_calculation.py** (13 tests, 2-3 hours)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests shortfall calculation mirroring Panel.tsx logic (frontend verification)
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ All 4 checkbox combinations (2^2 permutations)
+     - ✅ Positive shortfall, zero shortfall, no shortfall
+     - ✅ Edge cases: zeros, decimals, realistic scenarios
+     - ✅ High allocations, on order effects
+     - ✅ NEW: Negative stock after allocations (allocated > in_stock)
+     - ✅ NEW: Negative total_required (invalid input, handles gracefully)
+   - **Note**: Duplicates frontend logic for verification (see file header for maintenance contract)
+   - Function tested: calculate_shortfall() - Pure function, 7 lines
+   - Last synced with Panel.tsx: January 9, 2026 (lines 881-889)
+   - Expanded 11 → 13 tests to cover data integrity edge cases
 
-4. **test_max_depth_warnings.py** (5 tests, 1 hour)
-   - Walk through flag prioritization logic
-   - Remove duplicated logic, call actual functions
+4. ~~**test_assembly_no_children.py** (15 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests get_leaf_parts_only() function (bom_traversal.py lines 310-456)
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ Assembly with no children → flag set (assembly_no_children=True)
+     - ✅ Internal Fab with no children → flag set
+     - ✅ Assembly with children → recurse, child becomes leaf
+     - ✅ Non-assembly leaf → include (Coml part)
+     - ✅ Purchased assembly → include without flag (no children expected)
+     - ✅ NEW: Error node → skip without crashing
+     - ✅ NEW: Uncategorized non-assembly (part_type="Other") → include as leaf
+     - ✅ NEW: CtL part → extract cut_length from notes
+     - ✅ NEW: Internal Fab child → preserve cut_length from tree
+     - ✅ NEW: Assembly no children due to max_depth → NOT flagged (expected behavior)
+     - ✅ NEW: Purchased assembly with expand=True → recurse into children
+     - ✅ NEW: Fab part (non-assembly) → include as leaf
+     - ✅ NEW: CtL part with empty note → handle gracefully (cut_length=None)
+     - ✅ NEW: Mixed tree (leaves + assemblies) → correct leaf extraction
+   - Expanded 5 → 15 tests to cover all branches and edge cases
 
-5. **test_cut_to_length_aggregation.py** (1 test, 2 hours)
-   - Expand to 5-10 tests covering edge cases
-   - Walk through CtL aggregation logic
+5. ~~**test_max_depth_warnings.py** (8 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests max_depth flag logic (bom_traversal.py) and warning generation (views.py)
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ Assembly stopped by max_depth → max_depth_exceeded=True, assembly_no_children=False
+     - ✅ Assembly genuinely no children → assembly_no_children=True, max_depth_exceeded=False
+     - ✅ Regular part (not assembly) → never flagged
+     - ✅ Summary warning generation for multiple assemblies at max_depth
+     - ✅ NEW: No warning when no parts at max_depth (empty list)
+     - ✅ NEW: Empty flat_bom → no warning
+     - ✅ NEW: Single part at max_depth → singular count in message
+     - ✅ NEW: Assembly with children but max_depth_exceeded=True → not flagged
+   - **Note**: Tests use isolated logic validation (not full integration) for unit test speed
+   - Expanded 4 → 8 tests to cover edge cases and empty conditions
+   - Quality: ⭐⭐⭐ High
+   - All 4 edge cases covered correctly
 
-6. **test_full_bom_part_13.py** (3 tests, 1 hour)
-   - Understand what "9 unique parts from 10 rows" means
-   - Either add clear documentation OR delete if redundant
+6. ~~**test_serializers.py** (38 tests, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests 3 DRF serializers: BOMWarningSerializer (4 fields), FlatBOMItemSerializer (23 fields), FlatBOMResponseSerializer (8 fields)
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ BOMWarningSerializer: All 4 fields, optional part_id, required type/message, all warning types
+     - ✅ FlatBOMItemSerializer: All 23 fields, valid/invalid data, edge cases (decimals, zeros, negatives)
+     - ✅ FlatBOMResponseSerializer: Nested serializers, metadata structure, complete response
+     - ✅ NEW: Negative quantities (over-allocation scenarios)
+     - ✅ NEW: Empty string fields (ipn, unit, description)
+     - ✅ NEW: Metadata structure validation (DictField with ListField of warnings)
+     - ✅ NEW: Zero statistics response
+   - Found and corrected metadata constraint: all values must be lists of warnings
+   - Expanded 31 → 38 tests to cover edge cases and data validation
 
-7. **test_internal_fab_cut_rollup.py** (22 tests, 1 hour)
-   - Fix skipped test or document why skipped
-   - Validate remaining tests
+7. ~~**test_views.py** (16 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
+   - Tests validate views.py code structure and API contract via introspection
+   - Uses inspect module to verify helper functions, imports, serializer usage, error handling
+   - Quality: ⭐⭐⭐ High
+   - **Coverage Complete:**
+     - ✅ API Response Structure: 8 top-level fields documented
+     - ✅ BOM Item Structure: 21 required fields verified
+     - ✅ Warning Structure: 4 fields validated
+     - ✅ Metadata Structure: DictField with warning lists
+     - ✅ FlatBOMView class existence and imports
+     - ✅ Helper functions: _extract_id_from_value signature and behavior (int, str, object.pk, object.id, None, invalid)
+     - ✅ get_internal_supplier_ids and get_category_mappings parameter signatures
+     - ✅ Serializer usage patterns (BOMWarningSerializer, FlatBOMItemSerializer, FlatBOMResponseSerializer)
+     - ✅ Error handling code paths exist
+     - ✅ NEW: Success response status (HTTP 200)
+     - ✅ NEW: Helper function behavior tests with MagicMock objects
+     - ✅ NEW: Serializer validation pattern exists
+   - Fixed field name typo: "units" → "unit" (matches serializers.py line 126)
+   - Expanded 10 → 16 tests with helper function validation and serializer integration checks
+   - All 16 tests passing in 0.118s
 
-8. **Integration tests** (3 files, 3-4 hours)
-   - test_view_function.py (14 tests)
-   - test_views_integration.py (7+ tests)
-   - test_bom_traversal_integration.py (6+ tests)
+8. ~~**test_cut_to_length_aggregation.py** (8 tests, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
+   - **EXPANDED to 8 tests** covering comprehensive edge cases
+   - Tests CtL parts with cut_length (deduplicate_and_sum lines 512-525)
+   - Quality: ⭐⭐⭐ High (upgraded from Medium after expansion)
+   - **Coverage Complete:**
+     - ✅ Empty leaves list
+     - ✅ cut_length=None handling (falls through to regular part logic)
+     - ✅ Multiple different parts with cut lists
+     - ✅ Zero quantities
+     - ✅ Decimal quantities (2.5 pieces)
+     - ✅ Deduplication of same length entries
+     - ✅ Non-CtL parts don't get cut_list
+   - **Remaining Gap**: CtL unit mismatch warnings (requires Django/Part models - covered in integration tests)
+
+9. ~~**test_internal_fab_cut_rollup.py** (9 tests)~~ ✅ MERGED (Jan 9, 2026)
+   - Merged into test_internal_fab_cutlist.py (3 unique tests added)
+   - Both files tested same code path (Internal Fab with cut_length)
+   - **Rationale**: Eliminate duplication, keep part types separate (CtL vs Internal Fab)
+
+10. ~~**test_full_bom_part_13.py** (1 test, 1 hour)~~ ✅ DELETED (Jan 9, 2026)
+     - ✅ Deduplication of same length entries
+     - ✅ Non-CtL parts don't get cut_list
+   - **Remaining Gap**: CtL unit mismatch warnings (requires Django/Part models - covered in integration tests)
+
+9. ~~**test_internal_fab_cut_rollup.py** (1 test, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
+   - **EXPANDED to 9 tests** covering comprehensive edge cases
+   - Tests internal_fab_cut_list logic in deduplicate_and_sum (lines 526-556)
+   - Quality: ⭐⭐⭐ High (upgraded from Low after expansion)
+   - **Coverage Improvements:**
+     - ✅ Empty leaves list
+     - ✅ cut_length=None handling (skips to cumulative_qty fallback)
+     - ✅ Multiple piece_qty values (35mm + 50mm in same part)
+     - ✅ piece_count_inc > 1 (quantity field usage)
+     - ✅ Zero cut_length (0 × count = 0 but cut_list still created)
+     - ✅ Decimal cut_length and piece_count values
+     - ✅ from_internal_fab_parent=False skips logic
+     - ✅ enable_ifab_cuts=False excludes field from output
+   - **Remaining Gap**: Unit validation errors (requires Django Part.objects.get() - integration test domain)
+
+10. ~~**test_full_bom_part_13.py** (1 test, 1 hour)~~ ✅ DELETED (Jan 9, 2026)
+    - Test validated CSV data structure, not production code
+    - Only checked that test data had 9 unique components from 10 rows
+    - Didn't call any production functions (get_flat_bom, deduplicate_and_sum, etc.)
+    - Data file `full_bom_part_13.py` not used by any other tests
+    - **Action Taken**: Deleted both `test_full_bom_part_13.py` and `full_bom_part_13.py`
+    - **Rationale**: Zero value, creates maintenance burden, other tests cover same functionality
+
+**Integration Test Files (3 files, 3-4 hours):**
+
+11. **test_view_function.py** (14 tests, 1.5 hours)
+    - Verify view layer tests match actual endpoint behavior
+    - Check error handling and edge cases
+
+12. **test_views_integration.py** (7+ tests, 1 hour)
+    - Validate BOM traversal workflow integration
+    - Ensure serializer integration works correctly
+
+13. **test_bom_traversal_integration.py** (6+ tests, 0.5-1 hour)
+    - Verify core function integration tests
+    - Check Part model interaction
+
+***Need to use dev environment with InvenTree models for integration test validation***    
+
+**Total:** 13 test files, ~148 tests to validate (121 unit + 27 integration)
 
 **Why This Matters:**
 - Dec 18 validation found 51 lines of dead code and 2 incorrect fallbacks

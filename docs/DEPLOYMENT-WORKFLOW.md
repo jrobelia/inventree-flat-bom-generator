@@ -36,6 +36,40 @@ git branch
 
 ---
 
+## Pre-Deployment Checklist
+
+**Before deploying ANY changes, verify:**
+
+### Code-Test Synchronization
+
+- [ ] **Frontend calculation changes?** If Panel.tsx shortfall calculation modified (lines 881-889), update `test_shortfall_calculation.py` to match
+- [ ] **Serializer changes?** If serializer fields change, update corresponding tests
+- [ ] **BOM traversal logic changes?** If `bom_traversal.py` modified, update integration tests
+
+### Frontend-Backend Contracts
+
+**Files with Synchronized Logic** (must stay in sync):
+
+| Frontend File | Backend Test | Sync Point | Last Synced |
+|--------------|--------------|------------|-------------|
+| Panel.tsx (lines 881-889) | test_shortfall_calculation.py | Shortfall calculation | Jan 9, 2026 |
+
+**Why this matters:**
+- Frontend (TypeScript) and tests (Python) can't share code
+- Logic is intentionally duplicated for fast testing
+- Tests verify frontend behavior expectations
+- Drift between files = bugs in production
+
+**When updating synced files:**
+1. Identify which files need sync (check table above)
+2. Update frontend code
+3. Update corresponding test
+4. Run tests to verify logic matches
+5. Update "Last Synced" date in table above
+6. Commit both files together
+
+---
+
 ## Workflow: Making Changes
 
 ### Step 1: Plan & Discuss

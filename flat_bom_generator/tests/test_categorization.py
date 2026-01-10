@@ -222,7 +222,7 @@ class CategorizePartTests(unittest.TestCase):
             part_category_id=50,
             category_mappings={"commercial": [50]},
         )
-        # Should be Purchased Assy because it has a supplier but not in fab category
+        # Should be Assy because it has internal supplier but not in fab category
         self.assertEqual(result, "Assy")
 
     def test_category_hierarchy(self):
@@ -236,6 +236,57 @@ class CategorizePartTests(unittest.TestCase):
             category_mappings={"fabrication": [5, 12, 13]},  # Parent + children
         )
         self.assertEqual(result, "Fab")
+
+    def test_assembly_no_default_supplier(self):
+        """Assembly with no default supplier returns 'Assy'."""
+        result = categorize_part(
+            part_name="Assembly No Supplier",
+            is_assembly=True,
+            is_top_level=False,
+            default_supplier_id=None,  # No default supplier
+            internal_supplier_ids=[1, 2],
+            part_category_id=5,
+            category_mappings={"fabrication": [5]},
+        )
+        self.assertEqual(result, "Assy")
+
+    def test_assembly_fab_category_no_internal_supplier(self):
+        """Assembly in Fab category WITHOUT internal supplier returns 'Assy' not 'Internal Fab'."""
+        result = categorize_part(
+            part_name="Fab Assembly External",
+            is_assembly=True,
+            is_top_level=False,
+            default_supplier_id=99,  # Has supplier but not internal
+            internal_supplier_ids=[1, 2],  # 99 not in this list
+            part_category_id=5,
+            category_mappings={"fabrication": [5]},
+        )
+        # Should be Purchased Assy (assembly with non-internal default supplier)
+        self.assertEqual(result, "Purchased Assy")
+
+    def test_ctl_category_with_empty_notes(self):
+        """CtL category part with empty notes falls back to 'Fab'."""
+        result = categorize_part(
+            part_name="Raw Material",
+            is_assembly=False,
+            is_top_level=False,
+            part_category_id=20,
+            category_mappings={"cut_to_length": [20], "fabrication": [5]},
+            bom_item_notes="",  # Empty notes - no length
+        )
+        # Should fallback to Fab since no valid length in notes
+        self.assertEqual(result, "Fab")
+
+    def test_part_with_category_but_empty_mappings(self):
+        """Part with category_id but empty category_mappings returns 'Other'."""
+        result = categorize_part(
+            part_name="Unknown Part",
+            is_assembly=False,
+            is_top_level=False,
+            part_category_id=15,
+            category_mappings={},  # Empty mappings
+        )
+        self.assertEqual(result, "Other")
 
 
 class ExtractLengthWithUnitTests(unittest.TestCase):

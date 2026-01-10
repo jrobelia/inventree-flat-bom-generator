@@ -223,11 +223,50 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         from flat_bom_generator.bom_traversal import deduplicate_and_sum
         
         # Simulate duplicate entries from BOM traversal
-        # deduplicate_and_sum expects dicts with 'part_type' field
+        # deduplicate_and_sum expects cumulative_qty and all required fields
         input_data = [
-            {'part_id': self.fab.pk, 'total_qty': 4, 'reference': 'U1', 'part_type': 'Fab Part'},
-            {'part_id': self.fab.pk, 'total_qty': 4, 'reference': 'U2', 'part_type': 'Fab Part'},
-            {'part_id': self.coml1.pk, 'total_qty': 2, 'reference': 'R1', 'part_type': 'Coml Part'},
+            {
+                'part_id': self.fab.pk,
+                'cumulative_qty': 4,
+                'reference': 'U1',
+                'part_type': 'Fab',
+                'ipn': self.fab.IPN,
+                'part_name': self.fab.name,
+                'description': self.fab.description,
+                'unit': self.fab.units or 'pcs',
+                'is_assembly': False,
+                'purchaseable': True,
+                'default_supplier_id': None,
+                'note': ''
+            },
+            {
+                'part_id': self.fab.pk,
+                'cumulative_qty': 4,
+                'reference': 'U2',
+                'part_type': 'Fab',
+                'ipn': self.fab.IPN,
+                'part_name': self.fab.name,
+                'description': self.fab.description,
+                'unit': self.fab.units or 'pcs',
+                'is_assembly': False,
+                'purchaseable': True,
+                'default_supplier_id': None,
+                'note': ''
+            },
+            {
+                'part_id': self.coml1.pk,
+                'cumulative_qty': 2,
+                'reference': 'R1',
+                'part_type': 'Coml',
+                'ipn': self.coml1.IPN,
+                'part_name': self.coml1.name,
+                'description': self.coml1.description,
+                'unit': self.coml1.units or 'pcs',
+                'is_assembly': False,
+                'purchaseable': True,
+                'default_supplier_id': None,
+                'note': ''
+            },
         ]
         
         result = deduplicate_and_sum(input_data)
@@ -238,46 +277,80 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         # FAB-100 quantities should be summed
         fab_item = next(item for item in result if item['part_id'] == self.fab.pk)
         self.assertEqual(fab_item['total_qty'], 8)  # 4 + 4
-        self.assertIn('U1', fab_item['reference'])
-        self.assertIn('U2', fab_item['reference'])
+        # Note: deduplicate_and_sum does NOT return 'reference' field - only aggregates quantities
     
     def test_get_leaf_parts_only_filters_assemblies(self):
         """get_leaf_parts_only should filter out non-purchaseable assemblies."""
         from flat_bom_generator.bom_traversal import get_leaf_parts_only
         
         # Simulate traversal output - get_leaf_parts_only expects tree structure with 'children' key
-        # Tree should have parts at top level with nested children
+        # CRITICAL: children must be a LIST (not dict), ALL nodes must have required fields
         traversal_data = {
             'part_id': self.tla.pk,
             'part_type': 'TLA',
-            'total_qty': 1,
-            'children': {
-                str(self.ifp.pk): {
+            'is_assembly': True,
+            'cumulative_qty': 1,
+            'ipn': self.tla.IPN,
+            'part_name': self.tla.name,
+            'description': self.tla.description,
+            'unit': self.tla.units or 'pcs',
+            'purchaseable': False,
+            'level': 0,
+            'children': [
+                {
                     'part_id': self.ifp.pk,
                     'part_type': 'Assy',
-                    'total_qty': 2,
-                    'children': {
-                        str(self.fab.pk): {
+                    'is_assembly': True,
+                    'cumulative_qty': 2,
+                    'ipn': self.ifp.IPN,
+                    'part_name': self.ifp.name,
+                    'description': self.ifp.description,
+                    'unit': self.ifp.units or 'pcs',
+                    'purchaseable': False,
+                    'level': 1,
+                    'children': [
+                        {
                             'part_id': self.fab.pk,
-                            'part_type': 'Fab Part',
-                            'total_qty': 8,
-                            'children': {}
+                            'part_type': 'Fab',
+                            'is_assembly': False,
+                            'cumulative_qty': 8,
+                            'ipn': self.fab.IPN,
+                            'part_name': self.fab.name,
+                            'description': self.fab.description,
+                            'unit': self.fab.units or 'pcs',
+                            'purchaseable': True,
+                            'level': 2,
+                            'children': []
                         },
-                        str(self.coml1.pk): {
+                        {
                             'part_id': self.coml1.pk,
-                            'part_type': 'Coml Part',
-                            'total_qty': 4,
-                            'children': {}
+                            'part_type': 'Coml',
+                            'is_assembly': False,
+                            'cumulative_qty': 4,
+                            'ipn': self.coml1.IPN,
+                            'part_name': self.coml1.name,
+                            'description': self.coml1.description,
+                            'unit': self.coml1.units or 'pcs',
+                            'purchaseable': True,
+                            'level': 2,
+                            'children': []
                         }
-                    }
+                    ]
                 },
-                str(self.coml2.pk): {
+                {
                     'part_id': self.coml2.pk,
-                    'part_type': 'Coml Part',
-                    'total_qty': 10,
-                    'children': {}
+                    'part_type': 'Coml',
+                    'is_assembly': False,
+                    'cumulative_qty': 10,
+                    'ipn': self.coml2.IPN,
+                    'part_name': self.coml2.name,
+                    'description': self.coml2.description,
+                    'unit': self.coml2.units or 'pcs',
+                    'purchaseable': True,
+                    'level': 1,
+                    'children': []
                 }
-            }
+            ]
         }
         
         result = get_leaf_parts_only(traversal_data)
@@ -401,6 +474,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         from flat_bom_generator.categorization import categorize_part
         
         # Test FAB part - needs category_id for classification
+        # Category mapping keys must match categorize_part expectations: 'fabrication', 'commercial', 'cut_to_length'
         fab_result = categorize_part(
             self.fab.name,
             is_assembly=False,
@@ -408,10 +482,10 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             default_supplier_id=None,
             internal_supplier_ids=[],
             part_category_id=self.fab_cat.pk,
-            category_mappings={'FAB': [self.fab_cat.pk]},
+            category_mappings={'fabrication': [self.fab_cat.pk]},  # Must be 'fabrication' not 'fab'
             bom_item_notes=None
         )
-        self.assertEqual(fab_result, "Fab Part")
+        self.assertEqual(fab_result, "Fab")
         
         # Test COML part
         coml_result = categorize_part(
@@ -421,10 +495,10 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             default_supplier_id=None,
             internal_supplier_ids=[],
             part_category_id=self.coml_cat.pk,
-            category_mappings={'COML': [self.coml_cat.pk]},
+            category_mappings={'commercial': [self.coml_cat.pk]},  # Must be 'commercial' not 'coml'
             bom_item_notes=None
         )
-        self.assertEqual(coml_result, "Coml Part")
+        self.assertEqual(coml_result, "Coml")
         
         # Test TLA (top level assembly) - doesn't need category
         tla_result = categorize_part(

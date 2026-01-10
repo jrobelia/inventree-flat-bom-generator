@@ -54,10 +54,36 @@ class BOMTraversalIntegrationTests(InvenTreeTestCase):
         """deduplicate_and_sum should handle list of dicts."""
         from flat_bom_generator.bom_traversal import deduplicate_and_sum
         
-        # deduplicate_and_sum expects cumulative_qty (from traversal), not total_qty
+        # deduplicate_and_sum expects all fields from traverse_bom output
         input_data = [
-            {'part_id': 1, 'cumulative_qty': 5, 'reference': 'R1', 'part_type': 'Other'},
-            {'part_id': 1, 'cumulative_qty': 3, 'reference': 'R2', 'part_type': 'Other'},
+            {
+                'part_id': 1,
+                'cumulative_qty': 5,
+                'reference': 'R1',
+                'part_type': 'Other',
+                'ipn': 'TEST-001',
+                'part_name': 'Test Part',
+                'description': 'Test description',
+                'unit': 'pcs',
+                'is_assembly': False,
+                'purchaseable': True,
+                'default_supplier_id': None,
+                'note': ''
+            },
+            {
+                'part_id': 1,
+                'cumulative_qty': 3,
+                'reference': 'R2',
+                'part_type': 'Other',
+                'ipn': 'TEST-001',
+                'part_name': 'Test Part',
+                'description': 'Test description',
+                'unit': 'pcs',
+                'is_assembly': False,
+                'purchaseable': True,
+                'default_supplier_id': None,
+                'note': ''
+            },
         ]
         
         result = deduplicate_and_sum(input_data)

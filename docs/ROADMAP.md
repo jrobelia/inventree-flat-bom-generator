@@ -1,57 +1,51 @@
-# FlatBOMGenerator Refactor & Optimization Plan
+# FlatBOMGenerator - Plugin Improvement Roadmap
 
-> **Status:** 80% complete - Serializers done, integration tests working, internal fab tests rewritten  
-> **For History:** See [REFAC-HISTORY.md](REFAC-HISTORY.md) for completed work logs  
-> **Last Updated:** December 18, 2025
+> **Status:** 90% complete - Backend solid, ready for feature expansion  
+> **Last Updated:** January 9, 2026
 
 ---
 
-## Current Status (December 18, 2025)
+## Current Status
 
-### ✅ Completed
-- Serializer refactoring (Phases 1-3) - Ready for deployment
-- View layer integration tests (14 tests passing)
-- BOM traversal integration tests (~13 tests passing)
-- Warning system (4 types implemented)
-- Test quality framework established
-- DRF APIView testing pattern documented
-- **Internal fab tests rewritten** (11 tests, test actual code not stubs)
-- **Code cleanup** (removed 45 lines dead code, 2 incorrect fallback paths)
-- **ValueError on unit mismatch** (fail fast on data corruption)
-- **Code-first test methodology documented** (TEST-WRITING-METHODOLOGY.md)
+### ✅ Completed Work
+- **Serializer Refactoring** (Phases 1-3) - DRF serializers for all API responses
+- **Warning System** - 4 warning types (unit_mismatch, inactive_part, assembly_no_children, max_depth_exceeded)
+- **Test Infrastructure** - 195 tests (164 unit + 31 integration), all passing, grade A-
+- **Code Quality** - Removed 96 lines dead code, fixed 3 incorrect fallbacks
+- **Documentation** - Code-first methodology, testing patterns, API reference
 
-### ⏸️ Pending Deployment
-- Phase 3 FlatBOMResponseSerializer (committed but not deployed)
-- Internal fab test improvements (committed, not deployed)
-- Dead code removal (committed, not deployed)
+### 🔴 Current Priorities
 
-### 🔴 Critical Priorities
-1. Deploy Phase 3 serializers + internal fab improvements (30-45 min)
-2. ~~Fix skipped test (test_piece_qty_times_count_rollup)~~ - ✅ COMPLETE
-3. ~~Rewrite internal fab tests (remove stub functions)~~ - ✅ COMPLETE
+**1. Deploy Serializer Refactoring** (30-45 min)
+- Phase 3 FlatBOMResponseSerializer ready for production
+- All tests passing, validated on staging
+- Action: Build → Deploy → Verify API response format
 
-### 📊 Test Metrics
-- **Total Tests:** 121 unit tests (all passing)
-- **Quality Grade:** B+ (internal fab tests upgraded from Low to High quality)
-- **Test Validation:** 1/13 files validated with code-first methodology (8%)
-- **Backend Status:** ⚠️ NOT SOLID - only test_internal_fab_cutlist.py fully validated
-- **Coverage:** View layer + core BOM traversal + internal fab cut lists tested
-- **Recent Wins:** Found/removed 2 incorrect cumulative_qty fallbacks, discovered dead code paths
+**2. Integration Test Coverage** (6-8 hours)
+- 7 critical gaps identified (see [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md))
+- High priority: Plugin settings, error scenarios
+- Medium priority: Warning generation, complex BOMs
+- Recommended: 15-20 new tests across top 4 priorities
+
+**3. Frontend Polish** (2-3 hours)
+- Fix any UI issues from serializer deployment
+- Performance testing with large BOMs (100+ parts)
+- Browser compatibility verification
 
 ---
 
 ## Key Lessons Learned
 
 ### What Works
-1. **Test-first workflow** - Caught 2 bugs immediately
-2. **Incremental phases** - Small, verifiable changes
-3. **Production validation** - Deploy → Test → Verify cycle
-4. **Integration test pattern discovery** - Major toolkit win
+1. **Test-first workflow** - Caught 2 bugs during serializer refactoring
+2. **Incremental phases** - Small, verifiable changes prevent stacking unverified work
+3. **Production validation** - Deploy → Test in UI → Verify cycle catches integration issues
+4. **Code-first methodology** - Reading actual code before writing tests found 96 lines dead code
 
 ### What to Avoid
 1. ❌ Skipping deployment after code changes
 2. ❌ Assuming "tests pass" = "code works in production"
-3. ❌ Creating code without checking for existing solutions
+3. ❌ Creating code without checking existing solutions
 4. ❌ Moving fast without explaining approach
 
 ### Core Principle
@@ -59,859 +53,226 @@
 
 ---
 
----
+## Architecture Overview
 
-## Test Organization
+### Backend (Python/Django)
+- **Django REST Framework** - Serializers for API responses (Phases 1-3 complete)
+- **Plugin System** - Settings, URL routes, UI integration
+- **Core Algorithms** - BOM traversal, deduplication, categorization
+- **Warning System** - 4 types with flag propagation
 
-### Unit Tests (`flat_bom_generator/tests/*.py`)
-**Purpose:** Test individual functions in isolation, no database required (mostly)
+### Frontend (React/TypeScript)
+- **React 19** with TypeScript
+- **Mantine 8** UI components
+- **Vite 6** build tooling
+- **Lingui** i18n for translations
+- **mantine-datatable** for BOM display
 
-**Files:**
-- `test_categorization.py` - Pure function tests (46 tests) ✅ **Validated Jan 9, 2026**
-- `test_shortfall_calculation.py` - Frontend calculation logic (11 tests) ✅ **Validated Jan 9, 2026**
-- `test_assembly_no_children.py` - Warning flag logic (5 tests) ✅ **Validated Jan 9, 2026**
-- `test_serializers.py` - DRF serializer validation (31 tests)
-- `test_max_depth_warnings.py` - Flag prioritization (4 tests)
-- `test_cut_to_length_aggregation.py` - Aggregation logic (1 test)
-- `test_internal_fab_cutlist.py` - Internal fab cut lists (11 tests) ✅ **Validated Dec 18, 2025**
-- `test_internal_fab_cut_rollup.py` - Rollup logic (1 test)
-- `test_full_bom_part_13.py` - BOM structure tests (1 test)
-- `test_views.py` - Views code structure validation (10 tests)
-
-**Total Unit Tests:** 121 tests across 10 files
-
-**Note:** `full_bom_part_13.py` (no `test_` prefix) is test data, not a test file
-
-**Run:** `.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit`
-
-### Integration Tests (`flat_bom_generator/tests/integration/*.py`)
-**Purpose:** Test with real InvenTree Part/BomItem/Stock models
-
-**Files:**
-- `test_view_function.py` - FlatBOMView endpoint (14 tests)
-  - Response structure, HTTP codes, error handling
-  - Stock enrichment, statistics, warnings
-- `test_views_integration.py` - BOM traversal workflow (7+ tests)
-  - Leaf part filtering, quantity aggregation
-  - Deduplication, serializer validation
-  - Stock calculations, categorization
-- `test_bom_traversal_integration.py` - Core functions (6+ tests)
-  - get_flat_bom(), deduplicate_and_sum()
-  - Part stock properties, categorization
-
-**Total Integration Tests:** ~27 tests across 3 files
-
-**Run:** `.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration`
-
-### How to Tell Which is Which
-1. **Location**: Unit tests in `tests/`, integration tests in `tests/integration/`
-2. **Imports**: Integration tests import `InvenTreeTestCase`, use Part/BomItem models
-3. **Setup**: Integration tests have `setUpTestData()` creating test database records
-4. **Run time**: Unit tests fast (< 1 sec), integration tests slower (2-5 sec)
+### Testing
+- **195 tests** - 164 unit (pure functions, fast) + 31 integration (Django models, slower)
+- **Grade A-** - Unit tests excellent, integration coverage good with known gaps
+- **Methodology** - Code-first validation, test-first refactoring
+- **Details** - See [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)
 
 ---
 
-## Practical Advice for Testing & Refactoring
+## Future Improvements
 
-1. **Start Small and Isolate Changes**
-  - Refactor one small section at a time (e.g., a single function or component).
-  - After each change, run your tests to confirm nothing broke.
+### Frontend Refactoring (8-12 hours, LOW PRIORITY)
+**Goal:** Improve maintainability and component reusability
 
-2. **Follow Test-First Workflow**
-  - See [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) for complete test-first workflow
-  - Check if tests exist → Evaluate quality → Improve/Create → Refactor → Verify
+**Current State:**
+- Panel.tsx is 800+ lines with inline logic
+- All state management in single component
+- Tightly coupled data fetching and display
 
-3. **Write Tests Before and After Refactoring**
-  - If a function isn't tested, write a simple test for its current behavior before changing it.
-  - After refactoring, make sure the test still passes.
-
-4. **Use Descriptive Test Names**
-  - Name tests after what they check, e.g., `test_flatten_bom_handles_duplicates`.
-
-4. **Focus on “Pure” Functions First**
-  - Functions that don’t depend on external state (like database or network) are easiest to test and refactor.
-
-5. **Don’t Aim for Perfection**
-  - Incremental improvement is better than a big rewrite. It’s okay if your first tests are basic.
-
-6. **Use Assertions Effectively**
-  - Assert expected outputs, but also check for error cases and edge conditions.
-
-7. **Keep Tests Close to Code**
-  - Place test files in a `tests/` folder next to the code they cover.
-
-8. **Learn by Example**
-  - Look at existing tests in your project or in open-source plugins for patterns.
-
-9. **Use Version Control**
-  - Commit after every small, working change. This makes it easy to revert if something breaks.
-
-10. **Ask for Feedback**
-   - Don’t hesitate to ask for code reviews or advice as you go.
-
----
-
-## Goals & Priorities
-
-### Refactoring Goals
-- Achieve a semi-professional, maintainable codebase
-- Reduce file/component complexity (especially Panel.tsx)
-- Improve separation of concerns and code readability
-- Adopt modern React/TypeScript patterns (hooks, context, modularization)
-- Ensure backend logic is clear, testable, and efficient
-- Maintain or improve test coverage
-
-### Priority Additions
-
-**1. InvenTree Export Plugin System** (Medium Priority)
-- **Current**: Custom CSV export in Panel.tsx with manual column handling  
-- **Target**: Integrate with InvenTree's DataExportMixin for standardized exports
-- **Why**: Built-in support for multiple formats (CSV, JSON, XLSX), automatic encoding/escaping
-- **Status**: Not started, defer until backend 100% stable
-
-**2. Warning System Expansion** (Low Priority)
-- **Current**: 4 warning types implemented (unit_mismatch, inactive_part, assembly_no_children, max_depth_exceeded)
-- **Target**: See [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md) for additional planned warnings
-- **Status**: Core warnings working, expansion deferred
-
-**3. Frontend Refactoring** (Low Priority)
-- **Current**: Panel.tsx is 800+ lines with inline logic
-- **Target**: Break into components, extract hooks, improve state management
-- **Status**: Defer until backend tests comprehensive and stable
-
----
-
-## Refined Priorities (Post-Integration Testing)
-
-### ~~Priority 1: Test Quality Improvements~~ ✅ COMPLETE (Dec 18, 2025)
-**Critical for safety net before major refactoring**
-
-1. ~~**Deploy Phase 3 Serializers**~~ - ⏸️ Ready to deploy
-   - Serializers implemented and tested
-   - Pending: Build → Deploy → Test on staging → Verify API response
+**Proposed Changes:**
+1. **Extract Components** (4-6 hours)
+   - `DataTableComponent` - BOM table with pagination
+   - `StatisticsPanel` - Part counts and shortfall summary
+   - `FilterControls` - Search, checkboxes, build quantity
    
-2. ~~**Fix Skipped Test**~~ - ✅ COMPLETE
-   - Was: `test_piece_qty_times_count_rollup` skipped
-   - Now: All 12 internal fab tests passing
-   - Discovered tests were testing stub functions, not real code
-
-3. ~~**Rewrite Internal Fab Tests**~~ - ✅ COMPLETE (Dec 18)
-   - Removed stub `get_cut_list_for_row()` function
-   - Tests now validate actual `deduplicate_and_sum()` behavior
-   - Created code-first test methodology (documented in TEST-WRITING-METHODOLOGY.md)
-   - Found and removed 45 lines of dead code
-   - Added ValueError for unit mismatch (fail fast on data corruption)
-   - All 11 tests passing, quality upgraded from Low → High
-
-### Priority 2: Test Validation (12-18 hours)
-**PREREQUISITE for frontend refactoring - validate ALL tests with code-first methodology**
-
-**Current Status:** Phase 1 COMPLETE (7/7 unit test files = 100%), Phase 2 in progress (integration tests)
-**Goal:** Complete coverage analysis for all unit tests (Phase 1), then validate integration tests (Phase 2)
-
-**Phase 1: Unit Test Coverage Analysis** ✅ COMPLETE (Jan 9, 2026)
-- All 7 unit test files validated with code-first methodology
-- **30 new tests added** across files 3-7 to fill coverage gaps
-- Total unit tests: **164 tests** (14+50+13+15+8+38+16+8 = 162, plus merged 2 from rollup file)
-- All tests passing with ⭐⭐⭐ High quality ratings
-- **Quality improvements**: Found/fixed 96 lines dead code, 3 incorrect fallbacks, 1 field typo
-- **Test expansion summary**:
-  - File 1: 11→14 tests (merged rollup file, found 51 lines dead code)
-  - File 2: 50 tests (coverage already complete)
-  - File 3: 11→13 tests (+2: negative stock, negative total_required)
-  - File 4: 5→15 tests (+10: all branches, part types, edge cases)
-  - File 5: 4→8 tests (+4: empty conditions, singular counts)
-  - File 6: 31→38 tests (+7: negative quantities, empty strings, metadata)
-  - File 7: 10→16 tests (+6: helper functions, serializer integration)
-  - File 8: 8 tests (coverage already complete)
-
-**Phase 2: Integration Test Validation** ⏳ IN PROGRESS (3 files remaining)
-
-**Coverage Analysis Status:**
-- Files 8-9: ✅ Coverage complete (expanded tests to fill gaps)
-- Files 1-7: ✅ ALL COVERAGE COMPLETE (7/7 = 100%) - Jan 9, 2026
-
-**Validated Files:**
-1. ✅ **test_internal_fab_cutlist.py** (14 tests) - Validated Dec 18, 2025 - **COVERAGE COMPLETE (Jan 9, 2026)**
-2. ✅ **test_categorization.py** (50 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-3. ✅ **test_shortfall_calculation.py** (13 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-4. ✅ **test_assembly_no_children.py** (15 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-5. ✅ **test_max_depth_warnings.py** (8 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-6. ✅ **test_serializers.py** (38 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-7. ✅ **test_views.py** (16 tests) - Validated Jan 9, 2026 - **COVERAGE COMPLETE (Jan 9, 2026)**
-8. ✅ **test_cut_to_length_aggregation.py** (8 tests) - Validated Jan 9, 2026 **WITH COVERAGE COMPLETE**
-9. ✅ **test_internal_fab_cut_rollup.py** - MERGED into test_internal_fab_cutlist.py (Jan 9, 2026)
-10. ✅ **test_full_bom_part_13.py** - DELETED (Jan 9, 2026) - Zero value test
-11. ⏳ **test_view_function.py** (14 tests) - Created Dec 17, 2025 - NOT YET VALIDATED
-12. ⏳ **test_views_integration.py** (7+ tests) - Created Dec 17, 2025 - NOT YET VALIDATED
-13. ⏳ **test_bom_traversal_integration.py** (6+ tests) - Created Dec 17, 2025 - NOT YET VALIDATED
-
-**Validation Plan** (see TEST-WRITING-METHODOLOGY.md):
-1. ~~**test_internal_fab_cutlist.py** (14 tests, 2-3 hours)~~ ✅ COMPLETE (Dec 18, 2025 + Jan 9, 2026)
-   - Tests Internal Fab parts with cut_length (deduplicate_and_sum lines 526-556)
-   - **MERGED** with test_internal_fab_cut_rollup.py for comprehensive coverage
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ Empty leaves list
-     - ✅ cut_length=None (skips to cumulative_qty fallback)
-     - ✅ from_ifab=False (skips logic)
-     - ✅ Unit validation errors (ValueError on unit mismatch/None)
-     - ✅ Multiple occurrences (same/different lengths)
-     - ✅ piece_count_inc > 1 (leaf["quantity"] > 1)
-     - ✅ Zero cut_length, decimals
-     - ✅ enable_ifab_cuts=False
-     - ✅ Mixed ifab/regular parts, multiple units
-   - Found/removed 51 lines dead code, 2 incorrect fallbacks (Dec 18)
-
-2. ~~**test_categorization.py** (50 tests, 2-3 hours)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests categorize_part() and 3 helper functions (categorization.py)
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ All 4 functions tested (categorize_part, _extract_length_from_notes, _extract_length_with_unit, _check_unit_mismatch)
-     - ✅ All category types: TLA, Internal Fab, Purchased Assy, CtL, Coml, Fab, Assy, Other
-     - ✅ Edge cases: empty defaults, no supplier, category hierarchy, empty notes
-     - ✅ NEW: Assembly with no default supplier
-     - ✅ NEW: Assembly in Fab category without internal supplier
-     - ✅ NEW: CtL category with empty notes (fallback to Fab)
-     - ✅ NEW: Part with category but empty mappings
-   - Fixed 1 comment mismatch (line 248)
-
-3. ~~**test_shortfall_calculation.py** (13 tests, 2-3 hours)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests shortfall calculation mirroring Panel.tsx logic (frontend verification)
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ All 4 checkbox combinations (2^2 permutations)
-     - ✅ Positive shortfall, zero shortfall, no shortfall
-     - ✅ Edge cases: zeros, decimals, realistic scenarios
-     - ✅ High allocations, on order effects
-     - ✅ NEW: Negative stock after allocations (allocated > in_stock)
-     - ✅ NEW: Negative total_required (invalid input, handles gracefully)
-   - **Note**: Duplicates frontend logic for verification (see file header for maintenance contract)
-   - Function tested: calculate_shortfall() - Pure function, 7 lines
-   - Last synced with Panel.tsx: January 9, 2026 (lines 881-889)
-   - Expanded 11 → 13 tests to cover data integrity edge cases
-
-4. ~~**test_assembly_no_children.py** (15 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests get_leaf_parts_only() function (bom_traversal.py lines 310-456)
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ Assembly with no children → flag set (assembly_no_children=True)
-     - ✅ Internal Fab with no children → flag set
-     - ✅ Assembly with children → recurse, child becomes leaf
-     - ✅ Non-assembly leaf → include (Coml part)
-     - ✅ Purchased assembly → include without flag (no children expected)
-     - ✅ NEW: Error node → skip without crashing
-     - ✅ NEW: Uncategorized non-assembly (part_type="Other") → include as leaf
-     - ✅ NEW: CtL part → extract cut_length from notes
-     - ✅ NEW: Internal Fab child → preserve cut_length from tree
-     - ✅ NEW: Assembly no children due to max_depth → NOT flagged (expected behavior)
-     - ✅ NEW: Purchased assembly with expand=True → recurse into children
-     - ✅ NEW: Fab part (non-assembly) → include as leaf
-     - ✅ NEW: CtL part with empty note → handle gracefully (cut_length=None)
-     - ✅ NEW: Mixed tree (leaves + assemblies) → correct leaf extraction
-   - Expanded 5 → 15 tests to cover all branches and edge cases
-
-5. ~~**test_max_depth_warnings.py** (8 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests max_depth flag logic (bom_traversal.py) and warning generation (views.py)
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ Assembly stopped by max_depth → max_depth_exceeded=True, assembly_no_children=False
-     - ✅ Assembly genuinely no children → assembly_no_children=True, max_depth_exceeded=False
-     - ✅ Regular part (not assembly) → never flagged
-     - ✅ Summary warning generation for multiple assemblies at max_depth
-     - ✅ NEW: No warning when no parts at max_depth (empty list)
-     - ✅ NEW: Empty flat_bom → no warning
-     - ✅ NEW: Single part at max_depth → singular count in message
-     - ✅ NEW: Assembly with children but max_depth_exceeded=True → not flagged
-   - **Note**: Tests use isolated logic validation (not full integration) for unit test speed
-   - Expanded 4 → 8 tests to cover edge cases and empty conditions
-   - Quality: ⭐⭐⭐ High
-   - All 4 edge cases covered correctly
-
-6. ~~**test_serializers.py** (38 tests, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests 3 DRF serializers: BOMWarningSerializer (4 fields), FlatBOMItemSerializer (23 fields), FlatBOMResponseSerializer (8 fields)
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ BOMWarningSerializer: All 4 fields, optional part_id, required type/message, all warning types
-     - ✅ FlatBOMItemSerializer: All 23 fields, valid/invalid data, edge cases (decimals, zeros, negatives)
-     - ✅ FlatBOMResponseSerializer: Nested serializers, metadata structure, complete response
-     - ✅ NEW: Negative quantities (over-allocation scenarios)
-     - ✅ NEW: Empty string fields (ipn, unit, description)
-     - ✅ NEW: Metadata structure validation (DictField with ListField of warnings)
-     - ✅ NEW: Zero statistics response
-   - Found and corrected metadata constraint: all values must be lists of warnings
-   - Expanded 31 → 38 tests to cover edge cases and data validation
-
-7. ~~**test_views.py** (16 tests, 1 hour)~~ ✅ COMPLETE (Jan 9, 2026)
-   - Tests validate views.py code structure and API contract via introspection
-   - Uses inspect module to verify helper functions, imports, serializer usage, error handling
-   - Quality: ⭐⭐⭐ High
-   - **Coverage Complete:**
-     - ✅ API Response Structure: 8 top-level fields documented
-     - ✅ BOM Item Structure: 21 required fields verified
-     - ✅ Warning Structure: 4 fields validated
-     - ✅ Metadata Structure: DictField with warning lists
-     - ✅ FlatBOMView class existence and imports
-     - ✅ Helper functions: _extract_id_from_value signature and behavior (int, str, object.pk, object.id, None, invalid)
-     - ✅ get_internal_supplier_ids and get_category_mappings parameter signatures
-     - ✅ Serializer usage patterns (BOMWarningSerializer, FlatBOMItemSerializer, FlatBOMResponseSerializer)
-     - ✅ Error handling code paths exist
-     - ✅ NEW: Success response status (HTTP 200)
-     - ✅ NEW: Helper function behavior tests with MagicMock objects
-     - ✅ NEW: Serializer validation pattern exists
-   - Fixed field name typo: "units" → "unit" (matches serializers.py line 126)
-   - Expanded 10 → 16 tests with helper function validation and serializer integration checks
-   - All 16 tests passing in 0.118s
-
-8. ~~**test_cut_to_length_aggregation.py** (8 tests, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
-   - **EXPANDED to 8 tests** covering comprehensive edge cases
-   - Tests CtL parts with cut_length (deduplicate_and_sum lines 512-525)
-   - Quality: ⭐⭐⭐ High (upgraded from Medium after expansion)
-   - **Coverage Complete:**
-     - ✅ Empty leaves list
-     - ✅ cut_length=None handling (falls through to regular part logic)
-     - ✅ Multiple different parts with cut lists
-     - ✅ Zero quantities
-     - ✅ Decimal quantities (2.5 pieces)
-     - ✅ Deduplication of same length entries
-     - ✅ Non-CtL parts don't get cut_list
-   - **Remaining Gap**: CtL unit mismatch warnings (requires Django/Part models - covered in integration tests)
-
-9. ~~**test_internal_fab_cut_rollup.py** (9 tests)~~ ✅ MERGED (Jan 9, 2026)
-   - Merged into test_internal_fab_cutlist.py (3 unique tests added)
-   - Both files tested same code path (Internal Fab with cut_length)
-   - **Rationale**: Eliminate duplication, keep part types separate (CtL vs Internal Fab)
-
-10. ~~**test_full_bom_part_13.py** (1 test, 1 hour)~~ ✅ DELETED (Jan 9, 2026)
-     - ✅ Deduplication of same length entries
-     - ✅ Non-CtL parts don't get cut_list
-   - **Remaining Gap**: CtL unit mismatch warnings (requires Django/Part models - covered in integration tests)
-
-9. ~~**test_internal_fab_cut_rollup.py** (1 test, 2 hours)~~ ✅ COMPLETE (Jan 9, 2026)
-   - **EXPANDED to 9 tests** covering comprehensive edge cases
-   - Tests internal_fab_cut_list logic in deduplicate_and_sum (lines 526-556)
-   - Quality: ⭐⭐⭐ High (upgraded from Low after expansion)
-   - **Coverage Improvements:**
-     - ✅ Empty leaves list
-     - ✅ cut_length=None handling (skips to cumulative_qty fallback)
-     - ✅ Multiple piece_qty values (35mm + 50mm in same part)
-     - ✅ piece_count_inc > 1 (quantity field usage)
-     - ✅ Zero cut_length (0 × count = 0 but cut_list still created)
-     - ✅ Decimal cut_length and piece_count values
-     - ✅ from_internal_fab_parent=False skips logic
-     - ✅ enable_ifab_cuts=False excludes field from output
-   - **Remaining Gap**: Unit validation errors (requires Django Part.objects.get() - integration test domain)
-
-10. ~~**test_full_bom_part_13.py** (1 test, 1 hour)~~ ✅ DELETED (Jan 9, 2026)
-    - Test validated CSV data structure, not production code
-    - Only checked that test data had 9 unique components from 10 rows
-    - Didn't call any production functions (get_flat_bom, deduplicate_and_sum, etc.)
-    - Data file `full_bom_part_13.py` not used by any other tests
-    - **Action Taken**: Deleted both `test_full_bom_part_13.py` and `full_bom_part_13.py`
-    - **Rationale**: Zero value, creates maintenance burden, other tests cover same functionality
-
-**Integration Test Files (3 files, 3-4 hours):**
-
-11. **test_view_function.py** (14 tests, 1.5 hours)
-    - Verify view layer tests match actual endpoint behavior
-    - Check error handling and edge cases
-
-12. **test_views_integration.py** (7+ tests, 1 hour)
-    - Validate BOM traversal workflow integration
-    - Ensure serializer integration works correctly
-
-13. **test_bom_traversal_integration.py** (6+ tests, 0.5-1 hour)
-    - Verify core function integration tests
-    - Check Part model interaction
-
-***Need to use dev environment with InvenTree models for integration test validation***    
-
-**Total:** 13 test files, ~148 tests to validate (121 unit + 27 integration)
-
-**Why This Matters:**
-- Dec 18 validation found 51 lines of dead code and 2 incorrect fallbacks
-- Tests passing ≠ tests validating correct behavior
-- Cannot safely refactor frontend without backend confidence
-
-### Priority 3: Frontend Panel.tsx Refactoring (8-12 hours)
-**BLOCKED until Priority 2 complete - all tests validated**
-
-- Break into components: DataTable, StatisticsPanel, FilterControls
-- Extract custom hooks: useFlatBOM, useBuildQuantity, useFilters
-- Implement React Context for shared state
-- Add PropTypes/TypeScript interfaces
-- Write component tests (React Testing Library)
-
-### Priority 4: Export System & Warning Expansion (7-11 hours)
-**Nice-to-have improvements after frontend stable**
-
-- Integrate InvenTree DataExportMixin (4-6 hours)
-- Expand warning system with 3-5 new types (3-5 hours)
-
-### Priority 5: Code Cleanup (Ongoing)
-**Continuous improvement as tests are validated**
-**Remove dead code, outdated comments, and improve clarity**
-
-**Dead Code Hunting:**
-1. **Search for unused functions** - Functions defined but never called
-   - Use `grep_search` to find function definitions
-   - Search for function name + `(` to find calls
-   - If no calls found (except definition), likely dead code
-   - Example: `internal_fab_cut_breakdown` was defined but never called (removed Dec 18)
-
-2. **Look for unreachable code paths**
-   - `if/elif/else` where condition can never be true
-   - `try/except` that can never fail
-   - Code after `return` or `raise` statements
-   - Example: Internal fab without cut_length path (line 272 always sets it)
-
-3. **Find duplicate logic**
-   - Same calculation in multiple places
-   - Copy-pasted functions with slight variations
-   - Consider: Extract to shared utility function
-
-4. **Check for outdated fallbacks**
-   - `try/except` blocks that shouldn't be needed
-   - `.get()` with defaults that are never used
-   - Conditional checks for cases that can't occur
-   - Example: `piece_count_inc = leaf.get("quantity") or 1` always returns 1
-
-**Comment Cleanup:**
-1. **Remove "what" comments** - Code explains itself
-   ```python
-   # ❌ BAD
-   # Increment counter
-   count += 1
+2. **Custom Hooks** (2-3 hours)
+   - `useFlatBOM()` - API call and data caching
+   - `useBuildQuantity()` - Build multiplier state
+   - `useFilters()` - Search and checkbox state
    
-   # ✅ GOOD (no comment needed)
-   count += 1
-   ```
+3. **React Context** (2-3 hours)
+   - Shared state for filters and build quantity
+   - Avoid prop drilling through component tree
 
-2. **Keep "why" comments** - Explain decisions
-   ```python
-   # ✅ GOOD
-   # Use cut_length instead of cumulative_qty for internal fab parts
-   # because each leaf represents one BOM occurrence
-   totals[key] += cut_length
-   ```
-
-3. **Remove outdated comments**
-   - Comments referencing removed code
-   - Comments contradicting current behavior
-   - TODOs that were completed
-   - Example: "Only include if unit matches" when code now throws error
-
-4. **Update stale docstrings**
-   - Function signature changed but docstring didn't
-   - Parameters added/removed
-   - Return value changed
-   - Behavior changed
-
-**Verbose Comment Audit:**
-1. **Test file headers** - Should be concise summary, not essay
-   - Current behavior (1-2 paragraphs)
-   - Critical discoveries (bullet list)
-   - How understanding was established (brief)
-
-2. **Function docstrings** - Focus on contract, not implementation
-   ```python
-   # ❌ TOO VERBOSE
-   def deduplicate_and_sum(leaves):
-       """
-       This function takes a list of leaf parts and processes them
-       by iterating through each one and checking if it's a CtL part
-       or an internal fab part or a regular part and then it aggregates
-       them based on part_id and also creates cut lists if needed...
-       (5 more paragraphs)
-       """
-   
-   # ✅ CONCISE
-   def deduplicate_and_sum(leaves):
-       """
-       Aggregate leaf parts by part_id, creating cut lists where applicable.
-       
-       Args:
-           leaves: List of leaf part dicts from BOM traversal
-           
-       Returns:
-           List of aggregated parts with total_qty and optional cut lists
-       """
-   ```
-
-3. **Inline comments** - One line explaining non-obvious logic
-   ```python
-   # ❌ TOO VERBOSE
-   # We need to check if the unit is in the allowed units set because
-   # if it's not then the part shouldn't be included in the cut list
-   # since we can't aggregate parts with different units together
-   if unit not in allowed_ifab_units:
-   
-   # ✅ CONCISE
-   # Same part must have same unit - mismatch indicates data corruption
-   if unit not in allowed_ifab_units:
-   ```
-
-**Cleanup Checklist:**
-- [ ] Search for functions defined but never called
-- [ ] Look for unreachable code paths (after debugging sessions)
-- [ ] Check for try/except blocks that can't fail
-- [ ] Review comments explaining "what" instead of "why"
-- [ ] Update docstrings to match current function signatures
-- [ ] Remove TODO comments that were completed
-- [ ] Condense verbose test file headers
-- [ ] Remove debug logging that's no longer needed
-
-**Tools to Use:**
-```powershell
-# Find function definitions
-grep_search -query "def function_name" -isRegexp false
-
-# Find function calls
-grep_search -query "function_name(" -isRegexp false
-
-# Find TODO comments
-grep_search -query "TODO" -isRegexp false
-
-# Find long docstrings (manual review)
-# Look for """ followed by many lines before closing """
-```
-
-**When to Clean:**
-- ✅ After completing a feature (remove debug code)
-- ✅ After refactoring (remove old comments)
-- ✅ When tests are comprehensive (safe to remove dead code)
-- ✅ Before major refactor (clean slate to work from)
-
-**When NOT to Clean:**
-- ❌ During active debugging (keep context)
-- ❌ When tests are incomplete (might not be dead code)
-- ❌ Before understanding code (might remove needed fallbacks)
+**Blocked Until:** Backend integration test gaps filled (confidence in API stability)
 
 ---
 
-## Priority Additions
-- Expand warning system with 3-5 new types (3-5 hours)
+### InvenTree Export Integration (4-6 hours, MEDIUM PRIORITY)
+**Goal:** Replace custom CSV export with InvenTree's built-in export system
 
----
+**Current State:**
+- Custom CSV export in Panel.tsx
+- Manual field escaping and formatting
+- Only supports CSV format
 
-## Priority Additions
-
-### Use InvenTree Export Plugin System (High Priority)
-**Current**: Custom CSV export in Panel.tsx with manual column handling  
-**Target**: Integrate with InvenTree's DataExportMixin for standardized exports
-
-**Why**: InvenTree has a built-in export infrastructure that:
-- Supports multiple formats (CSV, JSON, XLSX)
-- Handles encoding, escaping, and formatting automatically
-- Provides consistent UI/UX with rest of InvenTree
-- Allows server-side generation (no client memory limits)
-
-**Implementation**:
+**Proposed Changes:**
 1. Add `DataExportMixin` to plugin class
 2. Register flat BOM export endpoint
 3. Replace frontend "Export CSV" button with InvenTree's export dialog
-4. Remove custom `escapeCsvField` and export logic from Panel.tsx
+4. Remove custom `escapeCsvField` logic
 
-**Reference**: See how standard BOM export works in InvenTree source
-- Document all major changes and rationale
+**Benefits:**
+- Multiple formats supported (CSV, JSON, XLSX)
+- Automatic encoding and escaping
+- Consistent UI/UX with rest of InvenTree
+- Server-side generation (no client memory limits)
 
-## Step 1: Code Review
-- Review frontend (Panel.tsx, related components, hooks, API logic)
-- Review backend (core.py, bom_traversal.py, views.py, categorization.py)
-- Identify:
-  - Long files/components (over 300 lines)
-  - Repeated or tightly coupled logic
-  - Unclear responsibilities or “God objects”
-  - Outdated patterns or tech debt
-  - Missing/unclear documentation
+**Reference:** See InvenTree source for standard BOM export implementation
 
-## Step 2: Outline Refactor Targets
-- List pain points and desired outcomes for each major file/module
-- Example (Panel.tsx):
-  - Split into smaller presentational and container components
-  - Move API/data logic to custom hooks
-  - Extract table logic, summary, and controls into separate files
-  - Add/clarify prop and state types
-- Example (bom_traversal.py):
-  - Clarify function responsibilities
-  - Add docstrings and type hints
-  - Split large functions if needed
-- Example (serializers.py):
-  - Replace manual dictionary construction in views.py
-  - Create serializers for BOM items, warnings, and responses
-  - Improve type safety and maintainability
-  - Separate data transformation from business logic
-
-## Step 3: Plan Refactor Steps
-- For each target area:
-  - Define what to split, move, or rewrite
-  - Choose new structure/pattern (e.g., hooks, context, services)
-  - Plan how to test and validate after each step
-- Prioritize high-impact, low-risk changes first
-- Commit after each logical step
-
-## Step 4: Incremental Refactor & Test
-- Refactor one area at a time
-- Run tests and check UI after each change
-- Document changes in code and this plan
-- **Watch for warning opportunities**: As you refactor, identify:
-  - BOM structure issues that could cause incorrect output
-  - Plugin settings that could be misconfigured
-  - Data transformations where user input could cause errors
-  - Edge cases in algorithms that need user awareness
-  - Add warnings for plugin-specific issues only (not general InvenTree concerns)
-
-## Step 5: Final Review & Documentation
-- Review for code clarity, maintainability, and test coverage
-- Update README and developer docs
-- Summarize lessons learned and future improvement ideas
+**Defer Until:** Backend 100% stable with comprehensive tests
 
 ---
+
+### Warning System Expansion (3-5 hours, LOW PRIORITY)
+**Goal:** Add more warning types for better user guidance
+
+**Current Warnings:** (4 types implemented)
+- `unit_mismatch` - Cut-to-length parts with inconsistent units
+- `inactive_part` - Parts marked inactive in InvenTree
+- `assembly_no_children` - Assemblies without BOM items
+- `max_depth_exceeded` - BOM traversal stopped by depth limit
+
+**Proposed New Warnings:** (See [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md))
+- Missing supplier - Parts without default supplier
+- Zero stock - Parts with no inventory and no incoming POs
+- Obsolete parts - Parts marked for discontinuation
+- Long lead time - Parts with >30 day lead time
+- BOM conflicts - Duplicate parts with different quantities
+
+**Implementation:**
+- Add warning type to serializer enum
+- Implement detection logic in views.py
+- Add i18n translations
+- Update UI to display new warnings
+
+**Status:** Core warning infrastructure complete, expansion deferred
+
 ---
 
-## Testing Strategy
+## Plugin Feature Ideas (Future Exploration)
 
-**Documentation**:
-- [DEPLOYMENT-WORKFLOW.md](DEPLOYMENT-WORKFLOW.md) - **Deployment checklist and phase-based testing workflow**
-- [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) - Test execution, strategy, and test-first workflow
-- [TEST-QUALITY-REVIEW.md](TEST-QUALITY-REVIEW.md) - Quality analysis and improvement roadmap
-- **Toolkit Testing Docs** (in toolkit root):
-  - `docs/toolkit/TESTING-STRATEGY.md` - Unit vs integration testing strategy
-  - `docs/toolkit/INVENTREE-DEV-SETUP.md` - InvenTree dev environment setup
-  - `docs/toolkit/INTEGRATION-TESTING-SUMMARY.md` - What we built, quick start
+### Multi-Level BOM Analysis
+- Show BOM at each level (not just flat)
+- Toggle between flat and hierarchical view
+- Visualize BOM tree structure
 
-**Test-First Workflow**:
+### Cost Analysis
+- Calculate total BOM cost
+- Show cost breakdown by part type
+- Track cost changes over time
+
+### Make vs Buy Analysis
+- Compare internal fabrication vs purchase cost
+- Lead time comparison
+- Supplier reliability scoring
+
+### BOM Comparison
+- Compare BOMs between part revisions
+- Highlight added/removed/changed items
+- Show quantity differences
+
+**Note:** These are ideas for discussion, not committed work. Evaluate value vs complexity before implementing.
+
+---
+
+## Completed Refactoring Phases
+
+### Phase 1: Test Quality Foundation (Dec 18, 2025)
+- Fixed skipped test (merged test_piece_qty_times_count_rollup into internal fab tests)
+- Rewrote internal fab tests (removed stub functions, 14 tests validate actual code)
+- Established code-first test methodology
+- Found/removed 45 lines dead code, fixed 2 incorrect fallbacks
+
+### Phase 2: Test Validation (Jan 9, 2026)
+- Validated 164 unit tests with code-first methodology
+- Added 30 new tests to fill coverage gaps
+- Fixed 4 broken integration tests
+- Comprehensive gap analysis (7 priorities identified)
+- Found/removed additional 51 lines dead code
+
+### Phase 3: Serializer Refactoring (Dec 15-18, 2025)
+- Phase 1: BOMWarningSerializer (4 fields)
+- Phase 2: FlatBOMItemSerializer (24 fields)
+- Phase 3: FlatBOMResponseSerializer (8 fields)
+- Created 38 comprehensive serializer tests
+- Found 2 bugs through testing (note field, image URLs)
+- **Status:** Ready for production deployment
+
+---
+
+## Development Workflow
+
+### Test-First Approach
 1. Check if tests exist for code you're refactoring
 2. Evaluate test quality (coverage, thoroughness, accuracy)
-3. Improve/create tests BEFORE refactoring (unit AND integration)
-4. Refactor code
-5. Verify tests still pass
+3. Improve/create tests BEFORE refactoring
+4. Make code changes
+5. Verify tests pass
+6. Deploy → Test in UI → Verify
 
-**Integration Testing Setup** (one-time):
-```powershell
-.\scripts\Setup-InvenTreeDev.ps1
-.\scripts\Link-PluginToDev.ps1 -Plugin "FlatBOMGenerator"
-```
+### Code Quality Standards
+- **Pure functions preferred** - Easier to test and reason about
+- **Type hints required** - All functions have parameter and return types
+- **Docstrings with examples** - Explain why, not what
+- **Functions under 50 lines** - Extract subfunctions if longer
+- **No dead code** - Remove unused imports, functions, fallbacks
 
-**Run Tests**:
-```powershell
-# Unit tests (fast, no database)
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
-
-# Integration tests (requires InvenTree dev setup)
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
-
-# All tests
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -All
-```
+### Documentation Updates
+- Update docstrings when function signatures change
+- Update ARCHITECTURE.md when adding/removing files
+- Update this ROADMAP when priorities change
+- Link related documentation (don't duplicate content)
 
 ---
 
-## Next Steps & Recommendations
+## Next Steps
 
-**See detailed quality analysis:**
-- [INTEGRATION-TEST-REVIEW.md](INTEGRATION-TEST-REVIEW.md) - Integration test quality assessment (B+ grade)
-- [TEST-QUALITY-REVIEW.md](TEST-QUALITY-REVIEW.md) - Complete unit test quality analysis
+**Immediate (This Week):**
+1. Deploy Phase 3 serializers to production
+2. Verify API response format in UI
+3. Run performance test with large BOM (100+ parts)
 
-**Immediate Actions:**
-1. **Deploy Phase 3 serializers** - Complete the refactoring cycle
-2. **Fix skipped test** - Resolve `test_piece_qty_times_count_rollup`
-3. **Rewrite internal fab tests** - Remove stub functions, test real code
+**Short Term (Next 2 Weeks):**
+1. Add plugin settings integration tests (5-7 tests)
+2. Add error scenario integration tests (3-4 tests)
+3. Document any deployment issues
 
-**Future Improvements:**
-- Frontend Panel.tsx refactoring (defer until backend stable)
-- InvenTree DataExportMixin integration (optimization, not critical)
-- Warning system expansion (nice-to-have)
+**Medium Term (Next Month):**
+1. Fill remaining integration test gaps
+2. Consider frontend refactoring (if backend stable)
+3. Evaluate export system integration
 
----
-
-_Last updated: December 17, 2025_
-- Removed unused ASSEMBLY_CATEGORY setting
-- Learned: Start with pure functions, test before refactoring
-
-**2025-12-15**: Warning system implementation (v0.9.2)
-- Implemented 4 warning types with flag propagation
-- Fixed assembly_no_children bug
-- Created ARCHITECTURE-WARNINGS.md documenting patterns
-- Reduced warning noise from 65 to 5 through prioritization
-- Added 82 passing tests (1 skipped)
-
-**2025-12-15 Evening**: Serializer refactoring Phase 2 (v0.9.2)
-- **Phase 2 Complete**: Implemented FlatBOMItemSerializer (24 fields)
-- Replaced manual dict construction in views.py
-- Created 23 comprehensive serializer tests
-- **Found 2 bugs through testing**: note field requirements, image URL field types
-- **Production validated**: Deployed to staging, tested with 117 BOM items
-- Created TEST-QUALITY-REVIEW.md identifying critical test gaps
-- Established test-first workflow guidelines
-
-**Key Insights Learned**:
-- Test-first approach catches bugs immediately
-- 106 passing tests don't guarantee refactored code works
-- Test quality matters as much as test quantity
-- Views.py completely untested despite refactoring
-- Django REST Framework available in InvenTree (no dependency issues)
-
-**Current Status**: Phase 2 complete, ready for Phase 3
+**Long Term (Future):**
+- Warning system expansion (if user feedback indicates value)
+- Frontend component extraction (if code becomes hard to maintain)
+- Feature exploration (cost analysis, BOM comparison)
 
 ---
 
-## Serializer Refactoring Plan
+## References
 
-### Goal
-Replace manual dictionary construction in views.py with Django REST Framework serializers to improve:
-- Code maintainability and readability
-- Type safety and validation
-- Separation of concerns (data transformation vs business logic)
-- Testability
+**Testing:**
+- [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) - Test execution, strategy, priorities
+- [TEST-WRITING-METHODOLOGY.md](TEST-WRITING-METHODOLOGY.md) - Code-first validation approach
 
-### Current Pain Points
+**Architecture:**
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Plugin architecture, API reference, patterns
 
-**In views.py (lines 325-430):**
-```python
-# Manual dictionary construction - repetitive and error-prone
-enriched_item = {
-    **item,
-    "full_name": part_obj.full_name if hasattr(part_obj, "full_name") else part_obj.name,
-    "image": part_obj.image.url if part_obj.image else None,
-    "thumbnail": part_obj.image.thumbnail.url if part_obj.image else None,
-    # ... 10+ more fields manually mapped
-}
-```
+**Warnings:**
+- [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md) - Warning system expansion ideas
+- [ARCHITECTURE-WARNINGS.md](ARCHITECTURE-WARNINGS.md) - Warning system implementation patterns
 
-**Issues:**
-- Repetitive `if hasattr()` and `if x else None` checks
-- Hard to test data transformation logic
-- Manual field mapping is error-prone
-- No type validation
-- Violates DRY (Don't Repeat Yourself)
-- Business logic mixed with data serialization
-
-### Proposed Serializers
-
-#### 1. `BOMWarningSerializer`
-**Purpose**: Serialize warning messages with consistent structure
-
-**Fields:**
-- `type` (CharField) - Warning category (unit_mismatch, inactive_part, etc.)
-- `part_id` (IntegerField, optional) - Associated part ID
-- `part_name` (CharField, optional) - Human-readable part name
-- `message` (CharField) - User-facing warning text
-
-**Benefit**: Consistent warning format, easy to add new warning types
-
-#### 2. `FlatBOMItemSerializer`
-**Purpose**: Serialize enriched BOM item data for frontend
-
-**Fields:**
-- All fields from `flat_bom` traversal output
-- Part model fields: `full_name`, `image`, `thumbnail`, `units`
-- Stock fields: `in_stock`, `on_order`, `allocated`, `available`
-- Navigation: `link` to part detail page
-
-**Methods:**
-- `get_full_name()` - Handle full_name fallback logic
-- `get_image()` - Safe URL extraction with None handling
-- `get_thumbnail()` - Safe thumbnail URL extraction
-
-**Benefit**: All field mapping logic in one place, easy to test
-
-#### 3. `FlatBOMResponseSerializer`
-**Purpose**: Wrap complete API response structure
-
-**Fields:**
-- `part_id` (IntegerField) - Root part ID
-- `part_name` (CharField) - Root part name
-- `ipn` (CharField) - Root part IPN
-- `bom_items` (List[FlatBOMItemSerializer]) - Flattened BOM
-- `metadata` (Dict) - Counters and stats
-  - `total_unique_parts`
-  - `total_ifps_processed`
-  - `max_depth_reached`
-  - `warnings` (List[BOMWarningSerializer])
-
-**Benefit**: Single source of truth for API contract, auto-generates API docs
-
-### Implementation Plan
-
-**Phase 1: Create Serializers (No Breaking Changes)**
-1. Create `BOMWarningSerializer` in serializers.py
-2. Create `FlatBOMItemSerializer` in serializers.py
-3. Create `FlatBOMResponseSerializer` in serializers.py
-4. Add docstrings explaining each field
-5. Run tests to ensure no regressions
-
-**Phase 2: Refactor views.py to Use Serializers**
-1. Replace manual warning dict construction with `BOMWarningSerializer`
-2. Replace enriched_item dict construction with `FlatBOMItemSerializer`
-3. Replace Response() dict with `FlatBOMResponseSerializer`
-4. Remove redundant field mapping code
-5. Run tests and verify API output unchanged
-
-**Phase 3: Add Serializer Tests**
-1. Test `BOMWarningSerializer` with various warning types
-2. Test `FlatBOMItemSerializer` with Part objects
-3. Test edge cases: missing images, None values, empty fields
-4. Test `FlatBOMResponseSerializer` integration
-
-**Phase 4: Documentation**
-1. Update PLUGIN-CONTEXT.md with serializer architecture
-2. Document serializer patterns learned
-3. Add to refactor plan progress log
-
-### When to Do This
-
-**Good time to implement:**
-- After current warning system is stable
-- Before adding new API endpoints
-- When we need to modify API response structure
-- As part of views.py refactoring
-
-**Dependencies:**
-- None - can be done incrementally
-- Serializers work alongside existing code during transition
-
-### Learning Opportunities
-
-This refactor teaches:
-- Django REST Framework serializer patterns
-- Separation of concerns in API design
-- How to write testable data transformation code
-- Industry-standard API development practices
+**Deployment:**
+- [DEPLOYMENT-WORKFLOW.md](DEPLOYMENT-WORKFLOW.md) - Deployment checklist and testing workflow
 
 ---
 
-## Known Issues & Next Steps
-
-**See [TEST-QUALITY-REVIEW.md](TEST-QUALITY-REVIEW.md) for detailed analysis.**
-
-**Critical Priorities** (from test quality review):
-- 🔴 Add views.py integration tests (2-3 hours) - Test view function directly (NOT via HTTP - InvenTree doesn't support plugin URL testing)
-- 🔴 Fix or remove skipped test (test_piece_qty_times_count_rollup)
-- 🔴 Rewrite test_internal_fab_cutlist.py (tests stub functions, not real code)
-- 🟡 Add core BOM traversal tests (get_flat_bom, deduplicate_and_sum)
-- 🟡 Expand cut-to-length test coverage
-
-**Current Test Status**: 106 tests (105 passing, 1 skipped)
-
-**⚠️ CRITICAL LEARNING** (Dec 16, 2025): InvenTree does NOT support plugin URL testing via Django test client. Plugin URLs return 404 in tests. 
-
-**How to test API endpoints**: See [TEST-PLAN.md](../../flat_bom_generator/tests/TEST-PLAN.md) → API Endpoint Testing Strategy section for detailed patterns:
-- Call view functions directly with RequestFactory (not via HTTP)
-- Test business logic functions with real Part/BOM models
-- Manual testing for HTTP layer (UI, API client)
-
-Also see [TESTING-STRATEGY.md](../../../../docs/toolkit/TESTING-STRATEGY.md) for toolkit-level integration testing philosophy.
-
----
-
-**Final Tips:**
-- Ask for advice or code review at any step
-- Don't try to do everything at once—small, tested steps are best
-- Use this plan as a living document: update as you go
-- **Always check test quality, not just test count**
-- **Write tests for what you're refactoring, not just what's easy to test**
-
----
-
-_Last updated: 2025-12-17_
+_Last updated: January 9, 2026_

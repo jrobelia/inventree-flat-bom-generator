@@ -1,439 +1,381 @@
-# FlatBOMGenerator Plugin - Test Plan
+# FlatBOMGenerator - Test Plan
 
-**Last Updated**: December 18, 2025  
-**Test Count**: 121 tests (14 view integration tests + 107 business logic tests)  
-**Overall Grade**: B+ (good foundation, internal fab tests upgraded)
+**Last Updated**: January 9, 2026  
+**Test Count**: 195 tests (164 unit + 31 integration)  
+**Overall Grade**: A- (excellent unit tests, integration needs gap filling)
+
+---
 
 ## Overview
 
-This test plan documents the **current test suite** and **testing strategy** for the FlatBOMGenerator plugin:
+This document covers **testing strategy, execution, and improvement priorities** for the FlatBOMGenerator plugin.
 
-- **107 automated unit tests** (all passing)
-- **14 integration tests created** (framework working, URL registration issue)
-- **Test-first workflow** - Check/create/improve tests BEFORE refactoring
-- **Test quality evaluation** - Assess coverage, thoroughness, accuracy before changes
-- **Code-first methodology** - Walk through actual code before writing tests
-- **10-15 minute manual UI verification** - Quick smoke test checklist for deployment
-- **Manual test execution** - Currently no CI/CD (see Section 11 for post-refactor considerations)
+**Related Documents:**
+- [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan and architecture
+- [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) - Code-first validation approach
+- [ARCHITECTURE.md](../../ARCHITECTURE.md) - Plugin architecture and API reference
 
-**Related Documents**:
-- **[TEST-WRITING-METHODOLOGY.md](../../docs/internal/TEST-WRITING-METHODOLOGY.md)** - Code-first approach for validating tests
-- **[ROADMAP.md](../../docs/internal/ROADMAP.md)** - Refactoring priorities, test-first workflow, serializer refactoring status
-- **[TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)** - Detailed test quality analysis, improvement roadmap, quality checklist
-- **Integration Testing Setup**: See toolkit docs:
-  - `docs/toolkit/INVENTREE-DEV-SETUP.md` - InvenTree dev environment setup
-  - `docs/toolkit/INTEGRATION-TESTING-SUMMARY.md` - 6-hour investigation of plugin URL limitation
-  - `docs/toolkit/INTEGRATION-TESTING-SETUP-SUMMARY.md` - Current status and known issues
-  - `docs/toolkit/TESTING-STRATEGY.md` - Unit vs integration testing philosophy
+---
+
+## Test Execution
+
+### Quick Start
+
+```powershell
+# Unit tests (fast, no InvenTree required)
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
+
+# Integration tests (requires InvenTree dev environment)
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
+
+# All tests
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -All
+```
+
+### Unit Tests
+
+**Location:** `flat_bom_generator/tests/*.py`  
+**Purpose:** Test individual functions in isolation, no database required
+
+**Files:** (164 tests total)
+- `test_categorization.py` (50 tests) - Part type classification
+- `test_serializers.py` (38 tests) - DRF serializer validation
+- `test_views.py` (16 tests) - View structure and helper functions
+- `test_internal_fab_cutlist.py` (14 tests) - Internal fab cut lists
+- `test_assembly_no_children.py` (15 tests) - Warning flag logic
+- `test_shortfall_calculation.py` (13 tests) - Frontend calculations
+- `test_max_depth_warnings.py` (8 tests) - Flag prioritization
+- `test_cut_to_length_aggregation.py` (8 tests) - CtL aggregation
+- `test_full_bom_part_13.py` (deleted) - Zero value test
+- `test_internal_fab_cut_rollup.py` (merged) - Consolidated into cutlist tests
+
+**Characteristics:**
+- Fast execution (< 1 second total)
+- No external dependencies
+- Test pure functions and serializers
+- Can run without InvenTree dev environment
+
+**Run from plugin directory:**
+```bash
+cd plugins/FlatBOMGenerator
+& ".venv\Scripts\Activate.ps1"
+python -m unittest flat_bom_generator.tests.test_categorization -v
+```
+
+### Integration Tests
+
+**Location:** `flat_bom_generator/tests/integration/*.py`  
+**Purpose:** Test with real InvenTree Part/BomItem/Stock models
+
+**Files:** (31 tests total)
+- `test_view_function.py` (14 tests) - FlatBOMView endpoint testing
+- `test_views_integration.py` (12 tests) - BOM traversal workflow
+- `test_bom_traversal_integration.py` (5 tests) - Core function integration
+
+**Characteristics:**
+- Slower execution (2-5 seconds)
+- Requires InvenTree dev environment
+- Creates test database records
+- Tests full workflow with Django models
+
+**Prerequisites:**
+1. Run `.\scripts\Setup-InvenTreeDev.ps1` (one-time setup)
+2. Run `.\scripts\Link-PluginToDev.ps1 -Plugin "FlatBOMGenerator"` (creates Junction AND pip installs)
+3. Activate plugin in InvenTree admin panel (Active=True)
+
+**Run from toolkit root:**
+```powershell
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
+```
+
+---
 
 ## Test Framework
 
-**⚠️ CRITICAL**: InvenTree does NOT support plugin URL testing via Django test client. Plugin URLs return 404 in tests. See "API Endpoint Testing Strategy" section below.InvenTree plugins use **Django's TestCase** from `InvenTree.unit_test` module. Tests should inherit from:
-
-- `InvenTreeTestCase` - For basic unit tests and direct function testing
-- `InvenTreeAPITestCase` - For non-plugin API endpoints (plugin URLs not accessible in tests)
+**InvenTree Test Framework:**
+- Inherits from Django's `TestCase`
+- Uses `InvenTree.unit_test` module
+- Test classes: `InvenTreeTestCase`, `InvenTreeAPITestCase`
 
 **Virtual Environment:**
-- Django and djangorestframework are installed in `.venv`
-- Always activate `.venv` before running tests: `& ".venv\Scripts\Activate.ps1"`
-- Test serializers require Django environment (configured in test file)
+- Django and djangorestframework installed in `.venv`
+- Activate before running: `& ".venv\Scripts\Activate.ps1"`
+- Serializer tests require Django environment
 
-**Test Execution**:
-```bash
-# UNIT TESTS (Fast, no InvenTree required)
-# From plugin directory with venv activated (RECOMMENDED)
-cd plugins/FlatBOMGenerator
-& ".venv\Scripts\Activate.ps1"
-python -m unittest flat_bom_generator.tests.test_shortfall_calculation -v
-
-# From toolkit root - use automated script
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
-
-# INTEGRATION TESTS (Requires InvenTree dev environment + plugin installed)
-# Prerequisites:
-#   1. Run Setup-InvenTreeDev.ps1 (one-time)
-#   2. Run Link-PluginToDev.ps1 (creates Junction AND pip installs plugin)
-#   3. Activate plugin in InvenTree admin panel (Active=True)
-
-# From toolkit root
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
-
-# Or manually with InvenTree invoke command (if in InvenTree dev environment)
-# (Note: invoke has PTY issues on Windows, use Test-Plugin.ps1 script instead)
-cd inventree-dev\InvenTree
-invoke dev.test -r FlatBOMGenerator.flat_bom_generator.tests.integration
-```
-
-**Critical**: Integration tests require plugin to be:
-1. **Linked** via Junction (file access)
-2. **Installed** via `pip install -e .` (entry point registration)
-3. **Activated** in InvenTree admin panel (Active=True in database)
-
-See `docs/toolkit/INTEGRATION-TESTING-SUMMARY.md` → "What We Learned" for details.
-
-**Integration Testing Status**:
-- ✅ **Framework Working**: 14 tests discovered and executed
-- ✅ **URL Registration Fixed**: Plugin requires `pip install -e .` in InvenTree venv (not just Junction)
-- **Setup**: Run `Link-PluginToDev.ps1` which creates Junction AND pip installs plugin
-- **Details**: See `docs/toolkit/INTEGRATION-TESTING-SETUP-SUMMARY.md` → "What We Learned" section
-
-**Environment Setup**:
+**Environment Variables:**
 ```powershell
 $env:INVENTREE_PLUGINS_ENABLED = "True"
 $env:INVENTREE_PLUGIN_TESTING = "True"
 $env:INVENTREE_PLUGIN_TESTING_SETUP = "True"
 ```
-
-See [InvenTree Plugin Testing Documentation](https://docs.inventree.org/en/latest/plugins/test/)
 
 ---
 
 ## API Endpoint Testing Strategy
 
-**The Problem**: InvenTree's plugin system does NOT expose plugin URLs to Django's test client. HTTP requests to plugin endpoints return 404 in tests.
+### The Problem
 
-**The Solution**: Test business logic directly, not via HTTP.
+**InvenTree does NOT support plugin URL testing via Django test client.**
 
-### What We CAN Test (Integration Tests)
+Plugin URLs return 404 in tests because plugin endpoints aren't registered in test environment.
 
-1. **View Functions Directly**:
-   ```python
-   from flat_bom_generator.views import FlatBOMView
-   from django.test import RequestFactory
-   
-   def test_view_with_valid_part(self):
-       factory = RequestFactory()
-       request = factory.get('/fake-url')
-       view = FlatBOMView()
-       response = view.get(request, part_id=self.part.pk)
-       self.assertEqual(response.status_code, 200)
-   ```
+### The Solution
 
-2. **Business Logic Functions**:
-   ```python
-   from flat_bom_generator.bom_traversal import get_flat_bom
-   
-   def test_get_flat_bom_with_real_parts(self):
-       result, imp_count, warnings, max_depth = get_flat_bom(self.part.pk)
-       self.assertIsInstance(result, list)
-   ```
+**Test business logic directly, not via HTTP.**
 
-3. **Serializers with Real Data**:
-   ```python
-   from flat_bom_generator.serializers import FlatBOMItemSerializer
-   
-   def test_serializer_validates_real_part(self):
-       serializer = FlatBOMItemSerializer(data=test_data)
-       self.assertTrue(serializer.is_valid())
-   ```
+#### What We CAN Test (Integration Tests)
 
-### What We CANNOT Test (Requires Manual Testing)
+**1. View Functions Directly:**
+```python
+from flat_bom_generator.views import FlatBOMView
+from django.test import RequestFactory
+
+def test_view_with_valid_part(self):
+    factory = RequestFactory()
+    request = factory.get('/fake-url')
+    view = FlatBOMView()
+    response = view.get(request, part_id=self.part.pk)
+    self.assertEqual(response.status_code, 200)
+```
+
+**2. Business Logic Functions:**
+```python
+from flat_bom_generator.bom_traversal import get_flat_bom
+
+def test_get_flat_bom_with_real_parts(self):
+    result, imp_count, warnings, max_depth = get_flat_bom(self.part.pk)
+    self.assertIsInstance(result, list)
+    self.assertGreater(len(result), 0)
+```
+
+**3. Serializers with Real Data:**
+```python
+from flat_bom_generator.serializers import FlatBOMItemSerializer
+
+def test_serializer_validates_real_part(self):
+    serializer = FlatBOMItemSerializer(data=test_data)
+    self.assertTrue(serializer.is_valid())
+```
+
+#### What We CANNOT Test (Requires Manual Testing)
 
 - ❌ HTTP requests to `/api/plugin/flat-bom-generator/flat-bom/{id}/`
 - ❌ URL routing and middleware
 - ❌ Authentication/permissions on plugin endpoints
-- ✅ **Manual Test Instead**: Use InvenTree UI or API client (Postman/curl) on running server
+- ✅ **Manual Test Instead:** Use InvenTree UI or API client (Postman/curl) on running server
 
-**Reference**: See [TESTING-STRATEGY.md](../../../../../docs/toolkit/TESTING-STRATEGY.md) for complete integration testing guidance.
-
----
-
-## 1. Current Test Suite (106 Tests)
-
-### 1.1 Test Files Overview
-
-| File | Tests | Status | Quality | Purpose |
-|------|-------|--------|---------|---------|
-| `test_view_function.py` | 14 | ✅ Pass* | ⭐⭐⭐ High | Test FlatBOMView API endpoint (view layer) |
-| `test_serializers.py` | 23 | ✅ Pass | ⭐⭐⭐ High | Validate DRF serializers for API responses |
-| `test_shortfall_calculation.py` | 21 | ✅ Pass | ⭐⭐⭐ High | Test 4 checkbox scenarios + edge cases |
-| `test_categorization.py` | 18 | ✅ Pass | ⭐⭐⭐ High | Test FAB/COML/IMP detection logic |
-| `test_assembly_no_children.py` | 4 | ✅ Pass | ⭐⭐ Medium | Verify assemblies without children are included |
-| `test_max_depth_warnings.py` | 5 | ✅ Pass | ⭐⭐ Medium | Test max_depth flag propagation |
-| `test_cut_to_length_aggregation.py` | 1 | ✅ Pass | ⭐⭐ Medium | Test cut-to-length aggregation (needs expansion) |
-| `test_internal_fab_cutlist.py` | 9 | ✅ Pass | ⭐ Low | **Tests stub functions, not real code** |
-| `test_full_bom_part_13.py` | 3 | ✅ Pass | ⭐ Low | Magic numbers, unexplained expectations |
-| `test_internal_fab_cut_rollup.py` | 22 | ⚠️ Skipped | ⭐ Low | **1 test skipped for months** |
-
-**Summary**: 62 high-quality tests, 10 medium-quality, 12 low-quality (need rewrite), 1 skipped (needs investigation)
+**Reference:** See [toolkit/TESTING-STRATEGY.md](../../../../docs/toolkit/TESTING-STRATEGY.md) for complete integration testing philosophy.
 
 ---
 
-### 1.2 Critical Coverage Gaps
+## Test Improvement Priorities
 
-**For detailed test quality analysis and improvement roadmap, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)**
+### Current Coverage
 
-**Summary of Critical Gaps**:
-- ✅ **views.py** - 14 integration tests for `FlatBOMView.get()` endpoint (completed Dec 17, 2025)
-- 🔴 **Core BOM traversal** - `get_flat_bom()` and `deduplicate_and_sum()` untested
-- 🔴 **Error conditions** - No tests for missing part_id, database errors, validation failures
-- 🟡 **Cut-to-length** - Only 1 test, needs expansion (5-10 more tests)
-- 🟡 **Internal fab** - Tests use stub functions instead of real code (complete rewrite needed)
-- 🟡 **Skipped test** - `test_piece_qty_times_count_rollup` needs investigation
+**What's Well Tested:**
+- ✅ Serializers (38 tests) - All fields, validation, edge cases
+- ✅ Categorization (50 tests) - All functions, all part types
+- ✅ Warning flags (23 tests) - Flag logic and propagation
+- ✅ View structure (16 tests) - Helper functions, imports, contracts
+- ✅ Cut-to-length (22 tests) - Aggregation and internal fab
+- ✅ Stock calculations (13 tests) - Shortfall formulas
 
----
+**What's Missing (Integration Test Gaps):**
 
-### 1.3 Test-First Workflow & Quality Standards
+### 🔴 Priority 1: Plugin Settings & Configuration (0 tests, HIGH RISK)
+**Estimated Time:** 2-3 hours for 5-7 tests
 
-**For complete test-first workflow, see [ROADMAP.md](../../docs/internal/ROADMAP.md) → Testing section**
+**What to Test:**
+- `get_category_mappings()` with real plugin settings
+  - Category descendants via `category.get_descendants(include_self=True)`
+  - Multiple categories configured
+  - Invalid category IDs (graceful degradation)
+  
+- `get_internal_supplier_ids()` extraction
+  - Settings with comma-separated IDs
+  - Settings with single ID
+  - Empty/None settings
+  
+- `_extract_id_from_value()` type handling
+  - Integer values
+  - String values
+  - Objects with `.pk` attribute
+  - Objects with `.id` attribute
+  - None values
+  
+- MAX_DEPTH setting from plugin
+  - Default value used
+  - Query parameter override
+  - Invalid values handled
 
-**For test quality checklist, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md) → Test Quality Checklist section**
-
-**Quick Reference**: Before refactoring any code:
-1. Check if tests exist
-2. Evaluate test quality
-3. Improve/create tests FIRST
-4. Refactor code
-5. Verify tests pass
-
----
-
-## 2. Detailed Test Documentation
-
-**For comprehensive file-by-file test analysis, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md)**
-
-The TEST-QUALITY-REVIEW document provides:
-- Detailed analysis of all 106 tests across 9 test files
-- Quality ratings and what's good/bad about each test file
-- Specific improvement recommendations with time estimates
-- Test anti-patterns to avoid
-- Complete test quality checklist
-
-**Quick Summary of Test Files** (see TEST-QUALITY-REVIEW.md for full details):
-
-| File | Tests | Quality | Key Issues/Notes |
-|------|-------|---------|------------------|
-| test_serializers.py | 23 | ⭐⭐⭐ High | Comprehensive field validation, found 2 bugs |
-| test_shortfall_calculation.py | 21 | ⭐⭐⭐ High | All 4 checkbox scenarios + edge cases |
-| test_categorization.py | 18 | ⭐⭐⭐ High | Pure functions well tested |
-| test_assembly_no_children.py | 4 | ⭐⭐ Medium | Good but has duplicate tree structure |
-| test_max_depth_warnings.py | 5 | ⭐⭐ Medium | Tests logic duplication, not actual code |
-| test_cut_to_length_aggregation.py | 1 | ⭐⭐ Medium | **Needs 5-10 more tests** |
-| test_internal_fab_cutlist.py | 9 | ⭐ Low | **Tests stub functions, needs rewrite** |
-| test_full_bom_part_13.py | 3 | ⭐ Low | **Magic numbers, needs rewrite or delete** |
-| test_internal_fab_cut_rollup.py | 22 | ⭐ Low | **1 test skipped for months** |
+**Why Critical:** Settings misconfiguration breaks core functionality silently
 
 ---
 
-## 3. Test Improvement Roadmap
+### 🔴 Priority 2: Error Scenarios (0 tests, MEDIUM RISK)
+**Estimated Time:** 1 hour for 3-4 tests
 
-**For complete improvement roadmap with time estimates, see [TEST-QUALITY-REVIEW.md](../../docs/internal/TEST-QUALITY-REVIEW.md) → Recommendations by Priority**
+**What to Test:**
+- Database exceptions
+  - `Part.DoesNotExist` when part_id invalid
+  - `PartCategory.DoesNotExist` when category deleted
+  
+- Invalid query parameters
+  - Non-integer max_depth
+  - Negative part_id
+  - Missing required parameters
+  
+- Empty/None plugin settings
+  - No categories configured
+  - No internal suppliers configured
+  - Graceful fallback behavior
 
-### 3.1 Critical Priority (Do First)
-
-🔴 **Add Views Integration Tests** (2-3 hours)
-- Test `FlatBOMAPIView.get()` with mock data
-- Verify response structure matches API contract
-- Test error conditions (missing part_id, invalid data)
-- Test with checkbox combinations
-- **Status**: NOT STARTED - views.py has ZERO tests!
-
-🔴 **Fix or Remove Skipped Test** (1 hour)
-- Investigate `test_piece_qty_times_count_rollup`
-- Determine if feature incomplete or test wrong
-- Fix or delete with explanation
-
-🔴 **Rewrite Internal Fab Tests** (2-3 hours)
-- Remove stub functions
-- Test actual `get_flat_bom()` behavior
-- Use controlled test data, not external CSVs
+**Why Important:** Users should see helpful error messages, not stack traces
 
 ---
 
-### 3.2 High Priority (Do Soon)
+### 🟡 Priority 3: Warning Generation (0 tests for actual generation, MEDIUM PRIORITY)
+**Estimated Time:** 1.5 hours for 4-5 tests
 
-🟡 **Add Core BOM Traversal Tests** (3-4 hours)
-- Test `get_flat_bom()` with various BOM structures
-- Test `deduplicate_and_sum()` with duplicate parts
-- Test circular reference detection
-- Test quantity calculations through multiple levels
+**What to Test:**
+- Unit mismatch warnings
+  - Create CtL parts with different units
+  - Verify warning in API response metadata
+  
+- Inactive part warnings
+  - Create inactive Part objects
+  - Verify warning generated
+  
+- Assembly no children warnings
+  - Create assembly with no BOM items
+  - Verify assembly_no_children flag
+  - Verify NOT flagged when max_depth stopped it
+  
+- Max depth exceeded warnings
+  - Create very deep BOM (depth > 10)
+  - Verify max_depth_exceeded flag
+  - Verify summary warning message
 
-🟡 **Expand Cut-to-Length Tests** (1-2 hours)
-- Add edge cases: zero quantities, unit conversion, missing units
-- Test different unit combinations
-- Test error conditions
-
-🟡 **Fix Full BOM Part 13 Test** (30 minutes)
-- Add clear comments explaining expected values
-- Or delete if redundant with other tests
-
----
-
-### 3.3 Medium Priority (Future)
-
-🟢 **Add Error Condition Tests** (2 hours)
-- Test database query failures
-- Test missing required data
-- Test malformed BOM structures
-
-🟢 **Improve Shortfall/Max Depth Tests** (1 hour)
-- Import actual calculation functions instead of duplicating logic
-- Test functions in isolation
-
-🟢 **Performance Tests** (optional)
-- Large BOM stress testing (1000+ parts)
-- Measure response times
+**Why Valuable:** Warnings guide users to BOM issues they should fix
 
 ---
 
-## 4. Manual UI Verification (10 minutes)
+### 🟡 Priority 4: Complex BOM Structures (minimal coverage, MEDIUM PRIORITY)
+**Estimated Time:** 1.5 hours for 3-4 tests
 
-Run this checklist after each deployment to staging/production:
+**What to Test:**
+- Multi-level assemblies (depth > 2)
+  - Quantity multiplication through levels
+  - Correct aggregation at each level
+  
+- Duplicate parts at different BOM levels
+  - Same part in level 1 and level 3
+  - Quantities correctly summed
+  
+- Mixed leaf types in single BOM
+  - Fab + Coml + CtL + Purchased Assembly
+  - All types correctly categorized
+  
+- Internal Fab assemblies with children
+  - cut_length propagates correctly
+  - Children not lost in traversal
+
+**Why Useful:** Real-world BOMs are complex, need confidence they work
+
+---
+
+### 🟢 Priority 5-7: Deferred (Lower Priority)
+
+**Priority 5: Cut-to-Length Features** (0 integration tests)
+- CtL parts with length extraction from notes
+- Unit mismatch detection with actual InvenTree units
+- enable_ifab_cuts plugin setting effect
+
+**Priority 6: Query Parameters** (1 test only)
+- max_depth query parameter override
+- Invalid query parameter handling
+
+**Priority 7: Edge Cases** (0 tests)
+- Very deep BOMs (depth > 10)
+- Very wide BOMs (100+ children)
+- Parts with no category/supplier
+
+**Defer Until:** After Priorities 1-4 complete, evaluate if needed
+
+---
+
+## Test Quality Standards
+
+### What Makes a Good Test
+
+**✅ Good Test Characteristics:**
+- Tests actual behavior, not implementation details
+- Clear, descriptive name explains what it's testing
+- Independent (doesn't depend on other tests)
+- Covers edge cases (None, empty, zeros, negatives)
+- Makes specific assertions (not just `> 0`)
+- Uses controlled test data (not external files)
+- Fast execution (< 1 second per test)
+
+**❌ Test Anti-Patterns to Avoid:**
+- Magic numbers with no explanation
+- Duplicate calculation logic instead of importing actual code
+- Tests that depend on external data files
+- Tests that validate stub functions instead of real code
+- Tests that make vague assertions (`assertGreater(x, 0)`)
+- Tests that depend on test execution order
+
+### Code-First Methodology
+
+**Before writing/improving tests:**
+1. Read the actual production code
+2. Understand what it does (trace execution path)
+3. Identify edge cases and branches
+4. Write tests that validate actual behavior
+5. Look for dead code and incorrect fallbacks
+
+**See:** [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) for detailed guide
+
+---
+
+## Manual UI Verification
+
+**Run this 10-minute checklist after each deployment:**
 
 ### Basic Functionality
-- [ ] **Load Plugin**: Panel appears on part detail page
-- [ ] **Generate Flat BOM**: Click "Generate Flat BOM" button, table loads
-- [ ] **Component Column**: Shows full_name (e.g., "Electronics / Resistors / 10k Resistor")
-- [ ] **Units Display**: In Stock/Allocated/On Order show `[unit]` notation
+- [ ] Panel appears on part detail page
+- [ ] "Generate Flat BOM" button loads table
+- [ ] Component column shows full_name (not just part_name)
+- [ ] Units display [unit] notation on relevant columns
 
-### Interactive Features  
-- [ ] **Pagination**: 10/25/50/100/All options work correctly
-- [ ] **"All" Pagination**: Displays entire table without pagination
-- [ ] **Sorting**: Click column headers to sort (ascending/descending)
-- [ ] **Search**: Search box filters rows correctly
-- [ ] **Checkboxes**: Include Allocations/On Order toggle shortfall values
+### Interactive Features
+- [ ] Pagination (10/25/50/100/All) works correctly
+- [ ] "All" option displays entire table without pagination
+- [ ] Column sorting works (click headers)
+- [ ] Search box filters rows
+- [ ] Checkboxes toggle shortfall values
 
 ### Statistics Panel
-- [ ] **Total Unique Parts**: Count is accurate
-- [ ] **IMP Processed**: Count is accurate (label shows "IMP Processed", not "Total IMP Processed")
-- [ ] **Updates**: Statistics update when checkboxes change
+- [ ] "Total Unique Parts" count accurate
+- [ ] "IMP Processed" count accurate
+- [ ] Statistics update when checkboxes change
 
 ### CSV Export
-- [ ] **Export Button**: Downloads CSV file
-- [ ] **CSV Content**: All columns present (Component, IPN, Category, Total Qty, Unit, In Stock, Allocated, On Order, Shortfall)
-- [ ] **CSV Formatting**: Units included, shortfall values correct
+- [ ] Export button downloads CSV
+- [ ] All columns present in CSV
+- [ ] Units and shortfall values correct
 
 ### Error Handling
-- [ ] **No Errors**: Browser console (F12) shows no red errors
-- [ ] **Invalid Part**: Gracefully handles parts with no BOM
-- [ ] **Loading State**: Shows loading indicator during generation
+- [ ] No errors in browser console (F12)
+- [ ] Invalid part handled gracefully
+- [ ] Loading indicator shows during generation
 
 ---
 
-## 5. Test Data Setup
+## Adding New Tests
 
-### Minimal Test Hierarchy
-
-Create minimal test data in InvenTree staging:
-
-```
-TLA-001 (Top Level Assembly)
-├── IMP-001 (Internal Make Part) × 2
-│   ├── FAB-001 (Fabricated Part) × 4
-│   └── COML-001 (Commercial Part) × 2
-└── COML-002 (Commercial Part) × 10
-```
-
-### Test Stock Levels
-
-| Part | In Stock | Allocated | On Order | Notes |
-|------|----------|-----------|----------|-------|
-| FAB-001 | 50 | 10 | 100 | Should show sufficient stock |
-| COML-001 | 100 | 20 | 0 | Should show sufficient stock |
-| COML-002 | 5 | 0 | 200 | Shortfall without "On Order" |
-| IMP-001 | 10 | 2 | 0 | Parent assembly (not a leaf) |
-
-**Expected Behavior** (Building 1× TLA-001):
-- **Include Allocations ❌, Include On Order ❌**: COML-002 shows 5 shortfall (need 10, have 5)
-- **Include Allocations ✅, Include On Order ❌**: All parts sufficient
-- **Include Allocations ❌, Include On Order ✅**: All parts sufficient (COML-002: 5 + 200 = 205)
-- **Include Allocations ✅, Include On Order ✅**: All parts sufficient
-
----
-
-## 6. Before Production Deployment
-
-Run this final checklist:
-
-- [ ] ✅ All automated tests pass (106/106, no skipped tests)
-- [ ] ✅ Critical gaps addressed (views tests, core traversal tests added)
-- [ ] ✅ UI smoke test completed (10 min checklist above)
-- [ ] ✅ Staging environment tested manually with real data
-- [ ] ✅ No critical errors in browser console or server logs
-- [ ] ✅ Performance acceptable (< 10 seconds for typical BOMs)
-- [ ] ✅ README.md and COPILOT-GUIDE.md documentation up to date
-
-**Current Status** (December 15, 2025):
-- 105/106 tests passing (1 skipped - needs investigation)
-- Critical gaps identified but NOT yet addressed (views, core traversal)
-- NOT ready for production until views tests are added
-
----
-
-## 7. Known Limitations
-
-1. **Very Large BOMs** (1000+ unique parts) may take 30+ seconds to process
-2. **Circular References** are detected and logged, but not automatically resolved
-3. **Test Coverage** has significant gaps (views, core traversal) - see TEST-QUALITY-REVIEW.md
-4. **Some Tests Use Stub Functions** - test_internal_fab_cutlist.py needs rewrite
-5. **One Test Skipped** - test_piece_qty_times_count_rollup needs investigation
-
----
-
-## 8. Test Execution Log
-
-| Date | Test Type | Results | Notes |
-|------|-----------|---------|-------|
-| 2025-12-10 | Unit: Shortfall Calc | ✅ 4/4 Pass | Initial 4 checkbox scenarios |
-| 2025-12-10 | Manual: UI Smoke Test | ✅ Pass | All features working on staging |
-| 2025-12-14 | Unit: Serializers | ✅ 23/23 Pass | Found 2 bugs (note field, image URLs) |
-| 2025-12-15 | All Tests | ✅ 105 Pass, ⚠️ 1 Skip | Total 106 tests, 1 skipped |
-| 2025-12-15 | Test Quality Review | 📋 Complete | Identified critical gaps (views, core) |
-
----
-
-## 9. Running Tests
-
-### Automated Test Execution (Recommended)
-
-```powershell
-# From toolkit root - runs all tests in plugin
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator"
-
-# With detailed output
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Verbose
-
-# Run specific test class
-.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -TestPath "flat_bom_generator.tests.test_shortfall_calculation.ShortfallCalculationTests"
-```
-
-The `Test-Plugin.ps1` script:
-- Sets required environment variables automatically
-- Discovers test files in `flat_bom_generator/tests/`
-- Runs tests with proper InvenTree test framework
-- Reports results with colored output
-
-### Manual Test Execution
-
-```powershell
-# Set environment variables
-$env:INVENTREE_PLUGINS_ENABLED = "True"
-$env:INVENTREE_PLUGIN_TESTING = "True"
-$env:INVENTREE_PLUGIN_TESTING_SETUP = "True"
-
-# Run with Python unittest
-cd plugins\FlatBOMGenerator
-python -m unittest flat_bom_generator.tests.test_shortfall_calculation -v
-```
-
-### InvenTree Invoke (if in InvenTree dev environment)
-
-```bash
-# Run specific test class
-invoke dev.test -r flat_bom_generator.tests.test_shortfall_calculation.ShortfallCalculationTests
-
-# Run all tests in module
-invoke dev.test -r flat_bom_generator.tests.test_shortfall_calculation
-```
-
----
-
-## 10. Adding New Tests
-
-When adding new unit tests, follow InvenTree plugin testing patterns:
-
+**Test Structure Template:**
 ```python
-# Example test structure
 from InvenTree.unit_test import InvenTreeTestCase
 from part.models import Part, PartCategory
 
@@ -445,7 +387,6 @@ class MyFeatureTests(InvenTreeTestCase):
         """Create test data once for all tests."""
         super().setUpTestData()
         
-        # Create test parts, categories, etc.
         cls.test_cat = PartCategory.objects.create(name='TestCategory')
         cls.test_part = Part.objects.create(
             name='TestPart',
@@ -466,134 +407,66 @@ class MyFeatureTests(InvenTreeTestCase):
         self.assertTrue(result > 0)
 ```
 
-**Key Points**:
-- Inherit from `InvenTreeTestCase` or `InvenTreeAPITestCase`
-- Use Django ORM to create test data (creates temporary test database)
-- Use `setUpTestData()` for data that doesn't change between tests
-- Use standard `unittest` assertions
-- Follow test-first workflow (see ROADMAP.md guidelines)
-
-**Test Quality Checklist**:
-- [ ] Tests validate actual behavior, not implementation details
-- [ ] Tests cover edge cases and error conditions
-- [ ] Tests use clear, descriptive names
-- [ ] Tests have no magic numbers (explain expected values)
-- [ ] Tests don't duplicate production code
-- [ ] Tests don't depend on external files (use controlled test data)
-- [ ] Tests make specific assertions (not just `assertGreater(x, 0)`)
-- [ ] Tests are isolated (don't depend on each other)
+**Test Naming Convention:**
+- `test_<what_it_does>_<scenario>`
+- Example: `test_categorize_part_as_fab_when_in_fabrication_category`
 
 ---
 
-## 11. CI/CD Considerations (Post-Refactor)
+## CI/CD Considerations
 
-### Current State (December 2025)
-- **106 automated tests** - No longer "minimal testing"
-- **Manual execution** - Run tests locally before deployment
-- **Manual deployment** - Copy plugin to server via `Deploy-Plugin.ps1`
-- **No CI pipeline** - Simple, works for part-time development
+**Current State:** Manual test execution before deployment
 
-### When to Consider CI/CD
-
-**Recommended Timing**: After serializer refactoring complete (Phase 3 done) AND critical test gaps filled (views, core traversal)
-
-**Signs You're Ready for CI**:
-- ✅ Test suite is comprehensive (150+ tests including views, core, error conditions)
+**When to Consider CI:**
+- ✅ Test suite comprehensive (150+ tests including integration)
 - ✅ Tests consistently pass locally
 - ✅ Deploying multiple times per week
-- ✅ Multiple developers contributing (not just solo development)
-- ✅ Manual test execution becomes friction point
+- ❌ Multiple developers contributing (solo development)
+- ❌ Manual testing becoming friction point (works fine now)
 
-**Signs You Should Wait**:
-- ❌ Test suite still has critical gaps (views, core traversal)
-- ❌ Tests are unreliable (flaky, skipped tests)
-- ❌ Deploying infrequently (once per month)
-- ❌ Solo development with good local workflow
-- ❌ CI setup complexity outweighs benefit
+**Recommendation:** Continue manual testing until:
+1. Integration test gaps filled (Priorities 1-4)
+2. Deploying more frequently (weekly+)
+3. Manual workflow becomes burdensome
 
-### Lightweight CI Options
+**Lightweight Options When Ready:**
+1. **Pre-commit Hook** (5 min setup) - Run tests before git commit
+2. **GitHub Actions** (30 min setup) - Run tests on every push
+3. **Scheduled Testing** (1 hour setup) - Nightly test runs with email on failure
 
-**Option 1: GitHub Actions (Free for public repos)**
-- Runs on every commit/PR
-- Simple YAML configuration
-- No server maintenance
-- Good for open source plugins
+**See:** Section 11 in old TEST-PLAN.md for detailed CI/CD considerations
 
-**Option 2: Pre-commit Hooks (Simplest)**
-- Run tests automatically before git commit
-- Catches issues before they're pushed
-- No external service needed
-- 5-minute setup
+---
 
-**Option 3: Scheduled Testing**
-- Run tests nightly via scheduled task
-- Email results if failures detected
-- Minimal setup complexity
-- Good for stability monitoring
+## Test Execution Log
 
-### Recommended Approach: Start Small
-
-**Phase 1** (5 minutes) - Pre-commit Hook:
-```bash
-# .git/hooks/pre-commit
-#!/bin/bash
-cd plugins/FlatBOMGenerator
-python -m unittest discover -s flat_bom_generator/tests
-```
-
-**Phase 2** (30 minutes) - GitHub Actions (when ready):
-```yaml
-# .github/workflows/test.yml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      - run: pip install djangorestframework django
-      - run: python -m unittest discover -s flat_bom_generator/tests
-```
-
-**Phase 3** (1-2 hours) - Full CI/CD:
-- Automated deployment to staging on merge to `main`
-- Automated deployment to production on tag/release
-- Slack/email notifications on failures
-
-### Decision Framework
-
-Ask yourself:
-1. **Pain Level**: Is manual testing becoming tedious? (If no, wait)
-2. **Test Confidence**: Do tests reliably catch issues? (Need views/core tests first)
-3. **Deployment Frequency**: Deploying weekly or more? (If monthly, CI overkill)
-4. **Time Investment**: Worth 1-2 hours setup + learning curve? (Prefer simplicity)
-
-**Current Recommendation**: 
-- **Now**: Continue manual testing (works fine, tests still being improved)
-- **After refactor complete + test gaps filled**: Consider pre-commit hook (5 min setup, big benefit)
-- **If deploying frequently (weekly+)**: Consider GitHub Actions (30 min setup)
-- **If staying solo + part-time**: Manual testing is perfectly valid
+| Date | Type | Results | Notes |
+|------|------|---------|-------|
+| 2025-12-10 | Unit: Shortfall | ✅ 4/4 Pass | Initial checkbox scenarios |
+| 2025-12-14 | Unit: Serializers | ✅ 23/23 Pass | Found 2 bugs (note, images) |
+| 2025-12-18 | Unit: Internal Fab | ✅ 14/14 Pass | Rewritten, upgraded to High quality |
+| 2026-01-09 | Unit: All Files | ✅ 164/164 Pass | Validated with code-first methodology |
+| 2026-01-09 | Integration: All | ✅ 31/31 Pass | Fixed 4 broken tests |
 
 ---
 
 ## References
 
-**Plugin-Specific Documentation:**
-- **Test Quality Review**: `docs/internal/TEST-QUALITY-REVIEW.md` - Complete analysis of all tests
-- **Refactoring Guidelines**: `docs/internal/ROADMAP.md` - Test-first workflow
+**Toolkit Testing Documentation:**
+- [TESTING-STRATEGY.md](../../../../docs/toolkit/TESTING-STRATEGY.md) - Unit vs integration philosophy
+- [INVENTREE-DEV-SETUP.md](../../../../docs/toolkit/INVENTREE-DEV-SETUP.md) - Dev environment setup
+- [INTEGRATION-TESTING-SUMMARY.md](../../../../docs/toolkit/INTEGRATION-TESTING-SUMMARY.md) - What we built
 
-**Toolkit Testing Documentation** (in toolkit root):
-- **[docs/toolkit/TESTING-STRATEGY.md](../../../../../docs/toolkit/TESTING-STRATEGY.md)** - Unit vs integration testing philosophy
-- **[docs/toolkit/INVENTREE-DEV-SETUP.md](../../../../../docs/toolkit/INVENTREE-DEV-SETUP.md)** - InvenTree dev environment setup guide
-- **[docs/toolkit/INTEGRATION-TESTING-SUMMARY.md](../../../../../docs/toolkit/INTEGRATION-TESTING-SUMMARY.md)** - What we built, quick start
+**Plugin Documentation:**
+- [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan
+- [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) - Code-first validation
+- [DEPLOYMENT-WORKFLOW.md](../../docs/DEPLOYMENT-WORKFLOW.md) - Deployment checklist
 
 **External Resources:**
-- **InvenTree Plugin Testing**: https://docs.inventree.org/en/latest/plugins/test/
-- **Django TestCase**: https://docs.djangoproject.com/en/stable/topics/testing/
-- **Python unittest**: https://docs.python.org/3/library/unittest.html
-- **Test Automation Script**: `scripts/Test-Plugin.ps1`
-- **GitHub Actions**: https://docs.github.com/en/actions
-- **Pre-commit Framework**: https://pre-commit.com/
+- [InvenTree Plugin Testing](https://docs.inventree.org/en/latest/plugins/test/)
+- [Django TestCase](https://docs.djangoproject.com/en/stable/topics/testing/)
+- [Python unittest](https://docs.python.org/3/library/unittest.html)
+
+---
+
+_Last updated: January 9, 2026_

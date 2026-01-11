@@ -1,0 +1,281 @@
+# Fixture for Priority 4: Complex BOM Structure Tests
+# This file defines parts and BOM items with explicit MPPT tree_id values
+# to avoid InvenTree's validation issues when testing nested assemblies.
+
+# Categories
+- model: part.partcategory
+  pk: 9001
+  fields:
+    name: 'Test Assemblies'
+    description: 'Test category for complex BOM assemblies'
+    tree_id: 901
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.partcategory
+  pk: 9002
+  fields:
+    name: 'Test Hardware'
+    description: 'Test category for hardware components'
+    tree_id: 902
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.partcategory
+  pk: 9003
+  fields:
+    name: 'Test Electronics'
+    description: 'Test category for electronic components'
+    tree_id: 903
+    level: 0
+    lft: 1
+    rght: 2
+
+# SamePartMultiplePathsTests - Parts
+- model: part.part
+  pk: 9001
+  fields:
+    name: 'Main Assembly'
+    IPN: 'MAIN-001'
+    description: 'Main assembly for multiple paths test'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1001
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9002
+  fields:
+    name: 'Subassembly A'
+    IPN: 'SUB-A-001'
+    description: 'First subassembly'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1002
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9003
+  fields:
+    name: 'Subassembly B'
+    IPN: 'SUB-B-001'
+    description: 'Second subassembly'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1003
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9004
+  fields:
+    name: 'Screw M3x10'
+    IPN: 'HW-SCREW-M3-10'
+    description: 'M3x10 screw'
+    category: 9002
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    tree_id: 1004
+    level: 0
+    lft: 1
+    rght: 2
+
+# SamePartMultiplePathsTests - BOM Items
+- model: part.bomitem
+  pk: 9001
+  fields:
+    part: 9001  # Main Assembly
+    sub_part: 9002  # Subassembly A
+    quantity: 2
+    reference: 'U1, U2'
+    validated: true
+
+- model: part.bomitem
+  pk: 9002
+  fields:
+    part: 9001  # Main Assembly
+    sub_part: 9003  # Subassembly B
+    quantity: 3
+    reference: 'U3, U4, U5'
+    validated: true
+
+- model: part.bomitem
+  pk: 9003
+  fields:
+    part: 9002  # Subassembly A
+    sub_part: 9004  # Screw
+    quantity: 4
+    reference: 'J1, J2, J3, J4'
+    validated: true
+
+- model: part.bomitem
+  pk: 9004
+  fields:
+    part: 9003  # Subassembly B
+    sub_part: 9004  # Screw
+    quantity: 2
+    reference: 'J5, J6'
+    validated: true
+
+# SamePartDifferentQuantitiesTests - Parts
+- model: part.part
+  pk: 9010
+  fields:
+    name: 'Electronic Assembly'
+    IPN: 'ELEC-ASSY-001'
+    description: 'Main electronic assembly'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1010
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9011
+  fields:
+    name: 'Module A'
+    IPN: 'MOD-A-001'
+    description: 'First module'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1011
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9012
+  fields:
+    name: 'Module B'
+    IPN: 'MOD-B-001'
+    description: 'Second module'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1012
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9013
+  fields:
+    name: 'Module C'
+    IPN: 'MOD-C-001'
+    description: 'Third module'
+    category: 9001
+    active: true
+    assembly: true
+    purchaseable: true
+    component: false
+    is_template: false
+    tree_id: 1013
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9014
+  fields:
+    name: 'Resistor 10k'
+    IPN: 'RES-10K-001'
+    description: '10k ohm resistor'
+    category: 9003
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    tree_id: 1014
+    level: 0
+    lft: 1
+    rght: 2
+
+# SamePartDifferentQuantitiesTests - BOM Items
+- model: part.bomitem
+  pk: 9010
+  fields:
+    part: 9010  # Electronic Assembly
+    sub_part: 9011  # Module A
+    quantity: 1
+    reference: 'MOD1'
+    validated: true
+
+- model: part.bomitem
+  pk: 9011
+  fields:
+    part: 9010  # Electronic Assembly
+    sub_part: 9012  # Module B
+    quantity: 1
+    reference: 'MOD2'
+    validated: true
+
+- model: part.bomitem
+  pk: 9012
+  fields:
+    part: 9010  # Electronic Assembly
+    sub_part: 9013  # Module C
+    quantity: 1
+    reference: 'MOD3'
+    validated: true
+
+- model: part.bomitem
+  pk: 9013
+  fields:
+    part: 9011  # Module A
+    sub_part: 9014  # Resistor 10k
+    quantity: 10
+    reference: 'R1-R10'
+    validated: true
+
+- model: part.bomitem
+  pk: 9014
+  fields:
+    part: 9012  # Module B
+    sub_part: 9014  # Resistor 10k
+    quantity: 5
+    reference: 'R11-R15'
+    validated: true
+
+- model: part.bomitem
+  pk: 9015
+  fields:
+    part: 9013  # Module C
+    sub_part: 9014  # Resistor 10k
+    quantity: 3
+    reference: 'R16-R18'
+    validated: true

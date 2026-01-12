@@ -1,0 +1,107 @@
+# Circular Reference Test Fixtures
+# Purpose: Test data for circular reference detection in BOM traversal
+# Structure: Part A → Part B → Part C → Part A (creates cycle)
+
+# ==========================================
+# PartCategory
+# ==========================================
+- model: part.partcategory
+  pk: 7001
+  fields:
+    name: "Circular Test Category"
+    description: "Category for circular reference test parts"
+    parent: null
+    tree_id: 7001
+    level: 0
+    lft: 1
+    rght: 2
+
+# ==========================================
+# Parts (3 assemblies forming A→B→C→A cycle)
+# ==========================================
+- model: part.part
+  pk: 7001
+  fields:
+    name: "Assembly A"
+    IPN: "CIRC-A"
+    description: "Assembly A (starts cycle)"
+    category: 7001
+    active: true
+    assembly: true
+    purchaseable: false
+    tree_id: 7001
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 7002
+  fields:
+    name: "Assembly B"
+    IPN: "CIRC-B"
+    description: "Assembly B (middle of cycle)"
+    category: 7001
+    active: true
+    assembly: true
+    purchaseable: false
+    tree_id: 7002
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 7003
+  fields:
+    name: "Assembly C"
+    IPN: "CIRC-C"
+    description: "Assembly C (completes cycle back to A)"
+    category: 7001
+    active: true
+    assembly: true
+    purchaseable: false
+    tree_id: 7003
+    level: 0
+    lft: 1
+    rght: 2
+
+# ==========================================
+# BomItems (creates circular reference)
+# ==========================================
+# A contains B
+- model: part.bomitem
+  pk: 70001
+  fields:
+    part: 7001  # Assembly A
+    sub_part: 7002  # Assembly B
+    quantity: 1
+    reference: "U1"
+    note: ""
+    optional: false
+    inherited: false
+    validated: true
+
+# B contains C
+- model: part.bomitem
+  pk: 70002
+  fields:
+    part: 7002  # Assembly B
+    sub_part: 7003  # Assembly C
+    quantity: 1
+    reference: "U2"
+    note: ""
+    optional: false
+    inherited: false
+    validated: true
+
+# C contains A (completes the cycle!)
+- model: part.bomitem
+  pk: 70003
+  fields:
+    part: 7003  # Assembly C
+    sub_part: 7001  # Assembly A (CIRCULAR!)
+    quantity: 1
+    reference: "U3"
+    note: ""
+    optional: false
+    inherited: false
+    validated: true

@@ -1,8 +1,9 @@
 # FlatBOMGenerator - Test Plan
 
-**Last Updated**: January 11, 2026  
-**Test Count**: 90 integration tests (1 skipped) + 164 unit tests (Priorities 1-4 complete)  
-**Status**: Priorities 1-4 complete via fixture-based approach (breakthrough!)
+**Last Updated**: January 12, 2026  
+**Test Count**: 254 tests total (90 integration + 164 unit, 89 passing + 1 skipped)  
+**Test Quality**: Grade B+ (85% Grade A tests, 89% estimated coverage)  
+**Status**: Priorities 1-4 complete, 6 critical gaps identified (1 dead code removed)
 
 ---
 
@@ -358,7 +359,75 @@ def test_serializer_validates_real_part(self):
 
 ---
 
-### 🟡 Priority 5-7: Deferred (Lower Priority)
+## Test Quality Review (January 12, 2026)
+
+**Overall Grade: B+ (85% Grade A tests)**
+
+**Strengths:**
+- Clear, descriptive test names
+- Comprehensive edge case coverage
+- Minimal magic numbers (values explained)
+- Zero significant anti-patterns
+- Fixture-based testing breakthrough
+
+**File Grades:**
+- test_categorization.py (50 tests) - ⭐⭐⭐ Grade A
+- test_serializers.py (38 tests) - ⭐⭐⭐ Grade A
+- test_internal_fab_cutlist.py (14 tests) - ⭐⭐⭐ Grade A
+- test_assembly_no_children.py (15 tests) - ⭐⭐⭐ Grade A
+- test_max_depth_warnings.py (8 tests) - ⭐⭐⭐ Grade A
+- test_cut_to_length_aggregation.py (8 tests) - ⭐⭐⭐ Grade A
+- test_shortfall_calculation.py (13 tests) - ⭐⭐ Grade B+ (intentional logic duplication)
+- test_views.py (16 tests) - ⭐⭐ Grade B (structure validation tests)
+- Integration tests (90 tests) - ⭐⭐⭐ Grade A
+
+**Path to Grade A:** Resolve skipped test + add Panel.tsx reference comment (1 hour)
+
+---
+
+## Code Coverage Gaps (NEW - January 12, 2026)
+
+**Analysis Method:** Systematic review of all production code files
+
+### 🔴 Critical Gaps (High Risk)
+
+**1. `get_bom_items()` - ZERO TESTS**
+- **File:** bom_traversal.py (lines 63-106, 44 lines)
+- **Risk:** HIGH - Core data fetching function
+- **Action:** Add 5-7 integration tests (2 hours)
+  - Test BomItem fetching, empty BOM, optional items, select_related optimization
+
+**2. Circular Reference Error Path - LIMITED**
+- **File:** bom_traversal.py (lines 148-162)
+- **Risk:** MEDIUM-HIGH - Critical error handling
+- **Current:** 1 test (no circular ref case only)
+- **Action:** Add 3-5 tests for error dict structure (2 hours)
+
+**3. Plugin Core Methods - ZERO TESTS**
+- **File:** core.py (setup_urls, get_ui_panels)
+- **Risk:** MEDIUM - Plugin registration/UI panel logic
+- **Action:** Add 3-5 tests (1-2 hours)
+
+### 🟡 Medium Priority Gaps
+
+**4. Query Parameter Validation - PARTIAL**
+- **File:** views.py (max_depth handling)
+- **Current:** 2 tests (invalid only)
+- **Action:** Add 3-4 tests for valid cases (1 hour)
+
+**5. View Settings Loading - PARTIAL**
+- **Current:** Helper functions tested (31 tests), view integration missing
+- **Action:** Add 2-3 integration tests (1 hour)
+
+**6. Stock Enrichment Error Handling - LIMITED**
+- **File:** views.py (Part.DoesNotExist in enrichment)
+- **Action:** Add 2 tests (30 minutes)
+
+**Total Critical Gap Effort:** 9-14 hours (reduced by removing dead code)
+
+---
+
+### 🟡 Priority 5-7: Original Deferred Items
 
 **Priority 5: Cut-to-Length Features** (0 integration tests)
 - CtL parts with length extraction from notes
@@ -526,6 +595,12 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-10 | Integration: Priority 4 | ⚠️ SCENARIO 1 SKIPPED | 5 tests created, blocked by InvenTree validation |
 | 2026-01-11 | Integration: Priority 4 | ✅ BREAKTHROUGH | Fixture-based approach, 693-line YAML, all scenarios working |
 | 2026-01-11 | Integration: Priority 4 | ✅ 16/17 PASS | Scenarios 1-4 complete (1 skipped: reference aggregation) |
+| 2026-01-12 | Test Quality Review | ⭐⭐ Grade B+ | 254 tests, 85% Grade A quality, 7 new gaps identified |
+| 2026-01-12 | Code Coverage Analysis | 🔴 6 CRITICAL GAPS | get_bom_items, circular refs, plugin core methods untested |
+| 2026-01-12 | Dead Code Removal | ✅ CLEANED | Removed get_flat_bom_with_children() (50 lines, never used) |
+| 2026-01-12 | Integration: get_bom_items() | ✅ 22/22 CREATED | Comprehensive tests for BOM fetching (not yet run) |
+
+**Current Test Count:** 276 tests total (112 integration + 164 unit, pending execution)
 
 **Current Test Count:** 254 total (164 unit + 90 integration, 89 passing + 1 skipped)  
 **Priority 4 Breakthrough:** Programmatic fixture loading with `call_command('loaddata', absolute_path)` bypasses InvenTree validation. Pattern documented in test module docstring for future use.

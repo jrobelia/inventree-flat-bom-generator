@@ -170,6 +170,20 @@ Part ID → traverse_bom() → get_leaf_parts_only() → deduplicate_and_sum() �
           (build tree)      (filter leaves)         (sum quantities)
 ```
 
+**`get_flat_bom()` Return Signature:**
+```python
+flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_depth=None)
+
+# Returns tuple of 4 values:
+# - flat_bom: List[Dict] - Deduplicated leaf parts with aggregated quantities
+# - imp_count: int - Count of Internal Made Parts processed
+# - warnings: List[Dict] - CtL warnings from deduplicate_and_sum
+# - max_depth_reached: int - Actual depth traversed (NOT a boolean flag)
+#                            Returns 0 if no depth limit hit
+```
+
+**Important**: `max_depth_reached` is an **integer** representing the actual BOM depth traversed, not a boolean flag. This is critical for tests and API responses.
+
 **Critical Pattern**: `visited.copy()` allows same part in different branches while preventing circular references
 
 #### `flat_bom_generator/categorization.py`
@@ -563,5 +577,6 @@ If you skip documentation updates during development:
 
 ---
 
-*Last Updated: December 10, 2025*
+*Last Updated: January 12, 2026*
 *Documentation Maintenance Section Added: December 10, 2025*
+*Return Signature Documentation Added: January 12, 2026*

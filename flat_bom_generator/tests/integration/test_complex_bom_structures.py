@@ -57,10 +57,10 @@ class SamePartMultiplePathsTests(InvenTreeTestCase):
         super().setUpTestData()
         
         # Load fixture data programmatically with absolute path
-        # Path: tests/integration/test_complex_bom_structures.py -> ../../../fixtures/complex_bom.yaml
-        # Goes up to plugin root, then into fixtures/
+        # Path: tests/integration/test_complex_bom_structures.py -> ../../fixtures/complex_bom.yaml
+        # Go up 2 levels to tests/, then into fixtures/
         fixture_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+            os.path.dirname(os.path.dirname(__file__)),
             'fixtures',
             'complex_bom.yaml'
         )
@@ -147,10 +147,10 @@ class SamePartDifferentQuantitiesTests(InvenTreeTestCase):
         super().setUpTestData()
         
         # Load fixture data programmatically with absolute path
-        # Path: tests/integration/test_complex_bom_structures.py -> ../../../fixtures/complex_bom.yaml
-        # Goes up to plugin root, then into fixtures/
+        # Path: tests/integration/test_complex_bom_structures.py -> ../../fixtures/complex_bom.yaml
+        # Go up 2 levels to tests/, then into fixtures/
         fixture_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+            os.path.dirname(os.path.dirname(__file__)),
             'fixtures',
             'complex_bom.yaml'
         )
@@ -179,6 +179,7 @@ class SamePartDifferentQuantitiesTests(InvenTreeTestCase):
             "Total should be 10 + 5 + 3 = 18"
         )
 
+# Scenario 3: Wide BOM (20 direct children)
 class WideBOMTests(InvenTreeTestCase):
     """Test wide BOM with many direct children.
     
@@ -205,7 +206,7 @@ class WideBOMTests(InvenTreeTestCase):
         
         # Load fixture data programmatically with absolute path
         fixture_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+            os.path.dirname(os.path.dirname(__file__)),
             'fixtures',
             'complex_bom.yaml'
         )
@@ -258,6 +259,7 @@ class WideBOMTests(InvenTreeTestCase):
         self.assertLess(elapsed, 2.0, f"Wide BOM took {elapsed:.2f}s (limit: 2s)")
 
 
+# Scenario 4: max_depth Behavior (7-level linear chain)
 class MaxDepthBehaviorTests(InvenTreeTestCase):
     """Test max_depth parameter behavior with deep BOM.
     
@@ -285,7 +287,7 @@ class MaxDepthBehaviorTests(InvenTreeTestCase):
         
         # Load fixture data programmatically with absolute path
         fixture_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+            os.path.dirname(os.path.dirname(__file__)),
             'fixtures',
             'complex_bom.yaml'
         )

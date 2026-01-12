@@ -1,45 +1,36 @@
-# Fixture for Priority 4: Complex BOM Structure Tests
-# This file defines parts and BOM items with explicit MPPT tree_id values
-# to avoid InvenTree's validation issues when testing nested assemblies.
-
-# Categories
 - model: part.partcategory
   pk: 9001
   fields:
-    name: 'Test Assemblies'
-    description: 'Test category for complex BOM assemblies'
+    name: Test Assemblies
+    description: Test category for complex BOM assemblies
     tree_id: 901
     level: 0
     lft: 1
     rght: 2
-
 - model: part.partcategory
   pk: 9002
   fields:
-    name: 'Test Hardware'
-    description: 'Test category for hardware components'
+    name: Test Hardware
+    description: Test category for hardware components
     tree_id: 902
     level: 0
     lft: 1
     rght: 2
-
 - model: part.partcategory
   pk: 9003
   fields:
-    name: 'Test Electronics'
-    description: 'Test category for electronic components'
+    name: Test Electronics
+    description: Test category for electronic components
     tree_id: 903
     level: 0
     lft: 1
     rght: 2
-
-# SamePartMultiplePathsTests - Parts
 - model: part.part
   pk: 9001
   fields:
-    name: 'Main Assembly'
-    IPN: 'MAIN-001'
-    description: 'Main assembly for multiple paths test'
+    name: Main Assembly
+    IPN: MAIN-001
+    description: Main assembly for multiple paths test
     category: 9001
     active: true
     assembly: true
@@ -50,13 +41,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9002
   fields:
-    name: 'Subassembly A'
-    IPN: 'SUB-A-001'
-    description: 'First subassembly'
+    name: Subassembly A
+    IPN: SUB-A-001
+    description: First subassembly
     category: 9001
     active: true
     assembly: true
@@ -67,13 +57,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9003
   fields:
-    name: 'Subassembly B'
-    IPN: 'SUB-B-001'
-    description: 'Second subassembly'
+    name: Subassembly B
+    IPN: SUB-B-001
+    description: Second subassembly
     category: 9001
     active: true
     assembly: true
@@ -84,13 +73,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9004
   fields:
-    name: 'Screw M3x10'
-    IPN: 'HW-SCREW-M3-10'
-    description: 'M3x10 screw'
+    name: Screw M3x10
+    IPN: HW-SCREW-M3-10
+    description: M3x10 screw
     category: 9002
     active: true
     assembly: false
@@ -101,51 +89,44 @@
     level: 0
     lft: 1
     rght: 2
-
-# SamePartMultiplePathsTests - BOM Items
 - model: part.bomitem
   pk: 9001
   fields:
-    part: 9001  # Main Assembly
-    sub_part: 9002  # Subassembly A
+    part: 9001
+    sub_part: 9002
     quantity: 2
-    reference: 'U1, U2'
+    reference: U1, U2
     validated: true
-
 - model: part.bomitem
   pk: 9002
   fields:
-    part: 9001  # Main Assembly
-    sub_part: 9003  # Subassembly B
+    part: 9001
+    sub_part: 9003
     quantity: 3
-    reference: 'U3, U4, U5'
+    reference: U3, U4, U5
     validated: true
-
 - model: part.bomitem
   pk: 9003
   fields:
-    part: 9002  # Subassembly A
-    sub_part: 9004  # Screw
+    part: 9002
+    sub_part: 9004
     quantity: 4
-    reference: 'J1, J2, J3, J4'
+    reference: J1, J2, J3, J4
     validated: true
-
 - model: part.bomitem
   pk: 9004
   fields:
-    part: 9003  # Subassembly B
-    sub_part: 9004  # Screw
+    part: 9003
+    sub_part: 9004
     quantity: 2
-    reference: 'J5, J6'
+    reference: J5, J6
     validated: true
-
-# SamePartDifferentQuantitiesTests - Parts
 - model: part.part
   pk: 9010
   fields:
-    name: 'Electronic Assembly'
-    IPN: 'ELEC-ASSY-001'
-    description: 'Main electronic assembly'
+    name: Electronic Assembly
+    IPN: ELEC-ASSY-001
+    description: Main electronic assembly
     category: 9001
     active: true
     assembly: true
@@ -156,13 +137,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9011
   fields:
-    name: 'Module A'
-    IPN: 'MOD-A-001'
-    description: 'First module'
+    name: Module A
+    IPN: MOD-A-001
+    description: First module
     category: 9001
     active: true
     assembly: true
@@ -173,13 +153,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9012
   fields:
-    name: 'Module B'
-    IPN: 'MOD-B-001'
-    description: 'Second module'
+    name: Module B
+    IPN: MOD-B-001
+    description: Second module
     category: 9001
     active: true
     assembly: true
@@ -190,13 +169,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9013
   fields:
-    name: 'Module C'
-    IPN: 'MOD-C-001'
-    description: 'Third module'
+    name: Module C
+    IPN: MOD-C-001
+    description: Third module
     category: 9001
     active: true
     assembly: true
@@ -207,13 +185,12 @@
     level: 0
     lft: 1
     rght: 2
-
 - model: part.part
   pk: 9014
   fields:
-    name: 'Resistor 10k'
-    IPN: 'RES-10K-001'
-    description: '10k ohm resistor'
+    name: Resistor 10k
+    IPN: RES-10K-001
+    description: 10k ohm resistor
     category: 9003
     active: true
     assembly: false
@@ -224,58 +201,669 @@
     level: 0
     lft: 1
     rght: 2
-
-# SamePartDifferentQuantitiesTests - BOM Items
 - model: part.bomitem
   pk: 9010
   fields:
-    part: 9010  # Electronic Assembly
-    sub_part: 9011  # Module A
+    part: 9010
+    sub_part: 9011
     quantity: 1
-    reference: 'MOD1'
+    reference: MOD1
     validated: true
-
 - model: part.bomitem
   pk: 9011
   fields:
-    part: 9010  # Electronic Assembly
-    sub_part: 9012  # Module B
+    part: 9010
+    sub_part: 9012
     quantity: 1
-    reference: 'MOD2'
+    reference: MOD2
     validated: true
-
 - model: part.bomitem
   pk: 9012
   fields:
-    part: 9010  # Electronic Assembly
-    sub_part: 9013  # Module C
+    part: 9010
+    sub_part: 9013
     quantity: 1
-    reference: 'MOD3'
+    reference: MOD3
     validated: true
-
 - model: part.bomitem
   pk: 9013
   fields:
-    part: 9011  # Module A
-    sub_part: 9014  # Resistor 10k
+    part: 9011
+    sub_part: 9014
     quantity: 10
-    reference: 'R1-R10'
+    reference: R1-R10
     validated: true
-
 - model: part.bomitem
   pk: 9014
   fields:
-    part: 9012  # Module B
-    sub_part: 9014  # Resistor 10k
+    part: 9012
+    sub_part: 9014
     quantity: 5
-    reference: 'R11-R15'
+    reference: R11-R15
     validated: true
-
 - model: part.bomitem
   pk: 9015
   fields:
-    part: 9013  # Module C
-    sub_part: 9014  # Resistor 10k
+    part: 9013
+    sub_part: 9014
     quantity: 3
-    reference: 'R16-R18'
+    reference: R16-R18
+    validated: true
+- model: part.partcategory
+  pk: 9201
+  fields:
+    name: Electronic Assemblies
+    parent: null
+    tree_id: 12
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9020
+  fields:
+    name: Power Supply Board
+    category: 9201
+    IPN: PSU-BOARD-001
+    description: Power supply board with mixed capacitor types
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9020
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9021
+  fields:
+    name: Capacitor 100uF Electrolytic
+    category: 9201
+    IPN: CAP-100UF-ELEC
+    description: 100uF electrolytic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9021
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9022
+  fields:
+    name: Capacitor 220uF Electrolytic
+    category: 9201
+    IPN: CAP-220UF-ELEC
+    description: 220uF electrolytic capacitor
+    assembly: false
+    tree_id: 9022
+    level: 0
+    lft: 1
+    rght: 2
+    active: true
+    purchaseable: true
+- model: part.part
+  pk: 9023
+  fields:
+    name: Capacitor 470uF Electrolytic
+    category: 9201
+    IPN: CAP-470UF-ELEC
+    description: 470uF electrolytic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9023
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9024
+  fields:
+    name: Capacitor 1000uF Electrolytic
+    category: 9201
+    IPN: CAP-1000UF-ELEC
+    description: 1000uF electrolytic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9024
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9025
+  fields:
+    name: Capacitor 10nF Ceramic
+    category: 9201
+    IPN: CAP-10NF-CER
+    description: 10nF ceramic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9025
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9026
+  fields:
+    name: Capacitor 100nF Ceramic
+    category: 9201
+    IPN: CAP-100NF-CER
+    description: 100nF ceramic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9026
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9027
+  fields:
+    name: Capacitor 1uF Ceramic
+    category: 9201
+    IPN: CAP-1UF-CER
+    description: 1uF ceramic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9027
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9028
+  fields:
+    name: Capacitor 10uF Ceramic
+    category: 9201
+    IPN: CAP-10UF-CER
+    description: 10uF ceramic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9028
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9029
+  fields:
+    name: Capacitor 220nF Ceramic
+    category: 9201
+    IPN: CAP-220NF-CER
+    description: 220nF ceramic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9029
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9030
+  fields:
+    name: Capacitor 1uF Film
+    category: 9201
+    IPN: CAP-1UF-FILM
+    description: 1uF film capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9030
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9031
+  fields:
+    name: Capacitor 2.2uF Film
+    category: 9201
+    IPN: CAP-2.2UF-FILM
+    description: 2.2uF film capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9031
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9032
+  fields:
+    name: Capacitor 4.7uF Film
+    category: 9201
+    IPN: CAP-4.7UF-FILM
+    description: 4.7uF film capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9032
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9033
+  fields:
+    name: Capacitor 10uF Film
+    category: 9201
+    IPN: CAP-10UF-FILM
+    description: 10uF film capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9033
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9034
+  fields:
+    name: Capacitor 22uF Tantalum
+    category: 9201
+    IPN: CAP-22UF-TANT
+    description: 22uF tantalum capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9034
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9035
+  fields:
+    name: Capacitor 47uF Tantalum
+    category: 9201
+    IPN: CAP-47UF-TANT
+    description: 47uF tantalum capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9035
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9036
+  fields:
+    name: Capacitor 100uF Tantalum
+    category: 9201
+    IPN: CAP-100UF-TANT
+    description: 100uF tantalum capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9036
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9037
+  fields:
+    name: Capacitor 220uF Polymer
+    category: 9201
+    IPN: CAP-220UF-POLY
+    description: 220uF polymer capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9037
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9038
+  fields:
+    name: Capacitor 470uF Polymer
+    category: 9201
+    IPN: CAP-470UF-POLY
+    description: 470uF polymer capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9038
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9039
+  fields:
+    name: Capacitor 1000uF Polymer
+    category: 9201
+    IPN: CAP-1000UF-POLY
+    description: 1000uF polymer capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9039
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9040
+  fields:
+    name: Capacitor 150uF Electrolytic
+    category: 9201
+    IPN: CAP-150UF-ELEC
+    description: 150uF electrolytic capacitor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9040
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.bomitem
+  pk: 8021
+  fields:
+    part: 9020
+    sub_part: 9021
+    quantity: 2.0
+    reference: C1, C2
+    validated: true
+- model: part.bomitem
+  pk: 8022
+  fields:
+    part: 9020
+    sub_part: 9022
+    quantity: 2.0
+    reference: C3, C4
+    validated: true
+- model: part.bomitem
+  pk: 8023
+  fields:
+    part: 9020
+    sub_part: 9023
+    quantity: 2.0
+    reference: C5, C6
+    validated: true
+- model: part.bomitem
+  pk: 8024
+  fields:
+    part: 9020
+    sub_part: 9024
+    quantity: 2.0
+    reference: C7, C8
+    validated: true
+- model: part.bomitem
+  pk: 8025
+  fields:
+    part: 9020
+    sub_part: 9025
+    quantity: 2.0
+    reference: C9, C10
+    validated: true
+- model: part.bomitem
+  pk: 8026
+  fields:
+    part: 9020
+    sub_part: 9026
+    quantity: 2.0
+    reference: C11, C12
+    validated: true
+- model: part.bomitem
+  pk: 8027
+  fields:
+    part: 9020
+    sub_part: 9027
+    quantity: 2.0
+    reference: C13, C14
+    validated: true
+- model: part.bomitem
+  pk: 8028
+  fields:
+    part: 9020
+    sub_part: 9028
+    quantity: 2.0
+    reference: C15, C16
+    validated: true
+- model: part.bomitem
+  pk: 8029
+  fields:
+    part: 9020
+    sub_part: 9029
+    quantity: 2.0
+    reference: C17, C18
+    validated: true
+- model: part.bomitem
+  pk: 8030
+  fields:
+    part: 9020
+    sub_part: 9030
+    quantity: 2.0
+    reference: C19, C20
+    validated: true
+- model: part.bomitem
+  pk: 8031
+  fields:
+    part: 9020
+    sub_part: 9031
+    quantity: 2.0
+    reference: C21, C22
+    validated: true
+- model: part.bomitem
+  pk: 8032
+  fields:
+    part: 9020
+    sub_part: 9032
+    quantity: 2.0
+    reference: C23, C24
+    validated: true
+- model: part.bomitem
+  pk: 8033
+  fields:
+    part: 9020
+    sub_part: 9033
+    quantity: 2.0
+    reference: C25, C26
+    validated: true
+- model: part.bomitem
+  pk: 8034
+  fields:
+    part: 9020
+    sub_part: 9034
+    quantity: 2.0
+    reference: C27, C28
+    validated: true
+- model: part.bomitem
+  pk: 8035
+  fields:
+    part: 9020
+    sub_part: 9035
+    quantity: 2.0
+    reference: C29, C30
+    validated: true
+- model: part.bomitem
+  pk: 8036
+  fields:
+    part: 9020
+    sub_part: 9036
+    quantity: 2.0
+    reference: C31, C32
+    validated: true
+- model: part.bomitem
+  pk: 8037
+  fields:
+    part: 9020
+    sub_part: 9037
+    quantity: 2.0
+    reference: C33, C34
+    validated: true
+- model: part.bomitem
+  pk: 8038
+  fields:
+    part: 9020
+    sub_part: 9038
+    quantity: 2.0
+    reference: C35, C36
+    validated: true
+- model: part.bomitem
+  pk: 8039
+  fields:
+    part: 9020
+    sub_part: 9039
+    quantity: 2.0
+    reference: C37, C38
+    validated: true
+- model: part.bomitem
+  pk: 8040
+  fields:
+    part: 9020
+    sub_part: 9040
+    quantity: 2.0
+    reference: C39, C40
+    validated: true
+- model: part.partcategory
+  pk: 9202
+  fields:
+    name: Systems
+    parent: null
+    tree_id: 13
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9050
+  fields:
+    name: System
+    category: 9202
+    IPN: SYS-001
+    description: Top-level system assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9050
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9051
+  fields:
+    name: Subsystem
+    category: 9202
+    IPN: SUBSYS-001
+    description: Subsystem assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9051
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9052
+  fields:
+    name: Module
+    category: 9202
+    IPN: MOD-001
+    description: Module assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9052
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9053
+  fields:
+    name: Board
+    category: 9202
+    IPN: BRD-001
+    description: Board assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9053
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9054
+  fields:
+    name: Section
+    category: 9202
+    IPN: SEC-001
+    description: Section assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9054
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9055
+  fields:
+    name: Component
+    category: 9202
+    IPN: COMP-001
+    description: Component assembly
+    assembly: true
+    active: true
+    purchaseable: false
+    tree_id: 9055
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.part
+  pk: 9056
+  fields:
+    name: Resistor 10K 0.25W
+    category: 9202
+    IPN: RES-10K-0.25W
+    description: 10K ohm 0.25W resistor
+    assembly: false
+    active: true
+    purchaseable: true
+    tree_id: 9056
+    level: 0
+    lft: 1
+    rght: 2
+- model: part.bomitem
+  pk: 8050
+  fields:
+    part: 9050
+    sub_part: 9051
+    quantity: 1.0
+    reference: S1
+    validated: true
+- model: part.bomitem
+  pk: 8051
+  fields:
+    part: 9051
+    sub_part: 9052
+    quantity: 1.0
+    reference: M1
+    validated: true
+- model: part.bomitem
+  pk: 8052
+  fields:
+    part: 9052
+    sub_part: 9053
+    quantity: 1.0
+    reference: B1
+    validated: true
+- model: part.bomitem
+  pk: 8053
+  fields:
+    part: 9053
+    sub_part: 9054
+    quantity: 1.0
+    reference: SEC1
+    validated: true
+- model: part.bomitem
+  pk: 8054
+  fields:
+    part: 9054
+    sub_part: 9055
+    quantity: 1.0
+    reference: COMP1
+    validated: true
+- model: part.bomitem
+  pk: 8055
+  fields:
+    part: 9055
+    sub_part: 9056
+    quantity: 1.0
+    reference: R1
     validated: true

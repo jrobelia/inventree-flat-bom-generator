@@ -1,0 +1,382 @@
+# Warning Generation Test Fixtures
+# Created: January 12, 2026
+# Purpose: Test scenarios for view-level warning aggregation (Priority 3)
+#
+# Scenarios covered:
+# 1. Inactive parts (active=False)
+# 2. Assembly with no children (assembly=True, no BomItems)
+# 3. Unit mismatch (notes specify different unit than part.units)
+# 4. Multiple warnings on same BOM
+#
+# Part IDs: 9100-9120
+# BomItem IDs: 9100-9115
+
+# PartCategory for warning test parts
+- model: part.partcategory
+  pk: 9100
+  fields:
+    name: Warning Test Category
+    description: Category for warning generation tests
+    parent: null
+    default_keywords: ""
+    structural: false
+    _icon: ""
+    pathstring: Warning Test Category
+    level: 0
+    tree_id: 9100
+    lft: 1
+    rght: 2
+
+# Scenario 1: Inactive Part Warning
+# Main assembly with inactive component
+
+- model: part.part
+  pk: 9101
+  fields:
+    name: Assembly With Inactive Parts
+    description: Assembly containing inactive components
+    category: 9100
+    IPN: WARN-ASM-001
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9102
+  fields:
+    name: Inactive Component
+    description: Component marked inactive
+    category: 9100
+    IPN: WARN-INACTIVE-001
+    revision: A
+    assembly: false
+    is_template: false
+    active: false  # ← Triggers inactive_part warning
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.bomitem
+  pk: 9101
+  fields:
+    part: 9101
+    sub_part: 9102
+    quantity: 1
+    reference: U1
+    note: ""
+    validated: true
+
+# Scenario 2: Assembly No Children Warning
+# Assembly that has no BomItems defined
+
+- model: part.part
+  pk: 9103
+  fields:
+    name: Main Assembly With Empty Subassembly
+    description: Contains subassembly with no BOM items
+    category: 9100
+    IPN: WARN-ASM-002
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9104
+  fields:
+    name: Empty Assembly
+    description: Assembly with no BOM items defined
+    category: 9100
+    IPN: WARN-EMPTY-001
+    revision: A
+    assembly: true  # ← Assembly but no BomItems
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.bomitem
+  pk: 9102
+  fields:
+    part: 9103
+    sub_part: 9104
+    quantity: 1
+    reference: A1
+    note: ""
+    validated: true
+
+# Scenario 3: Unit Mismatch Warning
+# BomItem notes specify different unit than part.units
+
+- model: part.part
+  pk: 9105
+  fields:
+    name: Assembly With Unit Mismatch
+    description: Contains parts with unit conflicts
+    category: 9100
+    IPN: WARN-ASM-003
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9106
+  fields:
+    name: Steel Rod
+    description: Steel rod with length specification
+    category: 9100
+    IPN: WARN-UNIT-001
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: m  # ← Part uses meters
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.bomitem
+  pk: 9103
+  fields:
+    part: 9105
+    sub_part: 9106
+    quantity: 1500  # ← Quantity suggests mm
+    reference: R1
+    note: "1500mm"  # ← Notes specify mm, part uses m
+    validated: true
+
+# Scenario 4: Multiple Warnings
+# Assembly triggering multiple warning types simultaneously
+
+- model: part.part
+  pk: 9107
+  fields:
+    name: Complex Assembly Multiple Warnings
+    description: Assembly with multiple warning conditions
+    category: 9100
+    IPN: WARN-ASM-004
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+# Inactive part
+- model: part.part
+  pk: 9108
+  fields:
+    name: Deprecated Capacitor
+    description: Old capacitor no longer stocked
+    category: 9100
+    IPN: WARN-CAP-INACTIVE
+    revision: A
+    assembly: false
+    is_template: false
+    active: false  # ← Inactive
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+# Empty subassembly
+- model: part.part
+  pk: 9109
+  fields:
+    name: Undefined Subassembly
+    description: Subassembly with no BOM definition
+    category: 9100
+    IPN: WARN-SUB-EMPTY
+    revision: A
+    assembly: true  # ← Empty assembly
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+# Part with unit mismatch
+- model: part.part
+  pk: 9110
+  fields:
+    name: Aluminum Bar
+    description: Aluminum stock with unit conflict
+    category: 9100
+    IPN: WARN-BAR-UNIT
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: mm  # ← Part uses mm
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+# BOM structure: 9107 → 9108 (inactive), 9109 (empty), 9110 (unit mismatch)
+
+- model: part.bomitem
+  pk: 9104
+  fields:
+    part: 9107
+    sub_part: 9108
+    quantity: 10
+    reference: C1
+    note: ""
+    validated: true
+
+- model: part.bomitem
+  pk: 9105
+  fields:
+    part: 9107
+    sub_part: 9109
+    quantity: 1
+    reference: A1
+    note: ""
+    validated: true
+
+- model: part.bomitem
+  pk: 9106
+  fields:
+    part: 9107
+    sub_part: 9110
+    quantity: 200  # ← Quantity suggests mm
+    reference: B1
+    note: "200 in"  # ← Notes specify inches, part uses mm
+    validated: true
+
+# Scenario 5: Active component (no warnings expected)
+# Used as control to verify warnings only appear when appropriate
+
+- model: part.part
+  pk: 9111
+  fields:
+    name: Clean Assembly No Warnings
+    description: Assembly with no warning conditions
+    category: 9100
+    IPN: WARN-ASM-CLEAN
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9112
+  fields:
+    name: Active Resistor
+    description: Standard resistor, no issues
+    category: 9100
+    IPN: WARN-RES-OK
+    revision: A
+    assembly: false
+    is_template: false
+    active: true  # ← Active
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.bomitem
+  pk: 9107
+  fields:
+    part: 9111
+    sub_part: 9112
+    quantity: 5
+    reference: R1-R5
+    note: ""
+    validated: true

@@ -7,57 +7,6 @@ from .categorization import categorize_part, _extract_length_from_notes
 logger = logging.getLogger("inventree")
 
 
-def get_flat_bom_with_children(tree: Dict) -> List[Dict]:
-    """
-    Flatten BOM tree to include Internal Fab parent rows with their children as grouped/expandable rows.
-    Each Internal Fab part is included as a parent row, with its children as a 'children' list.
-    All other parts are included as flat rows.
-
-    Args:
-        tree: BOM tree from traverse_bom()
-
-    Returns:
-        List of dicts, each representing a row (parent or child), with Internal Fab parents having a 'children' key.
-    """
-
-    # Debug: print summary of root node
-    logger.info(
-        f"[FlatBOM] get_flat_bom_with_children root: part_type={tree.get('part_type')}, part_id={tree.get('part_id')}, children={len(tree.get('children', []))}"
-    )
-
-    result = []
-    internal_fab_with_children_count = 0
-
-    def _recurse(node):
-        nonlocal internal_fab_with_children_count
-        part_type = node.get("part_type", "Unknown")
-        if part_type == "Internal Fab":
-            logger.info(
-                f"[FlatBOM] _recurse: Internal Fab node part_id={node.get('part_id')}, children={len(node.get('children', []))}"
-            )
-        # If Internal Fab, include as parent with children
-        if part_type == "Internal Fab" and node.get("children"):
-            if node["children"]:
-                internal_fab_with_children_count += 1
-            parent_row = {k: v for k, v in node.items() if k != "children"}
-            # Recursively flatten children
-            parent_row["children"] = [_recurse(child) for child in node["children"]]
-            result.append(parent_row)
-        elif node.get("children"):
-            # For other assemblies, just flatten children
-            for child in node["children"]:
-                _recurse(child)
-        else:
-            # Leaf part
-            result.append({k: v for k, v in node.items() if k != "children"})
-
-    _recurse(tree)
-    logger.info(
-        f"[FlatBOM] Internal Fab parents with children: {internal_fab_with_children_count}"
-    )
-    return result
-
-
 def get_bom_items(part) -> List[Dict]:
     """
     Fetch BOM items for a given part with related data.

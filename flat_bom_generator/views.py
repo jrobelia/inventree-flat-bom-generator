@@ -462,7 +462,22 @@ class FlatBOMView(APIView):
                     logger.warning(
                         f"Part {item['part_id']} not found during enrichment"
                     )
-                    enriched_bom.append(item)
+                    # Create minimal enriched data with defaults when part doesn't exist
+                    enriched_data = {
+                        **item,  # Preserve all fields from get_flat_bom
+                        "full_name": item.get("part_name", "Unknown Part"),
+                        "image": None,
+                        "thumbnail": None,
+                        "in_stock": 0,
+                        "on_order": 0,
+                        "allocated": 0,
+                        "available": 0,
+                        "unit": item.get("unit", ""),
+                        "link": f"/part/{item['part_id']}/",
+                    }
+                    serializer = FlatBOMItemSerializer(data=enriched_data)
+                    serializer.is_valid(raise_exception=True)
+                    enriched_bom.append(serializer.validated_data)
 
             logger.info(f"[FlatBOM] Total warnings collected: {len(warnings)}")
             for idx, warning in enumerate(warnings):

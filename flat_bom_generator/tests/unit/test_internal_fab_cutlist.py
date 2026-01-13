@@ -109,9 +109,10 @@ class InternalFabCutListTests(unittest.TestCase):
         self.assertEqual(cut_list[0]["count"], 1)  # 1 occurrence
 
     def test_internal_fab_with_non_matching_unit(self):
-        """Part with from_internal_fab_parent=True but non-matching unit throws ValueError.
+        """Part with from_internal_fab_parent=True but non-matching unit is treated as regular part.
         
-        This indicates data corruption - same part should always have same unit.
+        This can happen when internal fab parts have incompatible units (e.g., weight vs length).
+        The part should be included in BOM as regular part without cut list (no warning, no error).
         """
         leaves = [
             create_leaf(123, "TEST-001", "Test Part", 25.0, "inches")
@@ -120,12 +121,14 @@ class InternalFabCutListTests(unittest.TestCase):
         deduplicate_and_sum.ifab_units = {"mm"}  # Only mm allowed
         deduplicate_and_sum.enable_ifab_cuts = True
         
-        # Should raise ValueError - this is a configuration/data error
-        with self.assertRaises(ValueError) as context:
-            deduplicate_and_sum(leaves)
+        # Should NOT raise error - silently treat as regular part
+        result = deduplicate_and_sum(leaves)
         
-        self.assertIn("not in allowed_ifab_units", str(context.exception))
-        self.assertIn("TEST-001", str(context.exception))
+        # Part should be in results with regular quantity
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["total_qty"], 25.0)
+        # No cut list should be generated
+        self.assertIsNone(result[0].get("internal_fab_cut_list"))
 
     def test_non_internal_fab_parent(self):
         """Part without from_internal_fab_parent flag gets no cut_list."""
@@ -142,9 +145,10 @@ class InternalFabCutListTests(unittest.TestCase):
         self.assertIsNone(cut_list)
 
     def test_internal_fab_missing_unit(self):
-        """Part with from_internal_fab_parent=True but missing unit throws ValueError.
+        """Part with from_internal_fab_parent=True but missing unit is treated as regular part.
         
-        This indicates data corruption - internal fab parts must have units.
+        This can happen when internal fab parts have no unit defined.
+        The part should be included in BOM as regular part without cut list (no warning, no error).
         """
         leaves = [
             create_leaf(123, "TEST-001", "Test Part", 25.0, None)
@@ -153,12 +157,14 @@ class InternalFabCutListTests(unittest.TestCase):
         deduplicate_and_sum.ifab_units = {"mm"}
         deduplicate_and_sum.enable_ifab_cuts = True
         
-        # Should raise ValueError - this is a configuration/data error
-        with self.assertRaises(ValueError) as context:
-            deduplicate_and_sum(leaves)
+        # Should NOT raise error - silently treat as regular part
+        result = deduplicate_and_sum(leaves)
         
-        self.assertIn("not in allowed_ifab_units", str(context.exception))
-        self.assertIn("TEST-001", str(context.exception))
+        # Part should be in results with regular quantity
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["total_qty"], 25.0)
+        # No cut list should be generated
+        self.assertIsNone(result[0].get("internal_fab_cut_list"))
 
 
 class InternalFabCutListRollupTests(unittest.TestCase):

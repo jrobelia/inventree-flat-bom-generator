@@ -95,7 +95,7 @@
     part: 9001
     sub_part: 9002
     quantity: 2
-    reference: U1, U2
+    note: U1, U2
     validated: true
 - model: part.bomitem
   pk: 9002
@@ -103,7 +103,7 @@
     part: 9001
     sub_part: 9003
     quantity: 3
-    reference: U3, U4, U5
+    note: U3, U4, U5
     validated: true
 - model: part.bomitem
   pk: 9003
@@ -111,7 +111,7 @@
     part: 9002
     sub_part: 9004
     quantity: 4
-    reference: J1, J2, J3, J4
+    note: J1, J2, J3, J4
     validated: true
 - model: part.bomitem
   pk: 9004
@@ -119,7 +119,7 @@
     part: 9003
     sub_part: 9004
     quantity: 2
-    reference: J5, J6
+    note: J5, J6
     validated: true
 - model: part.part
   pk: 9010
@@ -207,7 +207,7 @@
     part: 9010
     sub_part: 9011
     quantity: 1
-    reference: MOD1
+    note: MOD1
     validated: true
 - model: part.bomitem
   pk: 9011
@@ -215,7 +215,7 @@
     part: 9010
     sub_part: 9012
     quantity: 1
-    reference: MOD2
+    note: MOD2
     validated: true
 - model: part.bomitem
   pk: 9012
@@ -223,7 +223,7 @@
     part: 9010
     sub_part: 9013
     quantity: 1
-    reference: MOD3
+    note: MOD3
     validated: true
 - model: part.bomitem
   pk: 9013
@@ -231,7 +231,7 @@
     part: 9011
     sub_part: 9014
     quantity: 10
-    reference: R1-R10
+    note: R1-R10
     validated: true
 - model: part.bomitem
   pk: 9014
@@ -239,7 +239,7 @@
     part: 9012
     sub_part: 9014
     quantity: 5
-    reference: R11-R15
+    note: R11-R15
     validated: true
 - model: part.bomitem
   pk: 9015
@@ -247,7 +247,7 @@
     part: 9013
     sub_part: 9014
     quantity: 3
-    reference: R16-R18
+    note: R16-R18
     validated: true
 - model: part.partcategory
   pk: 9201
@@ -558,7 +558,7 @@
     part: 9020
     sub_part: 9021
     quantity: 2.0
-    reference: C1, C2
+    note: C1, C2
     validated: true
 - model: part.bomitem
   pk: 8022
@@ -566,7 +566,7 @@
     part: 9020
     sub_part: 9022
     quantity: 2.0
-    reference: C3, C4
+    note: C3, C4
     validated: true
 - model: part.bomitem
   pk: 8023
@@ -574,7 +574,7 @@
     part: 9020
     sub_part: 9023
     quantity: 2.0
-    reference: C5, C6
+    note: C5, C6
     validated: true
 - model: part.bomitem
   pk: 8024
@@ -582,7 +582,7 @@
     part: 9020
     sub_part: 9024
     quantity: 2.0
-    reference: C7, C8
+    note: C7, C8
     validated: true
 - model: part.bomitem
   pk: 8025
@@ -590,7 +590,7 @@
     part: 9020
     sub_part: 9025
     quantity: 2.0
-    reference: C9, C10
+    note: C9, C10
     validated: true
 - model: part.bomitem
   pk: 8026
@@ -598,7 +598,7 @@
     part: 9020
     sub_part: 9026
     quantity: 2.0
-    reference: C11, C12
+    note: C11, C12
     validated: true
 - model: part.bomitem
   pk: 8027
@@ -606,7 +606,7 @@
     part: 9020
     sub_part: 9027
     quantity: 2.0
-    reference: C13, C14
+    note: C13, C14
     validated: true
 - model: part.bomitem
   pk: 8028
@@ -614,7 +614,7 @@
     part: 9020
     sub_part: 9028
     quantity: 2.0
-    reference: C15, C16
+    note: C15, C16
     validated: true
 - model: part.bomitem
   pk: 8029
@@ -622,7 +622,7 @@
     part: 9020
     sub_part: 9029
     quantity: 2.0
-    reference: C17, C18
+    note: C17, C18
     validated: true
 - model: part.bomitem
   pk: 8030
@@ -630,7 +630,7 @@
     part: 9020
     sub_part: 9030
     quantity: 2.0
-    reference: C19, C20
+    note: C19, C20
     validated: true
 - model: part.bomitem
   pk: 8031
@@ -638,7 +638,7 @@
     part: 9020
     sub_part: 9031
     quantity: 2.0
-    reference: C21, C22
+    note: C21, C22
     validated: true
 - model: part.bomitem
   pk: 8032
@@ -646,7 +646,7 @@
     part: 9020
     sub_part: 9032
     quantity: 2.0
-    reference: C23, C24
+    note: C23, C24
     validated: true
 - model: part.bomitem
   pk: 8033
@@ -654,7 +654,7 @@
     part: 9020
     sub_part: 9033
     quantity: 2.0
-    reference: C25, C26
+    note: C25, C26
     validated: true
 - model: part.bomitem
   pk: 8034
@@ -662,7 +662,7 @@
     part: 9020
     sub_part: 9034
     quantity: 2.0
-    reference: C27, C28
+    note: C27, C28
     validated: true
 - model: part.bomitem
   pk: 8035
@@ -670,7 +670,7 @@
     part: 9020
     sub_part: 9035
     quantity: 2.0
-    reference: C29, C30
+    note: C29, C30
     validated: true
 - model: part.bomitem
   pk: 8036
@@ -678,7 +678,7 @@
     part: 9020
     sub_part: 9036
     quantity: 2.0
-    reference: C31, C32
+    note: C31, C32
     validated: true
 - model: part.bomitem
   pk: 8037
@@ -686,7 +686,7 @@
     part: 9020
     sub_part: 9037
     quantity: 2.0
-    reference: C33, C34
+    note: C33, C34
     validated: true
 - model: part.bomitem
   pk: 8038
@@ -694,7 +694,7 @@
     part: 9020
     sub_part: 9038
     quantity: 2.0
-    reference: C35, C36
+    note: C35, C36
     validated: true
 - model: part.bomitem
   pk: 8039
@@ -702,7 +702,7 @@
     part: 9020
     sub_part: 9039
     quantity: 2.0
-    reference: C37, C38
+    note: C37, C38
     validated: true
 - model: part.bomitem
   pk: 8040
@@ -710,7 +710,7 @@
     part: 9020
     sub_part: 9040
     quantity: 2.0
-    reference: C39, C40
+    note: C39, C40
     validated: true
 - model: part.partcategory
   pk: 9202
@@ -825,7 +825,7 @@
     part: 9050
     sub_part: 9051
     quantity: 1.0
-    reference: S1
+    note: S1
     validated: true
 - model: part.bomitem
   pk: 8051
@@ -833,7 +833,7 @@
     part: 9051
     sub_part: 9052
     quantity: 1.0
-    reference: M1
+    note: M1
     validated: true
 - model: part.bomitem
   pk: 8052
@@ -841,7 +841,7 @@
     part: 9052
     sub_part: 9053
     quantity: 1.0
-    reference: B1
+    note: B1
     validated: true
 - model: part.bomitem
   pk: 8053
@@ -849,7 +849,7 @@
     part: 9053
     sub_part: 9054
     quantity: 1.0
-    reference: SEC1
+    note: SEC1
     validated: true
 - model: part.bomitem
   pk: 8054
@@ -857,7 +857,7 @@
     part: 9054
     sub_part: 9055
     quantity: 1.0
-    reference: COMP1
+    note: COMP1
     validated: true
 - model: part.bomitem
   pk: 8055
@@ -865,5 +865,5 @@
     part: 9055
     sub_part: 9056
     quantity: 1.0
-    reference: R1
+    note: R1
     validated: true

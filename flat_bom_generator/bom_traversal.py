@@ -215,8 +215,10 @@ def traverse_bom(
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
 
-                # If parent is Internal Fab, mark child for cut row logic
-                if part_type == "Internal Fab":
+                # If parent is Internal Fab and child is a leaf part (Fab/Coml), mark for cut row logic
+                # Don't mark assemblies - their descendants should be treated as regular parts
+                child_part_type = child_node.get("part_type", "")
+                if part_type == "Internal Fab" and child_part_type in ("Fab", "Coml"):
                     child_node["from_internal_fab_parent"] = True
                     child_node["parent_ipn"] = ipn
                     child_node["parent_part_id"] = part_id
@@ -228,7 +230,7 @@ def traverse_bom(
                             f"Internal Fab child has None quantity: parent={ipn} (ID={part_id}), child={child_part.IPN}"
                         )
                     logger.info(
-                        f"[FlatBOM][traverse_bom] Marked child as from_internal_fab_parent: child_part_id={child_node.get('part_id')}, parent_part_id={part_id}, child_unit={child_node.get('unit')}"
+                        f"[FlatBOM][traverse_bom] Marked child as from_internal_fab_parent: child_part_id={child_node.get('part_id')}, child_type={child_part_type}, parent_part_id={part_id}, child_unit={child_node.get('unit')}"
                     )
 
                 # Add to children list
@@ -426,6 +428,7 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     internal_fab_cut_lists = defaultdict(
         list
     )  # Store cut list details for Internal Fab children
+    ctl_warnings = []  # Store warnings for CtL and Internal Fab issues
 
     # Retrieve allowed units for Internal Fab cut breakdown from attached attribute (set by get_flat_bom)
     if hasattr(deduplicate_and_sum, "ifab_units"):
@@ -473,14 +476,12 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                 })
         elif from_ifab and cut_length is not None:
             # Internal fab parts should have consistent units
-            # If unit doesn't match allowed set, this indicates data corruption
+            # If unit doesn't match allowed set, skip cut_list logic (treat as regular part)
             if unit not in allowed_ifab_units:
-                raise ValueError(
-                    f"CRITICAL: Internal Fab part {leaf.get('ipn')} (Part ID: {part_id}) "
-                    f"has unit '{unit}' which is not in allowed_ifab_units={allowed_ifab_units}. "
-                    f"This indicates data corruption or configuration error. "
-                    f"All instances of the same part must have the same unit."
-                )
+                # Silently treat as regular part (no warning)
+                # For internal fab leaves, cut_length is the quantity (cumulative_qty not used)
+                piece_count_inc = leaf.get("quantity") or 1
+                totals[key] += cut_length * piece_count_inc
             else:
                 # Piece count is the BOM qty of the Internal Fab child in its parent
                 piece_count_inc = leaf.get("quantity") or 1
@@ -511,10 +512,10 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             # Regular parts (not CtL, not internal fab)
             totals[key] += leaf["cumulative_qty"]
 
-        # Collect reference designators for aggregation
-        reference = leaf.get("reference", "")
-        if reference and reference.strip():
-            part_references[key].append(reference)
+        # Collect reference designators for aggregation (from BOM item notes)
+        note = leaf.get("note", "")
+        if note and note.strip():
+            part_references[key].append(note)
 
         # Store part info (first occurrence wins for metadata)
         if key not in part_info:
@@ -536,7 +537,6 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     # Check CtL parts for unit mismatches across all their note variants
     from .categorization import _check_unit_mismatch
 
-    ctl_warnings = []
     ctl_parts_notes = {}  # part_id -> set of unique note strings
     for leaf in leaf_parts:
         part_type = leaf.get("part_type")

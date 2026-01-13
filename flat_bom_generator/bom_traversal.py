@@ -421,6 +421,7 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     # Use defaultdict to accumulate quantities
     totals = defaultdict(float)
     part_info = {}
+    part_references = defaultdict(list)  # Store all reference strings for aggregation
     cut_lists = defaultdict(list)  # Store cut list details for CtL parts
     internal_fab_cut_lists = defaultdict(
         list
@@ -509,6 +510,11 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
         else:
             # Regular parts (not CtL, not internal fab)
             totals[key] += leaf["cumulative_qty"]
+
+        # Collect reference designators for aggregation
+        reference = leaf.get("reference", "")
+        if reference and reference.strip():
+            part_references[key].append(reference)
 
         # Store part info (first occurrence wins for metadata)
         if key not in part_info:
@@ -616,6 +622,11 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     enable_ifab_cuts = getattr(deduplicate_and_sum, "enable_ifab_cuts", False)
     result = []
     for key in sorted(all_keys, key=lambda k: part_info[k]["ipn"]):
+        # Combine all reference designators from multiple BOM paths
+        combined_reference = (
+            ", ".join(part_references[key]) if part_references[key] else ""
+        )
+
         row = {
             "part_id": part_info[key]["part_id"],
             "total_qty": totals.get(key, 0),
@@ -628,6 +639,7 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             "default_supplier_id": part_info[key]["default_supplier_id"],
             "part_type": part_info[key]["part_type"],
             "note": part_info[key]["note"],  # BOM item notes
+            "reference": combined_reference,  # Aggregated reference designators
             "cut_list": cut_lists[key] if cut_lists.get(key) else None,
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),

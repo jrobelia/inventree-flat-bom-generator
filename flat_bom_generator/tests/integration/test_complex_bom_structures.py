@@ -105,13 +105,11 @@ class SamePartMultiplePathsTests(InvenTreeTestCase):
         # Should have no warnings (same part via different paths is valid)
         self.assertEqual(len(warnings), 0, "Should have no circular reference warnings")
     
-    @unittest.skip("Reference aggregation not yet implemented - KNOWN LIMITATION")
     def test_references_combined_across_paths(self):
         """Reference designators from both paths should be combined.
         
-        KNOWN LIMITATION: Current implementation doesn't aggregate reference
-        designators when same part appears in multiple BOM paths. This is a 
-        planned enhancement but not critical for basic functionality.
+        When the same part appears via multiple BOM paths, reference designators
+        from all paths are aggregated into a single comma-separated string.
         """
         result, imp_count, warnings, max_depth = get_flat_bom(self.main_assy.pk)
         

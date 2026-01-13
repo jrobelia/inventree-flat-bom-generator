@@ -66,7 +66,10 @@ def traverse_bom(
     Recursively traverse BOM structure and build tree.
 
     CRITICAL: Uses visited.copy() pattern to allow same part in different
-    branches while preventing circular references.
+    branches while preventing infinite loops from circular references.
+
+    NOTE: InvenTree prevents circular BOMs at database level. The circular
+    check here is a safety mechanism that raises ValueError if triggered.
 
     Args:
         part: Part model instance
@@ -96,16 +99,15 @@ def traverse_bom(
 
     part_id = part.pk
 
-    # CRITICAL: Check for circular reference BEFORE adding to visited
+    # CRITICAL: Prevent infinite loops from circular BOMs
+    # NOTE: InvenTree validates BOMs at database level, so this should never trigger.
+    # If it does, database integrity is compromised.
     if part_id in visited:
-        logger.warning(f"Circular reference detected for part ID {part_id}")
-        return {
-            "error": "circular_reference",
-            "part_id": part_id,
-            "ipn": part.IPN or "",
-            "part_name": part.name,
-            "level": level,
-        }
+        raise ValueError(
+            f"CRITICAL: Circular BOM reference detected for {part.IPN or 'Unknown'} "
+            f"(Part ID: {part_id}) at level {level}. This should not be possible - "
+            f"InvenTree database integrity may be compromised. Please report this issue."
+        )
 
     # Add to visited for this branch
     visited.add(part_id)
@@ -270,10 +272,6 @@ def get_leaf_parts_only(
     """
     if leaves is None:
         leaves = []
-
-    # Skip error nodes
-    if "error" in tree:
-        return leaves
 
     # Check if this is a leaf part
     part_type = tree.get("part_type", "Unknown")
@@ -474,14 +472,14 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                 })
         elif from_ifab and cut_length is not None:
             # Internal fab parts should have consistent units
-            # If unit doesn't match allowed set, skip cut list generation (treat as normal part)
+            # If unit doesn't match allowed set, this indicates data corruption
             if unit not in allowed_ifab_units:
-                logger.info(
-                    f"[FlatBOM][deduplicate_and_sum] Skipping cut list for Internal Fab child part_id={part_id} with unit='{unit}' (not in allowed_ifab_units={allowed_ifab_units}). Treating as normal part. Part: {leaf.get('ipn')}"
+                raise ValueError(
+                    f"CRITICAL: Internal Fab part {leaf.get('ipn')} (Part ID: {part_id}) "
+                    f"has unit '{unit}' which is not in allowed_ifab_units={allowed_ifab_units}. "
+                    f"This indicates data corruption or configuration error. "
+                    f"All instances of the same part must have the same unit."
                 )
-                # Treat as normal part - add to totals without cut list
-                totals[key] += leaf["cumulative_qty"]
-                # Don't continue - need to populate part_info below
             else:
                 # Piece count is the BOM qty of the Internal Fab child in its parent
                 piece_count_inc = leaf.get("quantity") or 1

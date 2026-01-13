@@ -51,71 +51,53 @@ class CircularReferenceDetectionTests(InvenTreeTestCase):
         cls.part_c = Part.objects.get(pk=7003)  # Assembly C
 
     def test_traverse_bom_detects_circular_reference(self):
-        """traverse_bom should detect circular reference and return error dict."""
+        """traverse_bom should raise ValueError on circular reference."""
         from flat_bom_generator.bom_traversal import traverse_bom
 
-        # Traverse from Part A (will hit A→B→C→A cycle)
-        result = traverse_bom(self.part_a)
-
-        # Should detect circular ref when returning to Part A
+        # Should raise ValueError when circular reference detected
         # The cycle: A (level 0) → B (level 1) → C (level 2) → A (ERROR - already visited)
-        # Need to check children for error nodes
-        self.assertIn('children', result)
-        children_b = result['children']
-        self.assertGreater(len(children_b), 0)
+        with self.assertRaises(ValueError) as context:
+            traverse_bom(self.part_a)
+        
+        # Verify error message is clear and actionable
+        error_msg = str(context.exception)
+        self.assertIn('CRITICAL', error_msg)
+        self.assertIn('Circular BOM reference detected', error_msg)
+        self.assertIn('CIRC-A', error_msg)  # Part IPN from fixture
+        self.assertIn(str(self.part_a.pk), error_msg)
+        self.assertIn('database integrity may be compromised', error_msg)
 
-        # Find Part B in children
-        child_b = children_b[0]
-        self.assertEqual(child_b['part_id'], self.part_b.pk)
-
-        # Check Part B's children for Part C
-        self.assertIn('children', child_b)
-        children_c = child_b['children']
-        self.assertGreater(len(children_c), 0)
-
-        # Find Part C in children
-        child_c = children_c[0]
-        self.assertEqual(child_c['part_id'], self.part_c.pk)
-
-        # Check Part C's children for error node (circular ref to Part A)
-        self.assertIn('children', child_c)
-        children_a_error = child_c['children']
-        self.assertGreater(len(children_a_error), 0)
-
-        # This should be an error node (Part A visited again)
-        error_node = children_a_error[0]
-        self.assertIn('error', error_node)
-        self.assertEqual(error_node['error'], 'circular_reference')
-
-    def test_circular_reference_error_dict_structure(self):
-        """Error dict should contain all required fields."""
+    def test_circular_reference_error_message_structure(self):
+        """ValueError message should contain all required information."""
         from flat_bom_generator.bom_traversal import traverse_bom
 
-        result = traverse_bom(self.part_a)
+        # Should raise ValueError with detailed message
+        with self.assertRaises(ValueError) as context:
+            traverse_bom(self.part_a)
+        
+        error_msg = str(context.exception)
+        
+        # Verify error message contains critical information
+        self.assertIn('CRITICAL', error_msg)
+        self.assertIn('Circular BOM reference detected', error_msg)
+        self.assertIn('CIRC-A', error_msg)  # Part IPN from fixture
+        self.assertIn(str(self.part_a.pk), error_msg)  # Part ID
+        self.assertIn('level 3', error_msg)  # Level where circular ref detected
+        self.assertIn('database integrity may be compromised', error_msg)
 
-        # Navigate to error node (A→B→C→A)
-        child_b = result['children'][0]
-        child_c = child_b['children'][0]
-        error_node = child_c['children'][0]
+    def test_error_nodes_cannot_exist(self):
+        """Error nodes no longer exist - circular refs raise ValueError."""
+        from flat_bom_generator.bom_traversal import traverse_bom
 
-        # Verify error dict structure
-        self.assertEqual(error_node['error'], 'circular_reference')
-        self.assertEqual(error_node['part_id'], self.part_a.pk)
-        self.assertEqual(error_node['ipn'], self.part_a.IPN or '')
-        self.assertEqual(error_node['part_name'], self.part_a.name)
-        self.assertEqual(error_node['level'], 3)  # Level 3 (A at 0, B at 1, C at 2, A again at 3)
-
-    def test_error_nodes_skipped_in_leaf_extraction(self):
-        """get_leaf_parts_only should skip error nodes."""
-        from flat_bom_generator.bom_traversal import traverse_bom, get_leaf_parts_only
-
-        tree = traverse_bom(self.part_a)
-        leaves = get_leaf_parts_only(tree)
-
-        # Should NOT include error nodes in leaf parts
-        # Error nodes don't represent real parts to purchase/build
-        for leaf in leaves:
-            self.assertNotIn('error', leaf, "Error nodes should not appear in leaf parts")
+        # This test documents behavior change from error dict to exception
+        # Error nodes can no longer exist in BOM tree because traverse_bom
+        # raises ValueError immediately when circular reference detected
+        
+        with self.assertRaises(ValueError) as context:
+            traverse_bom(self.part_a)
+        
+        # Verify it's a circular reference error
+        self.assertIn('Circular BOM reference', str(context.exception))
 
     def test_get_flat_bom_handles_circular_reference(self):
         """get_flat_bom should handle circular references gracefully."""
@@ -132,8 +114,8 @@ class CircularReferenceDetectionTests(InvenTreeTestCase):
             self.assertIn('part_id', item)
             self.assertIn('ipn', item)
 
-    def test_circular_reference_logged(self):
-        """Circular reference detection should log warning."""
+    def test_circular_reference_raises_not_logs(self):
+        """Circular reference detection raises ValueError, not just logging."""
         from flat_bom_generator.bom_traversal import traverse_bom
         import logging
         from io import StringIO
@@ -141,17 +123,20 @@ class CircularReferenceDetectionTests(InvenTreeTestCase):
         # Capture log output
         log_stream = StringIO()
         handler = logging.StreamHandler(log_stream)
-        handler.setLevel(logging.WARNING)
+        handler.setLevel(logging.ERROR)
         logger = logging.getLogger('inventree')
         logger.addHandler(handler)
 
         try:
-            traverse_bom(self.part_a)
-            log_output = log_stream.getvalue()
-
-            # Should log circular reference warning
-            self.assertIn('Circular reference detected', log_output)
-            self.assertIn(str(self.part_a.pk), log_output)
+            # Should raise ValueError (fail-loud, not silent logging)
+            with self.assertRaises(ValueError) as context:
+                traverse_bom(self.part_a)
+            
+            # Verify it's the circular reference error
+            self.assertIn('Circular BOM reference', str(context.exception))
+            
+            # Note: get_flat_bom() catches this exception and logs it as ERROR
+            # but traverse_bom() itself raises the exception immediately
 
         finally:
             logger.removeHandler(handler)

@@ -36,10 +36,15 @@ import {
   type DataTableColumn,
   type DataTableSortStatus
 } from 'mantine-datatable';
-import { useEffect, useMemo, useState } from 'react';
-
+import { useMemo, useState } from 'react';
+// Import custom hooks
+import { useBuildQuantity } from './hooks/useBuildQuantity';
+import { useColumnVisibility } from './hooks/useColumnVisibility';
+import { useFlatBom } from './hooks/useFlatBom';
 // Import types
-import type { BomItem, FlatBomResponse } from './types/BomTypes';
+import type { BomItem } from './types/BomTypes';
+
+// Import utilities
 import {
   filterBomData,
   flattenBomData,
@@ -47,7 +52,6 @@ import {
   sortBomData
 } from './utils/bomDataProcessing';
 import { getDimmedOpacity, getPartTypeColor } from './utils/colorUtils';
-// Import utilities
 import {
   downloadCsv,
   generateCsvContent,
@@ -63,13 +67,21 @@ function FlatBOMGeneratorPanel({
 }: {
   context: InvenTreePluginContext;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [bomData, setBomData] = useState<FlatBomResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [buildQuantity, setBuildQuantity] = useState<number>(1);
+  // Get the part ID from the context
+  const partId = useMemo(() => {
+    return context?.id || context?.instance?.pk;
+  }, [context.id, context.instance]);
+
+  // Get the part name from the context
+  const partName = useMemo(() => {
+    return context?.instance?.name || 'Unknown Part';
+  }, [context.instance]);
+
+  // Local UI state (must be declared before hooks that use them)
   const [includeAllocations, setIncludeAllocations] = useState<boolean>(true);
   const [includeOnOrder, setIncludeOnOrder] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [warningsDismissed, setWarningsDismissed] = useState<boolean>(false);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<BomItem>>({
     columnAccessor: 'ipn',
     direction: 'asc'
@@ -83,54 +95,13 @@ function FlatBOMGeneratorPanel({
     return num > 0 ? num : 50;
   });
 
-  // Get the part ID from the context
-  const partId = useMemo(() => {
-    return context?.id || context?.instance?.pk;
-  }, [context.id, context.instance]);
-
-  // Get the part name from the context
-  const partName = useMemo(() => {
-    return context?.instance?.name || 'Unknown Part';
-  }, [context.instance]);
-
-  /**
-   * Generate flat BOM by calling the plugin API
-   */
-  const generateFlatBom = async () => {
-    if (!partId) {
-      setError('No part ID available');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Call the plugin API endpoint with 30 second timeout
-      const response = await context.api.get(
-        `/plugin/flat-bom-generator/flat-bom/${partId}/`,
-        { timeout: 30000 }
-      );
-
-      if (response.status === 200) {
-        console.log('[FlatBOM] API Response:', response.data);
-        console.log('[FlatBOM] Metadata:', response.data.metadata);
-        console.log('[FlatBOM] Warnings:', response.data.metadata?.warnings);
-        setBomData(response.data);
-      } else {
-        setError(`API returned status ${response.status}`);
-      }
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.error ||
-          err.message ||
-          'Failed to generate flat BOM'
-      );
-      console.error('Error generating flat BOM:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Custom hooks for flat BOM functionality
+  const { bomData, loading, error, generateFlatBom, clearError } = useFlatBom(
+    partId,
+    context
+  );
+  const { buildQuantity, setBuildQuantity } = useBuildQuantity(1);
+  const { hiddenColumns, toggleColumn } = useColumnVisibility(bomData);
 
   /**
    * Export BOM to CSV using utility functions
@@ -618,52 +589,6 @@ function FlatBOMGeneratorPanel({
     [buildQuantity, includeAllocations, includeOnOrder]
   );
 
-  // Column visibility state - stored in localStorage
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
-    const stored = localStorage.getItem('flat-bom-hidden-columns');
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  });
-
-  // Auto-manage cut_length column visibility
-  useEffect(() => {
-    if (bomData) {
-      const hasCtLParts = bomData.bom_items.some(
-        (item) => item.cut_list && item.cut_list.length > 0
-      );
-
-      setHiddenColumns((prev) => {
-        const newSet = new Set(prev);
-        if (hasCtLParts) {
-          newSet.delete('cut_length');
-        } else {
-          newSet.add('cut_length');
-        }
-        localStorage.setItem(
-          'flat-bom-hidden-columns',
-          JSON.stringify([...newSet])
-        );
-        return newSet;
-      });
-    }
-  }, [bomData]);
-
-  // Toggle column visibility
-  const toggleColumn = (accessor: string) => {
-    setHiddenColumns((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(accessor)) {
-        newSet.delete(accessor);
-      } else {
-        newSet.add(accessor);
-      }
-      localStorage.setItem(
-        'flat-bom-hidden-columns',
-        JSON.stringify([...newSet])
-      );
-      return newSet;
-    });
-  };
-
   // Filter columns based on visibility
   const visibleColumns = useMemo(
     () => columns.filter((col) => !hiddenColumns.has(col.accessor as string)),
@@ -697,7 +622,7 @@ function FlatBOMGeneratorPanel({
           title='Error'
           color='red'
           withCloseButton
-          onClose={() => setError(null)}
+          onClose={clearError}
         >
           {error}
         </Alert>
@@ -720,24 +645,15 @@ function FlatBOMGeneratorPanel({
       {bomData && !loading && (
         <Stack gap='sm'>
           {/* Warnings Section */}
-          {bomData?.metadata?.warnings &&
+          {!warningsDismissed &&
+            bomData?.metadata?.warnings &&
             bomData.metadata.warnings.length > 0 && (
               <Alert
                 icon={<IconAlertTriangle size={16} />}
                 title={`${bomData.metadata.warnings.length} Warning${bomData.metadata.warnings.length > 1 ? 's' : ''} Found`}
                 color='yellow'
                 withCloseButton
-                onClose={() => {
-                  // Clear warnings from bomData to hide the alert
-                  setBomData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          metadata: { ...prev.metadata, warnings: [] }
-                        }
-                      : null
-                  );
-                }}
+                onClose={() => setWarningsDismissed(true)}
               >
                 <Stack gap='xs'>
                   {bomData.metadata.warnings.map((warning, idx) => (

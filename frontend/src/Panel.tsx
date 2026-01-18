@@ -23,7 +23,6 @@ import {
 } from '@mantine/core';
 import {
   IconAdjustments,
-  IconAlertCircle,
   IconAlertTriangle,
   IconCornerDownRight,
   IconDownload,
@@ -37,10 +36,15 @@ import {
   type DataTableSortStatus
 } from 'mantine-datatable';
 import { useMemo, useState } from 'react';
+
+// Import components
+import { ErrorAlert } from './components/ErrorAlert';
+
 // Import custom hooks
 import { useBuildQuantity } from './hooks/useBuildQuantity';
 import { useColumnVisibility } from './hooks/useColumnVisibility';
 import { useFlatBom } from './hooks/useFlatBom';
+
 // Import types
 import type { BomItem } from './types/BomTypes';
 
@@ -616,17 +620,7 @@ function FlatBOMGeneratorPanel({
         </Group>
       )}
 
-      {error && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title='Error'
-          color='red'
-          withCloseButton
-          onClose={clearError}
-        >
-          {error}
-        </Alert>
-      )}
+      {error && <ErrorAlert error={error} onClose={clearError} />}
 
       {loading && (
         <Paper p='xl' withBorder>

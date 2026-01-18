@@ -23,7 +23,6 @@ import {
 } from '@mantine/core';
 import {
   IconAdjustments,
-  IconAlertTriangle,
   IconCornerDownRight,
   IconDownload,
   IconRefresh,
@@ -39,6 +38,7 @@ import { useMemo, useState } from 'react';
 
 // Import components
 import { ErrorAlert } from './components/ErrorAlert';
+import { WarningsAlert } from './components/WarningsAlert';
 
 // Import custom hooks
 import { useBuildQuantity } from './hooks/useBuildQuantity';
@@ -639,25 +639,12 @@ function FlatBOMGeneratorPanel({
       {bomData && !loading && (
         <Stack gap='sm'>
           {/* Warnings Section */}
-          {!warningsDismissed &&
-            bomData?.metadata?.warnings &&
-            bomData.metadata.warnings.length > 0 && (
-              <Alert
-                icon={<IconAlertTriangle size={16} />}
-                title={`${bomData.metadata.warnings.length} Warning${bomData.metadata.warnings.length > 1 ? 's' : ''} Found`}
-                color='yellow'
-                withCloseButton
-                onClose={() => setWarningsDismissed(true)}
-              >
-                <Stack gap='xs'>
-                  {bomData.metadata.warnings.map((warning, idx) => (
-                    <Text key={idx} size='sm'>
-                      <strong>{warning.part_name}</strong>: {warning.message}
-                    </Text>
-                  ))}
-                </Stack>
-              </Alert>
-            )}
+          {!warningsDismissed && bomData?.metadata?.warnings && (
+            <WarningsAlert
+              warnings={bomData.metadata.warnings}
+              onClose={() => setWarningsDismissed(true)}
+            />
+          )}
 
           <Paper p='sm' withBorder>
             <Group justify='space-between' align='flex-start' wrap='wrap'>

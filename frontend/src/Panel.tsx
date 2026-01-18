@@ -38,12 +38,14 @@ import { useMemo, useState } from 'react';
 
 // Import components
 import { ErrorAlert } from './components/ErrorAlert';
+import { StatisticsPanel } from './components/StatisticsPanel';
 import { WarningsAlert } from './components/WarningsAlert';
 
 // Import custom hooks
 import { useBuildQuantity } from './hooks/useBuildQuantity';
 import { useColumnVisibility } from './hooks/useColumnVisibility';
 import { useFlatBom } from './hooks/useFlatBom';
+import { useShortfallCalculation } from './hooks/useShortfallCalculation';
 
 // Import types
 import type { BomItem } from './types/BomTypes';
@@ -106,6 +108,8 @@ function FlatBOMGeneratorPanel({
   );
   const { buildQuantity, setBuildQuantity } = useBuildQuantity(1);
   const { hiddenColumns, toggleColumn } = useColumnVisibility(bomData);
+  const { countNeedToOrder, countOutOfStock, countOnOrder } =
+    useShortfallCalculation(buildQuantity, includeAllocations, includeOnOrder);
 
   /**
    * Export BOM to CSV using utility functions
@@ -646,88 +650,17 @@ function FlatBOMGeneratorPanel({
             />
           )}
 
+          <StatisticsPanel
+            totalUniqueParts={bomData.total_unique_parts}
+            maxDepthReached={bomData.max_depth_reached}
+            totalIfpsProcessed={bomData.total_ifps_processed}
+            outOfStockCount={countOutOfStock(bomData.bom_items)}
+            onOrderCount={countOnOrder(bomData.bom_items)}
+            needToOrderCount={countNeedToOrder(bomData.bom_items)}
+          />
+
           <Paper p='sm' withBorder>
             <Group justify='space-between' align='flex-start' wrap='wrap'>
-              <Group gap='md' wrap='wrap'>
-                <div style={{ minWidth: '70px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    Total
-                    <br />
-                    Parts
-                  </Text>
-                  <Text size='lg' fw={700}>
-                    {bomData.total_unique_parts}
-                  </Text>
-                </div>
-                <div style={{ minWidth: '70px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    BOM
-                    <br />
-                    Depth
-                  </Text>
-                  <Text size='lg' fw={700} c='violet'>
-                    {bomData.max_depth_reached}
-                  </Text>
-                </div>
-                <div style={{ minWidth: '80px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    Internal Fab
-                    <br />
-                    Processed
-                  </Text>
-                  <Text size='lg' fw={700} c='cyan'>
-                    {bomData.total_ifps_processed}
-                  </Text>
-                </div>
-                <div style={{ minWidth: '70px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    Out of
-                    <br />
-                    Stock
-                  </Text>
-                  <Text size='lg' fw={700} c='red'>
-                    {
-                      bomData.bom_items.filter((item) => item.in_stock <= 0)
-                        .length
-                    }
-                  </Text>
-                </div>
-                <div style={{ minWidth: '70px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    On
-                    <br />
-                    Order
-                  </Text>
-                  <Text size='lg' fw={700} c='blue'>
-                    {
-                      bomData.bom_items.filter((item) => item.on_order > 0)
-                        .length
-                    }
-                  </Text>
-                </div>
-                <div style={{ minWidth: '70px' }}>
-                  <Text size='xs' c='dimmed' style={{ lineHeight: 1.2 }}>
-                    Need to
-                    <br />
-                    Order
-                  </Text>
-                  <Text size='lg' fw={700} c='orange'>
-                    {
-                      bomData.bom_items.filter((item) => {
-                        const totalRequired = item.total_qty * buildQuantity;
-                        let stockValue = item.in_stock;
-                        if (includeAllocations) {
-                          stockValue -= item.allocated;
-                        }
-                        if (includeOnOrder) {
-                          stockValue += item.on_order;
-                        }
-                        return totalRequired > stockValue;
-                      }).length
-                    }
-                  </Text>
-                </div>
-              </Group>
               <Group gap='xs' align='flex-end' wrap='wrap'>
                 <NumberInput
                   label='Build Quantity'

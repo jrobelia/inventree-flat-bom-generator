@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Plugin Improvement Roadmap
 
-> **Status:** Testing complete (151 tests, 92% coverage) - Ready for feature work  
-> **Last Updated:** January 15, 2026
+> **Status:** Frontend refactoring Phase 3 complete - Clean architecture established  
+> **Last Updated:** January 18, 2026
 
 ---
 
@@ -15,6 +15,7 @@
 - **Critical Gaps Closed** - Circular refs (5 tests), plugin core (15 tests), query params (11 tests), view settings (6 tests), stock enrichment (2 tests)
 - **Code Quality** - Removed 96 lines dead code, fixed 3 incorrect fallbacks, found/fixed 1 production bug (Part.DoesNotExist)
 - **Fixture Breakthrough** - Programmatic fixture loading pattern established
+- **Frontend Refactoring (Phase 3)** - Extracted components from Panel.tsx: 1240 → 302 lines (76% reduction)
 
 ### 🚧 Remaining Test Gaps (Minor, Deferred)
 Very low-risk gaps deferred until issues arise:
@@ -60,6 +61,20 @@ Very low-risk gaps deferred until issues arise:
 - Gap #5: View settings loading (6 tests with double-patch mocking)
 - Gap #6: Stock enrichment errors (2 tests, found/fixed production bug)
 
+### Phase 6: Frontend Refactoring Phase 3 (Jan 18, 2026)
+- Completed all 5 steps of Phase 3 component extraction
+- Panel.tsx reduced: 1240 → 302 lines (76% reduction, target was 80%)
+- Extracted components: ErrorAlert, WarningsAlert, StatisticsPanel, ControlBar, bomTableColumns
+- Created ExtendedColumn<T> type workaround for mantine-datatable TypeScript gap
+- Fixed critical bug: DataTable requires `switchable` property (not `toggleable`) for column visibility
+- Removed 6 unused imports from Panel.tsx
+- All changes deployed and tested on staging server
+
+**Critical Discovery:** `toggleable` vs `switchable` property name
+- DataTable crashes with "can't access property 'filter', R is undefined" when using wrong property
+- TypeScript doesn't include `switchable` in DataTableColumn type definition (runtime-only property)
+- Solution: Created `type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };`
+
 ---
 
 ## Key Lessons Learned
@@ -70,12 +85,16 @@ Very low-risk gaps deferred until issues arise:
 3. **Test-first workflow** - Caught bugs during serializer refactoring
 4. **Incremental phases** - Small verifiable changes prevent stacking unverified work
 5. **Production validation** - Deploy → Test in UI → Verify catches integration issues
+6. **User diagnostic insights** - User identified `toggleable` vs `switchable` bug immediately
+7. **TypeScript type extensions** - `ExtendedColumn<T>` pattern bridges runtime/compile-time gaps
 
 ### What to Avoid
 1. ❌ Skipping deployment after code changes
 2. ❌ Assuming "tests pass" = "code works in production"
 3. ❌ Creating code without checking existing solutions
 4. ❌ Accepting test gaps too quickly
+5. ❌ All-at-once refactoring when user suggests incremental approach
+6. ❌ Assuming library TypeScript types are complete (check runtime behavior)
 
 ### Core Principle
 > "Test what you refactor, not just what's easy. Use fixtures when Django validation blocks test creation."

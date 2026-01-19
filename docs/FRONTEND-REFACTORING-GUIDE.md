@@ -185,6 +185,23 @@ See Phase 5 for detailed testing and validation workflow.
 
 ## Executive Summary
 
+### ✅ **REFACTORING COMPLETE** (January 18, 2026)
+
+**Achievement: Panel.tsx reduced from 1240 → 302 lines (76% reduction)**
+
+Phase 3 (Component Extraction) completed all 5 steps:
+- ✅ Step 1: ErrorAlert component
+- ✅ Step 2: WarningsAlert component
+- ✅ Step 3: StatisticsPanel component
+- ✅ Step 4: ControlBar component
+- ✅ Step 5: bomTableColumns extraction + ExtendedColumn<T> type
+
+**Critical Discovery:** `toggleable` vs `switchable` property bug
+- DataTable requires `switchable` property (not `toggleable`) for column visibility
+- Wrong property causes crash: "can't access property 'filter', R is undefined"
+- Created `ExtendedColumn<T>` type to bridge TypeScript/runtime gap
+- User diagnosed the issue immediately during testing
+
 ### Why Refactor Now?
 
 **Backend is Ready:**
@@ -2642,19 +2659,36 @@ export function BomDataTable({
 
 ### Phase 3 Summary
 
+**✅ COMPLETE (January 18, 2026)**
+
 **Files Created:**
-1. ✅ `frontend/src/components/ErrorDisplay.tsx` (30 lines)
-2. ✅ `frontend/src/components/WarningDisplay.tsx` (40 lines)
+1. ✅ `frontend/src/components/ErrorAlert.tsx` (30 lines)
+2. ✅ `frontend/src/components/WarningsAlert.tsx` (40 lines)
 3. ✅ `frontend/src/components/StatisticsPanel.tsx` (80 lines)
-4. ✅ `frontend/src/components/ControlsPanel.tsx` (120 lines)
-5. ✅ `frontend/src/components/SearchBar.tsx` (40 lines)
-6. ✅ `frontend/src/components/BomDataTable.tsx` (60 lines)
-7. ✅ `frontend/src/hooks/useColumnDefinitions.ts` (250 lines)
+4. ✅ `frontend/src/components/ControlBar.tsx` (120 lines)
+5. ✅ `frontend/src/columns/bomTableColumns.tsx` (424 lines)
 
 **Files Modified:**
-1. ✅ `frontend/src/Panel.tsx` (reduced by ~600 lines to ~240 lines)
+1. ✅ `frontend/src/Panel.tsx` (reduced by ~938 lines to 302 lines)
 
-**Verification Steps:**
+**Critical Bug Fixed:**
+- **Issue:** DataTable crashed with "can't access property 'filter', R is undefined"
+- **Root Cause:** bomTableColumns.tsx used `toggleable: true` instead of `switchable: true`
+- **Discovery:** User identified the issue immediately during manual testing
+- **Solution:** Changed all 10 instances to `switchable` + created ExtendedColumn<T> type
+
+**TypeScript Gap Discovered:**
+- mantine-datatable's `switchable` property exists at runtime but not in TypeScript types
+- Inline code with `switchable` compiled fine, but extracted function failed
+- Workaround: `type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };`
+
+**Line Count Achievement:**
+- **Original:** 1240 lines
+- **Final:** 302 lines
+- **Reduction:** 938 lines removed (76%!)
+- **Target:** 80% (achieved 76% - very close!)
+
+**Verification Steps:****
 ```bash
 npm run tsc
 npm test  # Add component tests
@@ -4260,6 +4294,158 @@ const data = useMemo(() => processData(items, query), [items, query]);
 - InvenTree docs: ZERO frontend testing examples for plugins
 - Plugin-creator: NO test infrastructure scaffolded
 - Official guidance: TypeScript + Manual testing only
+
+---
+
+## Critical Gotchas & Lessons Learned
+
+### 1. `toggleable` vs `switchable` Property (CRITICAL BUG)
+
+**The Problem:**
+When extracting column definitions to separate file, DataTable crashed with:
+```
+Uncaught TypeError: can't access property 'filter', R is undefined
+```
+
+**Root Cause:**
+- **Wrong property:** `toggleable: true` (doesn't exist in mantine-datatable)
+- **Correct property:** `switchable: true` (controls column visibility)
+- Using wrong property crashes DataTable's internal filtering logic
+
+**Why This Happened:**
+- Copilot/formatter generated bomTableColumns.tsx with `toggleable` property
+- Working Panel.tsx had `switchable` property (10 instances)
+- Copy-paste error or autocomplete suggestion led to wrong property name
+
+**How User Discovered It:**
+User made critical diagnostic insight during testing:
+> "I wonder if it is as simple as reverting the toggleable: true switchable: true switch. Could that be the issue?"
+
+User was **100% correct** - changing property name fixed crash immediately.
+
+**TypeScript Gap:**
+- `switchable` property exists at **runtime** in mantine-datatable
+- `switchable` NOT in TypeScript `DataTableColumn` type definition
+- TypeScript allows `switchable` in inline object literals (lax checking)
+- TypeScript REJECTS `switchable` in function return types (strict checking)
+
+**The Solution:**
+```typescript
+// Create type extension to include runtime property
+type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };
+
+// Use in function return type
+export function createBomTableColumns(): ExtendedColumn<BomItem>[] {
+  return [
+    {
+      accessor: 'ipn',
+      switchable: true, // ✅ Now TypeScript accepts this
+      // ...
+    }
+  ];
+}
+```
+
+**Takeaway:**
+- **Always verify property names** when extracting to separate files
+- **Library runtime vs TypeScript types** can differ (undocumented properties)
+- **User diagnostic insights are valuable** - trust them!
+- **Type extensions** bridge gaps between runtime and compile-time
+
+---
+
+### 2. Incremental Approach Validates Itself
+
+**What Happened:**
+User suggested incremental approach (2-3 columns at a time) for Step 5. Agent proceeded with all-at-once extraction (all 12 columns). DataTable crashed.
+
+**Lesson:**
+User's caution was wise - incremental would have caught `toggleable` bug on first 2-3 columns, not after extracting all 12.
+
+**Takeaway:**
+- **Listen to user's risk assessment** - they know their codebase
+- **Incremental catches issues earlier** - smaller blast radius
+- **All-at-once works if confident** - but adds debugging complexity when it fails
+
+---
+
+### 3. TypeScript Validates Different Contexts Differently
+
+**Inline Code (Lax):**
+```typescript
+const columns: DataTableColumn<BomItem>[] = useMemo(
+  () => [
+    { accessor: 'ipn', switchable: true } // ✅ TypeScript allows
+  ],
+  []
+);
+```
+
+**Function Return (Strict):**
+```typescript
+function getColumns(): DataTableColumn<BomItem>[] {
+  return [
+    { accessor: 'ipn', switchable: true } // ❌ TS2353: 'switchable' does not exist
+  ];
+}
+```
+
+**Why:** TypeScript uses **object literal inference** for inline code but **strict type checking** for function returns.
+
+**Takeaway:**
+- **Extraction reveals type errors** that inline code hides
+- **Run TypeScript after every extraction** - don't wait
+- **Type extensions solve missing property issues**
+
+---
+
+### 4. User Diagnostics Beat Agent Debugging
+
+**Timeline:**
+1. Agent deployed extracted code → DataTable crashed
+2. Agent started complex debugging (checking imports, types, etc.)
+3. **User immediately identified root cause:** "toggleable vs switchable"
+4. Agent verified and fixed in minutes
+
+**Takeaway:**
+- **User knows the patterns** - they wrote the original working code
+- **Ask user for insights** when stuck
+- **Collaborative debugging is faster** than solo agent work
+
+---
+
+### 5. Manual Testing Catches Integration Bugs TypeScript Can't
+
+**What TypeScript Caught:**
+- Type mismatches, missing imports, wrong signatures ✅
+
+**What Manual Testing Caught:**
+- DataTable crash from wrong property name ✅
+- Column visibility menu not working ✅
+- Sorting behavior with child rows ✅
+
+**Takeaway:**
+- **TypeScript is NOT sufficient** for UI validation
+- **10-minute manual checklist** catches more than hours of debugging
+- **Deploy → Test in UI → Verify** is non-negotiable
+
+---
+
+### 6. Documentation of Gotchas Prevents Repetition
+
+**This Section's Purpose:**
+Future developers (human or AI) working on this codebase will:
+- Know about `toggleable` vs `switchable` trap
+- Understand TypeScript type extension pattern
+- Value incremental approach for high-risk refactoring
+- Trust user diagnostic insights
+
+**Takeaway:**
+- **Document failures, not just successes**
+- **Gotchas are learning opportunities**
+- **Save future developers from repeating mistakes**
+
+---
 
 ### Resources for Agent & User
 

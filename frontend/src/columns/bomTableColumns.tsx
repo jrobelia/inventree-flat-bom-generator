@@ -4,6 +4,9 @@ import type { DataTableColumn } from 'mantine-datatable';
 import type { BomItem } from '../types/BomTypes';
 import { getDimmedOpacity, getPartTypeColor } from '../utils/colorUtils';
 
+// Extend DataTableColumn to include switchable property (exists at runtime)
+type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };
+
 interface BomTableColumnOptions {
   buildQuantity: number;
   includeAllocations: boolean;
@@ -19,13 +22,13 @@ export function createBomTableColumns({
   includeAllocations,
   includeOnOrder,
   calculateShortfall
-}: BomTableColumnOptions): DataTableColumn<BomItem>[] {
+}: BomTableColumnOptions): ExtendedColumn<BomItem>[] {
   return [
     {
       accessor: 'full_name',
       title: 'Component',
       sortable: true,
-      toggleable: false,
+      switchable: false,
       render: (record) => {
         if (record.is_cut_list_child) {
           return (
@@ -63,7 +66,7 @@ export function createBomTableColumns({
       accessor: 'ipn',
       title: 'IPN',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       render: (record) => (
         <Text size='sm' style={{ fontFamily: 'monospace' }}>
           {record.ipn}
@@ -74,7 +77,7 @@ export function createBomTableColumns({
       accessor: 'description',
       title: 'Description',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       render: (record) => (
         <Text size='sm' lineClamp={2} title={record.description}>
           {record.description}
@@ -85,7 +88,7 @@ export function createBomTableColumns({
       accessor: 'part_type',
       title: 'Type',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       render: (record) => {
         const baseType = record.part_type;
         const color = getPartTypeColor(baseType);
@@ -125,7 +128,7 @@ export function createBomTableColumns({
       accessor: 'total_qty',
       title: 'Total Qty',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       render: (record) => {
         const totalRequired = record.total_qty * buildQuantity;
         if (record.is_cut_list_child) {
@@ -169,7 +172,7 @@ export function createBomTableColumns({
       accessor: 'cut_length',
       title: 'Cut Length',
       sortable: false,
-      toggleable: false,
+      switchable: false,
       render: (record) => {
         if (!record.cut_length) {
           return (
@@ -199,7 +202,7 @@ export function createBomTableColumns({
       accessor: 'in_stock',
       title: 'In Stock',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
@@ -266,7 +269,7 @@ export function createBomTableColumns({
       accessor: 'allocated',
       title: 'Allocated',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
@@ -320,7 +323,7 @@ export function createBomTableColumns({
       accessor: 'on_order',
       title: 'On Order',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
@@ -369,7 +372,7 @@ export function createBomTableColumns({
       accessor: 'shortfall',
       title: 'Build Margin',
       sortable: true,
-      toggleable: true,
+      switchable: true,
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {

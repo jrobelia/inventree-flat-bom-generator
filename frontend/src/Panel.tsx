@@ -6,30 +6,23 @@ import {
 import {
   ActionIcon,
   Alert,
-  Anchor,
-  Badge,
   Button,
   Group,
   Loader,
   Paper,
   Stack,
   Text,
-  TextInput,
-  Tooltip
+  TextInput
 } from '@mantine/core';
-import {
-  IconCornerDownRight,
-  IconRefresh,
-  IconSearch,
-  IconX
-} from '@tabler/icons-react';
+import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
 import {
   DataTable,
   type DataTableColumn,
   type DataTableSortStatus
 } from 'mantine-datatable';
 import { useMemo, useState } from 'react';
-
+// Import column definitions
+import { createBomTableColumns } from './columns/bomTableColumns';
 // Import components
 import { ControlBar } from './components/ControlBar';
 import { ErrorAlert } from './components/ErrorAlert';
@@ -52,7 +45,6 @@ import {
   groupChildrenWithParents,
   sortBomData
 } from './utils/bomDataProcessing';
-import { getDimmedOpacity, getPartTypeColor } from './utils/colorUtils';
 import {
   downloadCsv,
   generateCsvContent,
@@ -103,8 +95,16 @@ function FlatBOMGeneratorPanel({
   );
   const { buildQuantity, setBuildQuantity } = useBuildQuantity(1);
   const { hiddenColumns, toggleColumn } = useColumnVisibility(bomData);
-  const { countNeedToOrder, countOutOfStock, countOnOrder } =
-    useShortfallCalculation(buildQuantity, includeAllocations, includeOnOrder);
+  const {
+    calculateShortfall,
+    countNeedToOrder,
+    countOutOfStock,
+    countOnOrder
+  } = useShortfallCalculation(
+    buildQuantity,
+    includeAllocations,
+    includeOnOrder
+  );
 
   /**
    * Export BOM to CSV using utility functions
@@ -162,434 +162,14 @@ function FlatBOMGeneratorPanel({
 
   // Define DataTable columns matching InvenTree BomTable style
   const columns: DataTableColumn<BomItem>[] = useMemo(
-    () => [
-      {
-        accessor: 'full_name',
-        title: 'Component',
-        sortable: true,
-        switchable: false,
-        render: (record) => {
-          if (record.is_cut_list_child) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='flex-end'>
-                <IconCornerDownRight
-                  size={40}
-                  stroke={1.5}
-                  style={{ color: 'var(--mantine-color-blue-5)' }}
-                />
-              </Group>
-            );
-          }
-          return (
-            <Group gap='xs' wrap='nowrap'>
-              {record.thumbnail && (
-                <img
-                  src={record.thumbnail}
-                  alt={record.full_name}
-                  style={{ width: 40, height: 40, objectFit: 'contain' }}
-                />
-              )}
-              <Anchor
-                href={record.link}
-                target='_blank'
-                size='sm'
-                style={{ textDecoration: 'none' }}
-              >
-                {record.full_name}
-              </Anchor>
-            </Group>
-          );
-        }
-      },
-      {
-        accessor: 'ipn',
-        title: 'IPN',
-        sortable: true,
-        switchable: true,
-        render: (record) => (
-          <Text size='sm' style={{ fontFamily: 'monospace' }}>
-            {record.ipn}
-          </Text>
-        )
-      },
-      {
-        accessor: 'description',
-        title: 'Description',
-        sortable: true,
-        switchable: true,
-        render: (record) => (
-          <Text size='sm' lineClamp={2} title={record.description}>
-            {record.description}
-          </Text>
-        )
-      },
-      {
-        accessor: 'part_type',
-        title: 'Type',
-        sortable: true,
-        switchable: true,
-        render: (record) => {
-          const baseType = record.part_type;
-          const color = getPartTypeColor(baseType);
-
-          // Internal Fab and CtL child rows get the CUT suffix
-          const display =
-            record.is_cut_list_child &&
-            (baseType === 'Internal Fab' || baseType === 'CtL')
-              ? `${baseType} - CUT`
-              : baseType;
-
-          // Use CSS ellipsis and always show tooltip for now (like InvenTree ellipsis 'Actions')
-          return (
-            <Tooltip label={display} withArrow>
-              <Badge
-                size='sm'
-                color={color}
-                variant='light'
-                style={{
-                  maxWidth: 90,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                  display: 'inline-block',
-                  verticalAlign: 'middle'
-                }}
-                tabIndex={0}
-                aria-label={display}
-              >
-                {display}
-              </Badge>
-            </Tooltip>
-          );
-        }
-      },
-      {
-        accessor: 'total_qty',
-        title: 'Total Qty',
-        sortable: true,
-        switchable: true,
-        render: (record) => {
-          const totalRequired = record.total_qty * buildQuantity;
-          if (record.is_cut_list_child) {
-            // Cut list children: multiply pieces by buildQuantity
-            const totalPieces = record.total_qty * buildQuantity;
-            return (
-              <Group
-                gap='xs'
-                justify='space-between'
-                wrap='nowrap'
-                style={{ maxWidth: '100%' }}
-              >
-                <Text size='sm' fw={700}>
-                  {totalPieces.toFixed(0)}
-                </Text>
-                <Text size='xs' c='dimmed'>
-                  pieces
-                </Text>
-              </Group>
-            );
-          }
-          return (
-            <Group
-              gap='xs'
-              justify='space-between'
-              wrap='nowrap'
-              style={{ maxWidth: '100%' }}
-            >
-              <Text size='sm' fw={700}>
-                {totalRequired.toFixed(2)}
-              </Text>
-              {record.unit && (
-                <Text size='xs' c='dimmed'>
-                  [{record.unit}]
-                </Text>
-              )}
-            </Group>
-          );
-        }
-      },
-      {
-        accessor: 'cut_length',
-        title: 'Cut Length',
-        sortable: false, // Disable sorting and arrow
-        switchable: false, // Prevent hiding to clarify intent
-        render: (record) => {
-          if (!record.cut_length) {
-            return (
-              <Text size='sm' c='dimmed'>
-                -
-              </Text>
-            );
-          }
-          return (
-            <Group
-              gap='xs'
-              justify='space-between'
-              wrap='nowrap'
-              style={{ maxWidth: '100%' }}
-            >
-              <Text size='sm'>{record.cut_length.toFixed(2)}</Text>
-              {(record.cut_unit || record.unit) && (
-                <Text size='xs' c='dimmed'>
-                  [{record.cut_unit || record.unit}]
-                </Text>
-              )}
-            </Group>
-          );
-        }
-      },
-      {
-        accessor: 'in_stock',
-        title: 'In Stock',
-        sortable: true,
-        switchable: true,
-        // Fixed-layout table requires pixel minWidth (max-content ignored)
-        // Content: Badge (70-80px) + spacer (8px min) + unit text (30-35px) ≈ 125px
-        // Matches InvenTree core standard for badge/progress columns
-        minWidth: 125,
-        cellsStyle: () => ({ minWidth: 125 }),
-        titleStyle: () => ({ minWidth: 125 }),
-        render: (record) => {
-          // Show dash for cut list children
-          if (record.is_cut_list_child) {
-            return (
-              <Text size='sm' c='dimmed'>
-                -
-              </Text>
-            );
-          }
-
-          const totalRequired = record.total_qty * buildQuantity;
-          if (record.in_stock <= 0) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Text c='red' fs='italic' size='sm'>
-                  No stock
-                </Text>
-                {record.unit && (
-                  <Text size='xs' c='dimmed'>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          } else if (record.in_stock < totalRequired) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Badge
-                  color='orange'
-                  variant='light'
-                  style={{ minWidth: 'fit-content' }}
-                >
-                  {record.in_stock.toFixed(2)}
-                </Badge>
-                {record.unit && (
-                  <Text size='xs' c='dimmed'>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          } else {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Badge
-                  color='green'
-                  variant='filled'
-                  style={{ minWidth: 'fit-content' }}
-                >
-                  {record.in_stock.toFixed(2)}
-                </Badge>
-                {record.unit && (
-                  <Text size='xs' c='dimmed'>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          }
-        }
-      },
-      {
-        accessor: 'allocated',
-        title: 'Allocated',
-        sortable: true,
-        switchable: true,
-        // Fixed-layout table requires pixel minWidth (max-content ignored)
-        // Content: Badge (70-80px) + spacer (8px min) + unit text (30-35px) ≈ 125px
-        // Matches InvenTree core standard for badge/progress columns
-        minWidth: 125,
-        cellsStyle: () => ({ minWidth: 125 }),
-        titleStyle: () => ({ minWidth: 125 }),
-        render: (record) => {
-          const isDimmed = !includeAllocations;
-          const opacity = getDimmedOpacity(isDimmed);
-          if (record.is_cut_list_child) {
-            return (
-              <Text size='sm' c='dimmed'>
-                -
-              </Text>
-            );
-          }
-          if (record.allocated > 0) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Badge
-                  color='yellow'
-                  variant='light'
-                  style={{ opacity, minWidth: 'fit-content' }}
-                >
-                  {record.allocated.toFixed(2)}
-                </Badge>
-                {record.unit && (
-                  <Text size='xs' c='dimmed' style={{ opacity }}>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          }
-          return (
-            <Group
-              gap='xs'
-              wrap='nowrap'
-              justify='space-between'
-              style={{ overflow: 'hidden' }}
-            >
-              <Text c='dimmed' size='sm' style={{ opacity }}>
-                -
-              </Text>
-              {record.unit && (
-                <Text size='xs' c='dimmed' style={{ opacity }}>
-                  [{record.unit}]
-                </Text>
-              )}
-            </Group>
-          );
-        }
-      },
-      {
-        accessor: 'on_order',
-        title: 'On Order',
-        sortable: true,
-        switchable: true,
-        // Fixed-layout table requires pixel minWidth (max-content ignored)
-        // Content: Badge (70-80px) + spacer (8px min) + unit text (30-35px) ≈ 125px
-        // Matches InvenTree core standard for badge/progress columns
-        minWidth: 125,
-        cellsStyle: () => ({ minWidth: 125 }),
-        titleStyle: () => ({ minWidth: 125 }),
-        render: (record) => {
-          const isDimmed = !includeOnOrder;
-          const opacity = getDimmedOpacity(isDimmed);
-          if (record.is_cut_list_child) {
-            return (
-              <Text size='sm' c='dimmed'>
-                -
-              </Text>
-            );
-          }
-          if (record.on_order > 0) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Badge
-                  color='blue'
-                  variant='light'
-                  style={{ opacity, minWidth: 'fit-content' }}
-                >
-                  {record.on_order.toFixed(2)}
-                </Badge>
-                {record.unit && (
-                  <Text size='xs' c='dimmed' style={{ opacity }}>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          }
-          return (
-            <Group gap='xs' wrap='nowrap' justify='space-between'>
-              <Text c='dimmed' size='sm' style={{ opacity }}>
-                -
-              </Text>
-              {record.unit && (
-                <Text size='xs' c='dimmed' style={{ opacity }}>
-                  [{record.unit}]
-                </Text>
-              )}
-            </Group>
-          );
-        }
-      },
-      {
-        accessor: 'shortfall',
-        title: 'Build Margin',
-        sortable: true,
-        switchable: true,
-        // Fixed-layout table requires pixel minWidth (max-content ignored)
-        // Content: Badge (70-80px) + spacer (8px min) + unit text (30-35px) ≈ 125px
-        // Matches InvenTree core standard for badge/progress columns
-        minWidth: 125,
-        cellsStyle: () => ({ minWidth: 125 }),
-        titleStyle: () => ({ minWidth: 125 }),
-        render: (record) => {
-          // No shortfall for cut list children
-          if (record.is_cut_list_child) {
-            return (
-              <Text size='sm' c='dimmed'>
-                -
-              </Text>
-            );
-          }
-
-          const totalRequired = record.total_qty * buildQuantity;
-          let stockValue = record.in_stock;
-          if (includeAllocations) {
-            stockValue -= record.allocated;
-          }
-          if (includeOnOrder) {
-            stockValue += record.on_order;
-          }
-          const balance = stockValue - totalRequired;
-          if (balance < 0) {
-            return (
-              <Group gap='xs' wrap='nowrap' justify='space-between'>
-                <Badge
-                  color='red'
-                  variant='filled'
-                  style={{ minWidth: 'fit-content' }}
-                >
-                  {balance.toFixed(2)}
-                </Badge>
-                {record.unit && (
-                  <Text size='xs' c='dimmed'>
-                    [{record.unit}]
-                  </Text>
-                )}
-              </Group>
-            );
-          }
-          return (
-            <Group gap='xs' wrap='nowrap' justify='space-between'>
-              <Badge
-                color='green'
-                variant='filled'
-                style={{ minWidth: 'fit-content' }}
-              >
-                +{balance.toFixed(2)}
-              </Badge>
-              {record.unit && (
-                <Text size='xs' c='dimmed'>
-                  [{record.unit}]
-                </Text>
-              )}
-            </Group>
-          );
-        }
-      }
-    ],
-    [buildQuantity, includeAllocations, includeOnOrder]
+    () =>
+      createBomTableColumns({
+        buildQuantity,
+        includeAllocations,
+        includeOnOrder,
+        calculateShortfall
+      }),
+    [buildQuantity, includeAllocations, includeOnOrder, calculateShortfall]
   );
 
   // Filter columns based on visibility

@@ -1,4 +1,4 @@
-import { Group, Paper, Text } from '@mantine/core';
+import { Group, Text } from '@mantine/core';
 
 interface StatisticsPanelProps {
   totalUniqueParts: number;
@@ -46,20 +46,18 @@ export function StatisticsPanel({
   needToOrderCount
 }: StatisticsPanelProps) {
   return (
-    <Paper p='sm' withBorder>
-      <Group gap='md' wrap='wrap'>
-        <Stat label='Total\nParts' value={totalUniqueParts} />
-        <Stat label='BOM\nDepth' value={maxDepthReached} color='violet' />
-        <Stat
-          label='Internal Fab\nProcessed'
-          value={totalIfpsProcessed}
-          color='cyan'
-          minWidth='80px'
-        />
-        <Stat label='Out of\nStock' value={outOfStockCount} color='red' />
-        <Stat label='On\nOrder' value={onOrderCount} color='blue' />
-        <Stat label='Need to\nOrder' value={needToOrderCount} color='orange' />
-      </Group>
-    </Paper>
+    <Group gap='md' wrap='wrap'>
+      <Stat label='Total\nParts' value={totalUniqueParts} />
+      <Stat label='BOM\nDepth' value={maxDepthReached} color='violet' />
+      <Stat
+        label='Internal Fab\nProcessed'
+        value={totalIfpsProcessed}
+        color='cyan'
+        minWidth='80px'
+      />
+      <Stat label='Out of\nStock' value={outOfStockCount} color='red' />
+      <Stat label='On\nOrder' value={onOrderCount} color='blue' />
+      <Stat label='Need to\nOrder' value={needToOrderCount} color='orange' />
+    </Group>
   );
 }

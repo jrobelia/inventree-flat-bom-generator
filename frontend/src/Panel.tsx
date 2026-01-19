@@ -9,12 +9,8 @@ import {
   Anchor,
   Badge,
   Button,
-  Checkbox,
-  Divider,
   Group,
   Loader,
-  Menu,
-  NumberInput,
   Paper,
   Stack,
   Text,
@@ -22,9 +18,7 @@ import {
   Tooltip
 } from '@mantine/core';
 import {
-  IconAdjustments,
   IconCornerDownRight,
-  IconDownload,
   IconRefresh,
   IconSearch,
   IconX
@@ -37,6 +31,7 @@ import {
 import { useMemo, useState } from 'react';
 
 // Import components
+import { ControlBar } from './components/ControlBar';
 import { ErrorAlert } from './components/ErrorAlert';
 import { StatisticsPanel } from './components/StatisticsPanel';
 import { WarningsAlert } from './components/WarningsAlert';
@@ -650,88 +645,31 @@ function FlatBOMGeneratorPanel({
             />
           )}
 
-          <StatisticsPanel
-            totalUniqueParts={bomData.total_unique_parts}
-            maxDepthReached={bomData.max_depth_reached}
-            totalIfpsProcessed={bomData.total_ifps_processed}
-            outOfStockCount={countOutOfStock(bomData.bom_items)}
-            onOrderCount={countOnOrder(bomData.bom_items)}
-            needToOrderCount={countNeedToOrder(bomData.bom_items)}
-          />
-
           <Paper p='sm' withBorder>
             <Group justify='space-between' align='flex-start' wrap='wrap'>
-              <Group gap='xs' align='flex-end' wrap='wrap'>
-                <NumberInput
-                  label='Build Quantity'
-                  value={buildQuantity}
-                  onChange={(value) =>
-                    setBuildQuantity(typeof value === 'number' ? value : 1)
-                  }
-                  min={1}
-                  step={1}
-                  style={{ width: 150 }}
-                />
-                <Stack gap='xs'>
-                  <Checkbox
-                    label='Include Allocations in Build Margin (-)'
-                    checked={includeAllocations}
-                    onChange={(e) =>
-                      setIncludeAllocations(e.currentTarget.checked)
-                    }
-                  />
-                  <Checkbox
-                    label='Include On Order in Build Margin (+)'
-                    checked={includeOnOrder}
-                    onChange={(e) => setIncludeOnOrder(e.currentTarget.checked)}
-                  />
-                </Stack>
-                <Button
-                  leftSection={<IconRefresh size={16} />}
-                  onClick={generateFlatBom}
-                  loading={loading}
-                >
-                  Refresh
-                </Button>
-                <Button
-                  variant='light'
-                  leftSection={<IconDownload size={16} />}
-                  onClick={exportToCsv}
-                >
-                  Export CSV
-                </Button>
-                <Menu shadow='xs' closeOnItemClick={false}>
-                  <Menu.Target>
-                    <ActionIcon
-                      variant='light'
-                      size='lg'
-                      aria-label='table-select-columns'
-                    >
-                      <Tooltip label='Select Columns' position='top-end'>
-                        <IconAdjustments />
-                      </Tooltip>
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown
-                    style={{ maxHeight: '400px', overflowY: 'auto' }}
-                  >
-                    <Menu.Label>Select Columns</Menu.Label>
-                    <Divider />
-                    {columns
-                      .filter((col: any) => col.switchable !== false)
-                      .map((col: any) => (
-                        <Menu.Item key={col.accessor}>
-                          <Checkbox
-                            checked={!hiddenColumns.has(col.accessor)}
-                            label={col.title || col.accessor}
-                            onChange={() => toggleColumn(col.accessor)}
-                            radius='sm'
-                          />
-                        </Menu.Item>
-                      ))}
-                  </Menu.Dropdown>
-                </Menu>
-              </Group>
+              <StatisticsPanel
+                totalUniqueParts={bomData.total_unique_parts}
+                maxDepthReached={bomData.max_depth_reached}
+                totalIfpsProcessed={bomData.total_ifps_processed}
+                outOfStockCount={countOutOfStock(bomData.bom_items)}
+                onOrderCount={countOnOrder(bomData.bom_items)}
+                needToOrderCount={countNeedToOrder(bomData.bom_items)}
+              />
+
+              <ControlBar
+                buildQuantity={buildQuantity}
+                onBuildQuantityChange={setBuildQuantity}
+                includeAllocations={includeAllocations}
+                onIncludeAllocationsChange={setIncludeAllocations}
+                includeOnOrder={includeOnOrder}
+                onIncludeOnOrderChange={setIncludeOnOrder}
+                onRefresh={generateFlatBom}
+                loading={loading}
+                onExport={exportToCsv}
+                columns={columns}
+                hiddenColumns={hiddenColumns}
+                onToggleColumn={toggleColumn}
+              />
             </Group>
           </Paper>
 

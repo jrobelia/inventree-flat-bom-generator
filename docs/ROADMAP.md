@@ -147,6 +147,195 @@ Very low-risk gaps deferred until issues arise:
 
 ---
 
+### Settings UI/UX Improvement (3-5 hours, MEDIUM PRIORITY)
+**Goal:** Move plugin settings from admin panel to panel UI for better user experience
+
+**InvenTree Pattern Analysis:**
+InvenTree uses **different patterns for different purposes**:
+- **Filters** → Side drawer (`Drawer` component, slides in from right, must be closed)
+- **Column visibility** → Menu dropdown (`Menu` component, closes on blur)
+- **Build quantity** → Always visible (NumberInput in header)
+
+InvenTree's BomTable:
+- Filters passed to backend via API params (e.g., `available_stock=true`)
+- Filters trigger automatic table refresh when applied
+- Column visibility is quick toggle (no refresh needed)
+
+**Recommendation:** Use **Drawer** (slide-out panel) for settings, matching InvenTree's filter pattern
+
+**Current State:**
+- Settings are in InvenTree plugin configuration page (admin panel)
+- Users must leave the panel, navigate to settings, change value, return to panel, regenerate
+- Uses checkboxes (not consistent with InvenTree's toggle switches in newer UI)
+- Settings are plugin-wide, not per-session
+
+**Proposed Changes:**
+Move these settings from plugin config to panel UI:
+
+1. **Maximum Traversal Depth** (number input)
+   - Currently: Plugin setting (global)
+   - Proposed: Number input in settings panel (per-session)
+   - Default: Keep plugin setting as default value
+   - Behavior: Auto-refresh on change (InvenTree pattern)
+
+2. **Expand Purchased Assemblies** (Switch)
+   - Currently: Plugin setting checkbox
+   - Proposed: Switch in settings panel
+   - Default: Plugin setting value
+   - Behavior: Auto-refresh on change
+
+3. **Enable Internal Fab Cut Breakdown** (Switch)
+   - Currently: Plugin setting checkbox
+   - Proposed: Switch in settings panel
+   - Default: Plugin setting value
+   - Behavior: Auto-refresh on change
+
+4. **Include Cutlist Parts** (NEW - Switch)
+   - Currently: No option (cutlist parts always shown)
+   - Proposed: Switch to show/hide cutlist child rows
+   - Default: ON (show cutlist parts)
+   - Behavior: Frontend filter (immediate, no refresh needed)
+
+**Keep As Separate Controls (Immediate Effect):**
+- **Build Quantity** (NumberInput) - Frontend calculation only
+- **Include Allocations** (Checkbox/Switch) - Frontend calculation only
+- **Include On Order** (Checkbox/Switch) - Frontend calculation only
+
+**UI Layout Strategy (Progressive Disclosure + InvenTree Pattern):**
+
+**Before First Generation (Settings Prominent):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 📋 Generation Settings                                       │
+│ ┌───────────────────────────────────────────────────────┐   │
+│ │ Max Depth: [10 ▼]                                      │   │
+│ │ ☑️ Expand Purchased Assemblies                         │   │
+│ │ ☑️ Show Cut Breakdowns                                 │   │
+│ │ ☑️ Include Cut Parts                                   │   │
+│ │                                                         │   │
+│ │ [Apply Settings]  [Reset to Defaults]                  │   │
+│ └───────────────────────────────────────────────────────┘   │
+│                                                              │
+│ [Generate Flat BOM]                                         │
+└─────────────────────────────────────────────────────────────┘
+```
+*Settings visible in Paper component to guide first-time configuration*
+
+**After First Generation (Clean Data Focus):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Build Qty: 5] [☑️ Allocations] [☑️ On Order]               │
+│ [⚙️●] [⋮ Columns] [Export ▼]                                │
+│   ↑                                                          │
+│  Settings drawer (blue if custom)                           │
+└─────────────────────────────────────────────────────────────┘
+```
+*Settings collapse to icon, opens side drawer when clicked*
+
+**Settings Drawer (Slides from Right):**
+```
+                    ┌─────────────────────────────┐
+                    │ ✕  Generation Settings       │
+                    ├─────────────────────────────┤
+                    │                              │
+                    │ Generation Options           │
+                    │ (triggers auto-refresh)      │
+                    │ ─────────────────────────    │
+                    │ Max Depth: [10 ▼]           │
+                    │ ☑️ Expand Assemblies         │
+                    │ ☑️ Show Cut Breakdowns       │
+                    │                              │
+                    │ Display Filters              │
+                    │ (immediate effect)           │
+                    │ ─────────────────────────    │
+                    │ ☑️ Include Cut Parts         │
+                    │                              │
+                    │ [Apply]  [Reset to Defaults] │
+                    │                              │
+                    └─────────────────────────────┘
+```
+
+**Design Patterns:**
+- **Progressive Disclosure**: Show settings initially, hide after first use
+- **Drawer Component**: Mantine `Drawer` slides from right (InvenTree standard for filters)
+- **Auto-Refresh on Apply**: Backend settings trigger automatic BOM regeneration when "Apply" clicked
+- **Immediate Frontend Filters**: Include Cut Parts filters table without refresh
+- **Visual Indicators**: Blue gear icon when settings differ from defaults, badge shows count
+- **Persistent State**: Store in localStorage which view to show (expanded vs. drawer)
+- **Must Close Drawer**: User clicks Apply/Close to dismiss (standard drawer behavior)
+- **Separate Frequency Groups**: Keep frequently-toggled controls (Build Qty, Allocations, On Order) always visible
+
+**Benefits:**
+- ✅ **Guided first use**: Settings prominent before first generation (discoverability)
+- ✅ **Clean data focus**: Settings collapse after first generation (less clutter)
+- ✅ **Visual feedback**: Blue dot indicator shows custom settings active
+- ✅ **Better UX**: Change settings without leaving panel
+- ✅ **Per-session settings**: Experiment without affecting other users
+- ✅ **InvenTree consistency**: Use toggle switches instead of checkboxes
+- ✅ **Faster workflow**: No page navigation required
+- ✅ **Progressive disclosure**: Show complexity only when needed
+
+**Implementation:**
+
+1. **Frontend State Management** (1.5-2 hours)
+   - Add state variables for 4 new settings
+   - Add `settingsDrawerOpen` state (true before first generation, false after)
+   - Add `hasCustomSettings` computed value (compare to defaults)
+   - Load defaults from plugin settings (via API or context)
+   - Store in localStorage: settings values + drawer expansion state
+
+2. **Backend Parameter Handling** (1-2 hours)
+   - Accept optional query parameters: `max_depth`, `expand_assemblies`, `enable_cuts`, `include_cutlist`
+   - Override plugin settings with query param values
+   - Maintain backward compatibility (defaults from plugin settings)
+
+3. **UI Component Updates** (1.5-2 hours)
+   - Create `SettingsPanel` component (expanded Paper view before first generation)
+   - Create `SettingsDrawer` component (Mantine Drawer, slides from right)
+   - Add settings icon to ControlBar with indicator badge
+   - Implement "Apply Settings" button (triggers auto-refresh for backend settings)
+   - Use Mantine `Switch` components (toggle style)
+   - Add "Reset to Defaults" button in drawer
+
+4. **UX State Transitions** (0.5 hours)
+   - Show settings panel before first generation
+   - Collapse to icon after first successful BOM generation
+   - Drawer opens when clicking gear icon
+   - Apply button closes drawer and triggers refresh (if backend settings changed)
+   - Frontend filters (Include Cut Parts) apply immediately without closing drawer
+   - Persist drawer open/closed state in localStorage
+
+**Testing Requirements:**
+- ✅ Settings panel visible on initial load (before first generation)
+- ✅ Settings collapse to drawer after first successful generation
+- ✅ Gear icon shows blue color/badge when settings differ from defaults
+- ✅ Drawer opens/closes correctly when clicking gear icon
+- ✅ "Apply Settings" button triggers refresh for backend settings
+- ✅ Frontend filters (Include Cut Parts) work immediately without refresh
+- ✅ Toggles correctly override plugin settings
+- ✅ localStorage persists user preferences + drawer state
+- ✅ Query params passed correctly to backend
+- ✅ "Reset to Defaults" button works
+- ✅ Drawer slides from right (InvenTree pattern)
+- ✅ Frontend tests for state management
+
+**Backward Compatibility:**
+- Plugin settings remain as defaults
+- API accepts both old and new parameter names
+- No breaking changes to existing functionality
+
+**Open Questions:**
+1. Should Drawer stay open while toggling frontend filters (Include Cut Parts)?
+   - **Recommendation**: YES - allows experimenting with display options
+2. Should "Apply" button behavior differ for backend vs frontend settings?
+   - **Recommendation**: Apply closes drawer only if backend settings changed (triggers refresh)
+3. Should plugin settings continue as global defaults after UI implementation?
+   - **Recommendation**: YES - good fallback for users who prefer admin configuration
+
+**Defer Until:** Frontend refactoring complete (need clean ControlBar architecture)
+
+---
+
 ### InvenTree Export Integration (4-6 hours, MEDIUM PRIORITY)
 **Goal:** Replace custom CSV export with InvenTree's built-in export system
 

@@ -28,19 +28,10 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
     # Plugin settings (from SettingsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/settings/
+    # Note: MAX_DEPTH, SHOW_PURCHASED_ASSEMBLIES, and INCLUDE_INTERNAL_FAB_IN_CUTLIST
+    # have been moved to frontend UI (v0.11.0+). They are now managed via query
+    # parameters with hardcoded defaults and localStorage persistence.
     SETTINGS = {
-        "MAX_DEPTH": {
-            "name": "Maximum Traversal Depth",
-            "description": "Maximum depth to traverse BOM hierarchy (0 = unlimited)",
-            "validator": int,
-            "default": 0,
-        },
-        "SHOW_PURCHASED_ASSEMBLIES": {
-            "name": "Expand Purchased Assemblies",
-            "description": "Expand BOM for assemblies that have a default supplier (usually purchased as complete units)",
-            "validator": bool,
-            "default": False,
-        },
         "PRIMARY_INTERNAL_SUPPLIER": {
             "name": "Primary Internal Supplier",
             "description": "Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab.",
@@ -71,12 +62,6 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "description": "InvenTree category for raw material parts with length requirements (wire, tubing, bar stock). Length must be specified in BOM line item notes field.",
             "model": "part.partcategory",
             "default": None,
-        },
-        "INCLUDE_INTERNAL_FAB_IN_CUTLIST": {
-            "name": "Include Internal Fab Parts in Cutlist",
-            "description": "Process Internal Fab parts as cutlist items (similar to Native CtL category) for specified units.",
-            "validator": bool,
-            "default": False,
         },
         "CUTLIST_UNITS_FOR_INTERNAL_FAB": {
             "name": "Cutlist Units for Internal Fab",

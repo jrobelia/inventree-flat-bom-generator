@@ -235,7 +235,8 @@ class FlatBOMResponseSerializer(serializers.Serializer):
         "max_depth_reached": 5,
         "bom_items": [...],  # List of FlatBOMItemSerializer
         "metadata": {
-            "warnings": [...]  # List of BOMWarningSerializer
+            "warnings": [...],  # List of BOMWarningSerializer
+            "cutlist_units_for_ifab": "mm,in,cm"  # Units for Internal Fab cutlist display
         }
     }
     """
@@ -280,10 +281,7 @@ class FlatBOMResponseSerializer(serializers.Serializer):
     # Metadata with warnings
     metadata = serializers.DictField(
         required=True,
-        child=serializers.ListField(
-            child=BOMWarningSerializer(), help_text="List of BOM warnings"
-        ),
-        help_text="Additional response metadata including warnings",
+        help_text="Additional response metadata including warnings and cutlist units",
     )
 
     class Meta:

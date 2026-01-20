@@ -222,7 +222,9 @@ class FlatBOMView(APIView):
             part_id: Part ID to get flat BOM for
 
         Query Parameters:
-            max_depth: Maximum depth to traverse (optional)
+            max_depth: Maximum depth to traverse (default: 0/unlimited)
+            expand_purchased_assemblies: Expand assemblies with suppliers (default: false)
+            include_internal_fab_in_cutlist: Process Internal Fab parts as cutlist (default: false)
 
         Returns:
             List of unique leaf parts with total quantities and display metadata
@@ -230,55 +232,63 @@ class FlatBOMView(APIView):
         from part.models import Part
         from plugin.registry import registry
 
-        # Get optional max_depth parameter from query (overrides plugin setting)
-        max_depth = request.query_params.get("max_depth", None)
-        if max_depth is not None:
+        # Get query parameters with hardcoded defaults (v0.11.0+)
+        # These settings moved from plugin admin to frontend UI
+        max_depth_param = request.query_params.get("max_depth", None)
+        expand_purchased_assemblies_param = request.query_params.get(
+            "expand_purchased_assemblies", None
+        )
+        include_ifab_cuts_param = request.query_params.get(
+            "include_internal_fab_in_cutlist", None
+        )
+
+        # Parse max_depth
+        max_depth = None
+        if max_depth_param is not None:
             try:
-                max_depth = int(max_depth)
+                max_depth = int(max_depth_param)
+                if max_depth == 0:
+                    max_depth = None  # 0 = unlimited
             except (ValueError, TypeError):
                 return Response(
                     {"error": "Invalid max_depth parameter"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Get plugin settings
+        # Parse boolean parameters (default: False)
+        expand_purchased_assemblies = (
+            expand_purchased_assemblies_param is not None
+            and expand_purchased_assemblies_param.lower() == "true"
+        )
+        enable_ifab_cuts = (
+            include_ifab_cuts_param is not None
+            and include_ifab_cuts_param.lower() == "true"
+        )
+
+        # Get plugin for remaining settings (categories, suppliers, units)
+        plugin = registry.get_plugin("flat-bom-generator")
+        # Get plugin for remaining settings (categories, suppliers, units)
         plugin = registry.get_plugin("flat-bom-generator")
 
-        # If max_depth not provided in query, use plugin setting
-        if max_depth is None:
-            max_depth_setting = plugin.get_setting("MAX_DEPTH", 0) if plugin else 0
-            max_depth = (
-                int(max_depth_setting)
-                if max_depth_setting and int(max_depth_setting) > 0
-                else None
-            )
-
-        expand_purchased_assemblies = False
         internal_supplier_ids = []
         category_mappings = {}
-        enable_ifab_cuts = False
         ifab_units = set()
 
         if plugin:
-            expand_purchased_assemblies = plugin.get_setting(
-                "SHOW_PURCHASED_ASSEMBLIES", False
-            )
             internal_supplier_ids = get_internal_supplier_ids(plugin)
             category_mappings = get_category_mappings(plugin)
-            enable_ifab_cuts = plugin.get_setting(
-                "INCLUDE_INTERNAL_FAB_IN_CUTLIST", False
-            )
-            units_csv = plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "")
+            units_csv = plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
             if units_csv:
                 ifab_units = set(u.strip() for u in units_csv.split(",") if u.strip())
 
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
-                f"  - expand_purchased_assemblies: {expand_purchased_assemblies}"
+                f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (from query param)"
             )
+            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts} (from query param)")
+            logger.info(f"  - max_depth: {max_depth} (from query param)")
             logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
             logger.info(f"  - category_mappings: {category_mappings}")
-            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts}")
             logger.info(f"  - ifab_units: {ifab_units}")
             logger.info(
                 f"[FlatBOM][DEBUG] Using settings for cut_list logic: enable_ifab_cuts={enable_ifab_cuts}, ifab_units={ifab_units}"
@@ -485,6 +495,13 @@ class FlatBOMView(APIView):
             for idx, warning in enumerate(warnings):
                 logger.info(f"[FlatBOM] Warning {idx + 1}: {warning}")
 
+            # Get units string for frontend label
+            cutlist_units = (
+                plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
+                if plugin
+                else "mm,in,cm"
+            )
+
             # Prepare response data
             response_data = {
                 "part_id": part_id,
@@ -494,7 +511,10 @@ class FlatBOMView(APIView):
                 "total_ifps_processed": total_ifps_processed,
                 "max_depth_reached": max_depth_reached,
                 "bom_items": enriched_bom,
-                "metadata": {"warnings": warnings},
+                "metadata": {
+                    "warnings": warnings,
+                    "cutlist_units_for_ifab": cutlist_units,
+                },
             }
 
             # Validate with serializer

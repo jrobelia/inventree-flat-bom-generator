@@ -82,5 +82,6 @@ export interface FlatBomResponse {
   bom_items: BomItem[];
   metadata?: {
     warnings?: Warning[];
+    cutlist_units_for_ifab?: string; // Added in v0.11.0 - units for Internal Fab cutlist display
   };
 }

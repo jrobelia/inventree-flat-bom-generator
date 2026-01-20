@@ -91,8 +91,8 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) will be classified as Fab or Internal Fab. Required for proper categorization. | None |
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) will be classified as Coml. Required for proper categorization. | None |
 | **Cut-to-Length Category** | InvenTree category for cut-to-length raw materials (wire, bar stock, etc.). Parts in this category with length in BOM notes will be classified as CtL. Optional but recommended if you use cut-to-length parts. | None |
-| **Enable Internal Fab Cuts** | When enabled, parts categorized as Internal Fab with cut-to-length data will have their cuts aggregated and displayed. | `False` |
-| **Internal Fab Cut Units** | Unit to use for internal fab cut list aggregation (e.g., "mm", "inch", "cm"). Only applies when Enable Internal Fab Cuts is enabled. | `mm` |
+| **Include Internal Fab Parts in Cutlist** | Process Internal Fab parts as cutlist items (similar to Native CtL category) for specified units. | `False` |
+| **Cutlist Units for Internal Fab** | Comma-separated list of units (e.g., "mm", "in", "cm") to apply cutlist processing to Internal Fab parts. | `mm,in,cm` |
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 

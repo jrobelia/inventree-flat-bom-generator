@@ -184,16 +184,16 @@ Move these settings from plugin config to panel UI:
    - Default: Plugin setting value
    - Behavior: Auto-refresh on change
 
-3. **Enable Internal Fab Cut Breakdown** (Switch)
-   - Currently: Plugin setting checkbox
+3. **Include Internal Fab Parts in Cutlist** (Switch)
+   - Currently: Plugin setting checkbox ("Enable Internal Fab Cut Breakdown")
    - Proposed: Switch in settings panel
    - Default: Plugin setting value
-   - Behavior: Auto-refresh on change
+   - Behavior: Auto-refresh on change (triggers backend processing)
 
-4. **Include Cutlist Parts** (NEW - Switch)
+4. **Show Cutlist Rows** (NEW - Switch)
    - Currently: No option (cutlist parts always shown)
-   - Proposed: Switch to show/hide cutlist child rows
-   - Default: ON (show cutlist parts)
+   - Proposed: Switch to show/hide BOTH Native CtL and Internal Fab cutlist child rows
+   - Default: ON (show all cutlist rows)
    - Behavior: Frontend filter (immediate, no refresh needed)
 
 **Keep As Separate Controls (Immediate Effect):**
@@ -210,8 +210,8 @@ Move these settings from plugin config to panel UI:
 │ ┌───────────────────────────────────────────────────────┐   │
 │ │ Max Depth: [10 ▼]                                      │   │
 │ │ ☑️ Expand Purchased Assemblies                         │   │
-│ │ ☑️ Show Cut Breakdowns                                 │   │
-│ │ ☑️ Include Cut Parts                                   │   │
+│ │ ☑️ Include Internal Fab in Cutlist                     │   │
+│ │ ☑️ Show Cutlist Rows                                   │   │
 │ │                                                         │   │
 │ │ [Apply Settings]  [Reset to Defaults]                  │   │
 │ └───────────────────────────────────────────────────────┘   │
@@ -243,12 +243,13 @@ Move these settings from plugin config to panel UI:
                     │ ─────────────────────────    │
                     │ Max Depth: [10 ▼]           │
                     │ ☑️ Expand Assemblies         │
-                    │ ☑️ Show Cut Breakdowns       │
+                    │ ☑️ Include Ifab in Cutlist   │
                     │                              │
                     │ Display Filters              │
                     │ (immediate effect)           │
                     │ ─────────────────────────    │
-                    │ ☑️ Include Cut Parts         │
+                    │ ☑️ Show Cutlist Rows         │
+                    │ ☑️ Show Cutlist Rows         │
                     │                              │
                     │ [Apply]  [Reset to Defaults] │
                     │                              │

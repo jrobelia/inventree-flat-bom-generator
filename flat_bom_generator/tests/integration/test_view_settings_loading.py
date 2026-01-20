@@ -150,10 +150,10 @@ class ViewSettingsLoadingTests(InvenTreeTestCase):
     @patch('flat_bom_generator.views.get_flat_bom')
     @patch('plugin.registry.registry.get_plugin')
     def test_view_loads_ifab_units_setting(self, mock_get_plugin, mock_get_flat_bom):
-        """View should load INTERNAL_FAB_CUT_UNITS and parse CSV correctly."""
+        """View should load CUTLIST_UNITS_FOR_INTERNAL_FAB and parse CSV correctly."""
         # Create plugin with CSV units (with spaces to test strip())
         plugin = FlatBOMGenerator()
-        plugin.set_setting('INTERNAL_FAB_CUT_UNITS', 'mm, in, ft')
+        plugin.set_setting('CUTLIST_UNITS_FOR_INTERNAL_FAB', 'mm, in, ft')
         mock_get_plugin.return_value = plugin
         
         # Mock get_flat_bom to return empty BOM

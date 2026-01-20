@@ -72,15 +72,15 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "model": "part.partcategory",
             "default": None,
         },
-        "INTERNAL_FAB_CUT_BREAKDOWN": {
-            "name": "Enable Internal Fab Cut Breakdown",
-            "description": "Show Internal Fab children as grouped cut breakdowns (like CtL) for specified units.",
+        "INCLUDE_INTERNAL_FAB_IN_CUTLIST": {
+            "name": "Include Internal Fab Parts in Cutlist",
+            "description": "Process Internal Fab parts as cutlist items (similar to Native CtL category) for specified units.",
             "validator": bool,
             "default": False,
         },
-        "INTERNAL_FAB_CUT_UNITS": {
-            "name": "Internal Fab Cut Units",
-            "description": "Comma-separated list of units (e.g., mm,in,cm) to apply cut breakdown to Internal Fab children.",
+        "CUTLIST_UNITS_FOR_INTERNAL_FAB": {
+            "name": "Cutlist Units for Internal Fab",
+            "description": "Comma-separated list of units (e.g., mm,in,cm) to apply cutlist processing to Internal Fab parts.",
             "validator": str,
             "default": "mm,in,cm",
         },

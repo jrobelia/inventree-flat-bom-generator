@@ -265,8 +265,10 @@ class FlatBOMView(APIView):
             )
             internal_supplier_ids = get_internal_supplier_ids(plugin)
             category_mappings = get_category_mappings(plugin)
-            enable_ifab_cuts = plugin.get_setting("INTERNAL_FAB_CUT_BREAKDOWN", False)
-            units_csv = plugin.get_setting("INTERNAL_FAB_CUT_UNITS", "")
+            enable_ifab_cuts = plugin.get_setting(
+                "INCLUDE_INTERNAL_FAB_IN_CUTLIST", False
+            )
+            units_csv = plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "")
             if units_csv:
                 ifab_units = set(u.strip() for u in units_csv.split(",") if u.strip())
 

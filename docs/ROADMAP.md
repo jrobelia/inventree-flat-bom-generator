@@ -386,32 +386,6 @@ Move these settings from plugin config to panel UI:
 
 ---
 
-### Warning System Expansion (3-5 hours, LOW PRIORITY)
-**Goal:** Add more warning types for better user guidance
-
-**Current Warnings:** (4 types implemented)
-- `unit_mismatch` - Cut-to-length parts with inconsistent units
-- `inactive_part` - Parts marked inactive in InvenTree
-- `assembly_no_children` - Assemblies without BOM items
-- `max_depth_exceeded` - BOM traversal stopped by depth limit
-
-**Proposed New Warnings:** (See [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md))
-- Missing supplier - Parts without default supplier
-- Zero stock - Parts with no inventory and no incoming POs
-- Obsolete parts - Parts marked for discontinuation
-- Long lead time - Parts with >30 day lead time
-- BOM conflicts - Duplicate parts with different quantities
-
-**Implementation:**
-- Add warning type to serializer enum
-- Implement detection logic in views.py
-- Add i18n translations
-- Update UI to display new warnings
-
-**Status:** Core warning infrastructure complete, expansion deferred
-
----
-
 ### Optional Parts & Substitute Parts Support (6-10 hours, MEDIUM PRIORITY)
 **Goal:** Integrate InvenTree's optional and substitute part features into flat BOM display
 
@@ -579,34 +553,6 @@ InvenTree has built-in support for both features:
 4. Should inactive variants be included in calculations?
 
 **Defer Until:** Determine actual variant usage patterns in production BOMs
-
----
-
-## Future Ideas (Exploratory)
-
-### Warning System Expansion (3-5 hours, LOW PRIORITY)
-**Goal:** Add more warning types for better user guidance
-
-**Current Warnings:** (4 types implemented)
-- `unit_mismatch` - Cut-to-length parts with inconsistent units
-- `inactive_part` - Parts marked inactive in InvenTree
-- `assembly_no_children` - Assemblies without BOM items
-- `max_depth_exceeded` - BOM traversal stopped by depth limit
-
-**Proposed New Warnings:** (See [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md))
-- Missing supplier - Parts without default supplier
-- Zero stock - Parts with no inventory and no incoming POs
-- Obsolete parts - Parts marked for discontinuation
-- Long lead time - Parts with >30 day lead time
-- BOM conflicts - Duplicate parts with different quantities
-
-**Implementation:**
-- Add warning type to serializer enum
-- Implement detection logic in views.py
-- Add i18n translations
-- Update UI to display new warnings
-
-**Defer Until:** User feedback indicates value
 
 ---
 

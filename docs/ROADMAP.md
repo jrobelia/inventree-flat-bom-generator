@@ -186,20 +186,16 @@ Move these settings from plugin config to panel UI:
 
 3. **Include Internal Fab Parts in Cutlist** (Switch)
    - Currently: Plugin setting checkbox ("Enable Internal Fab Cut Breakdown")
-   - Proposed: Switch in settings panel
+   - Proposed: Switch in settings drawer with dynamic units label
+   - Label: "Include Ifab in Cutlist (mm, in, cm)" - units from CUTLIST_UNITS_FOR_INTERNAL_FAB setting
    - Default: Plugin setting value
    - Behavior: Auto-refresh on change (triggers backend processing)
 
-4. **Show Cutlist Rows** (NEW - Switch)
-   - Currently: No option (cutlist parts always shown)
-   - Proposed: Switch to show/hide BOTH Native CtL and Internal Fab cutlist child rows
-   - Default: ON (show all cutlist rows)
-   - Behavior: Frontend filter (immediate, no refresh needed)
-
-**Keep As Separate Controls (Immediate Effect):**
-- **Build Quantity** (NumberInput) - Frontend calculation only
-- **Include Allocations** (Checkbox/Switch) - Frontend calculation only
-- **Include On Order** (Checkbox/Switch) - Frontend calculation only
+**Always Visible Controls (ControlBar - Immediate Frontend Filters):**
+- **Build Quantity** (NumberInput) - Multiplies requirements
+- **Include Allocations** (Checkbox) - Use available vs total stock
+- **Include On Order** (Checkbox) - Include incoming in shortfall
+- **Show Cutlist Rows** (NEW - Checkbox) - Show/hide BOTH Native CtL and Internal Fab cutlist child rows
 
 **UI Layout Strategy (Progressive Disclosure + InvenTree Pattern):**
 
@@ -210,8 +206,7 @@ Move these settings from plugin config to panel UI:
 │ ┌───────────────────────────────────────────────────────┐   │
 │ │ Max Depth: [10 ▼]                                      │   │
 │ │ ☑️ Expand Purchased Assemblies                         │   │
-│ │ ☑️ Include Internal Fab in Cutlist                     │   │
-│ │ ☑️ Show Cutlist Rows                                   │   │
+│ │ ☑️ Include Ifab in Cutlist (mm, in, cm)               │   │
 │ │                                                         │   │
 │ │ [Apply Settings]  [Reset to Defaults]                  │   │
 │ └───────────────────────────────────────────────────────┘   │
@@ -223,48 +218,45 @@ Move these settings from plugin config to panel UI:
 
 **After First Generation (Clean Data Focus):**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ [Build Qty: 5] [☑️ Allocations] [☑️ On Order]               │
-│ [⚙️●] [⋮ Columns] [Export ▼]                                │
-│   ↑                                                          │
-│  Settings drawer (blue if custom)                           │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│ [Build Qty: 5] [☑️ Allocations] [☑️ On Order] [☑️ Cutlists] │
+│ [⚙️●] [⋮ Columns] [Export ▼]                                 │
+│   ↑                                                           │
+│  Settings drawer (blue if custom)                            │
+└───────────────────────────────────────────────────────────────┘
 ```
-*Settings collapse to icon, opens side drawer when clicked*
+*Settings collapse to icon, cutlist toggle moves to ControlBar (immediate effect)*
 
 **Settings Drawer (Slides from Right):**
 ```
-                    ┌─────────────────────────────┐
-                    │ ✕  Generation Settings       │
-                    ├─────────────────────────────┤
-                    │                              │
-                    │ Generation Options           │
-                    │ (triggers auto-refresh)      │
-                    │ ─────────────────────────    │
-                    │ Max Depth: [10 ▼]           │
-                    │ ☑️ Expand Assemblies         │
-                    │ ☑️ Include Ifab in Cutlist   │
-                    │                              │
-                    │ Display Filters              │
-                    │ (immediate effect)           │
-                    │ ─────────────────────────    │
-                    │ ☑️ Show Cutlist Rows         │
-                    │ ☑️ Show Cutlist Rows         │
-                    │                              │
-                    │ [Apply]  [Reset to Defaults] │
-                    │                              │
-                    └─────────────────────────────┘
+                    ┌──────────────────────────────────┐
+                    │ ✕  Generation Settings            │
+                    ├──────────────────────────────────┤
+                    │                                   │
+                    │ Backend Settings                  │
+                    │ (triggers auto-refresh on Apply)  │
+                    │ ───────────────────────────────   │
+                    │ Max Depth: [10 ▼]                │
+                    │ ☑️ Expand Assemblies              │
+                    │ ☑️ Include Ifab in Cutlist        │
+                    │    (mm, in, cm)                   │
+                    │                                   │
+                    │ [Apply]  [Reset to Defaults]      │
+                    │                                   │
+                    └──────────────────────────────────┘
 ```
+*Note: Units (mm, in, cm) loaded from CUTLIST_UNITS_FOR_INTERNAL_FAB plugin setting*
 
 **Design Patterns:**
-- **Progressive Disclosure**: Show settings initially, hide after first use
+- **Progressive Disclosure**: Show settings panel initially, hide after first generation (collapse to gear icon)
 - **Drawer Component**: Mantine `Drawer` slides from right (InvenTree standard for filters)
-- **Auto-Refresh on Apply**: Backend settings trigger automatic BOM regeneration when "Apply" clicked
-- **Immediate Frontend Filters**: Include Cut Parts filters table without refresh
-- **Visual Indicators**: Blue gear icon when settings differ from defaults, badge shows count
-- **Persistent State**: Store in localStorage which view to show (expanded vs. drawer)
+- **Auto-Refresh on Apply**: Backend settings (Max Depth, Expand Assemblies, Include Ifab) trigger automatic BOM regeneration when "Apply" clicked
+- **Immediate Frontend Filters**: ControlBar toggles (Allocations, On Order, Cutlists) filter table without refresh
+- **Dynamic Labels**: Include Ifab setting shows units from plugin config (e.g., "mm, in, cm")
+- **Visual Indicators**: Blue gear icon when settings differ from defaults
+- **Persistent State**: Store in localStorage which view to show (expanded panel vs. drawer icon)
 - **Must Close Drawer**: User clicks Apply/Close to dismiss (standard drawer behavior)
-- **Separate Frequency Groups**: Keep frequently-toggled controls (Build Qty, Allocations, On Order) always visible
+- **Frequency-Based Grouping**: Frequently-toggled controls (Build Qty, Allocations, On Order, Cutlists) always visible; rarely-changed backend settings in drawer
 
 **Benefits:**
 - ✅ **Guided first use**: Settings prominent before first generation (discoverability)

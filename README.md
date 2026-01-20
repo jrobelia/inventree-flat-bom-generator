@@ -1,6 +1,6 @@
 # Flat BOM Generator for InvenTree
 
-**Version:** 0.9.2 | **InvenTree:** 1.1.6+
+**Version:** 0.10.0 | **InvenTree:** 1.1.6+
 
 > Personal project for automated flat BOM generation. Currently in testing phase and undergoing refactoring to improve code quality. Feedback and bug reports welcome!
 

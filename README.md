@@ -340,11 +340,13 @@ Reality: 150 total across variants (any could fulfill requirement)
 
 1. **Settings UI/UX Improvement** - Move plugin settings from admin panel to in-panel drawer for better user experience with progressive disclosure pattern
 
-2. **Optional Parts & Substitute Parts Support** - Display InvenTree's optional parts (with filtering) and substitute parts (as expandable rows showing individual stock levels)
+2. **Variant Parts Support** - Add variant stock visibility to address the template part limitation (see Known Limitations above)
 
-3. **Variant Parts Support** - Integrate InvenTree's template/variant system, showing variant stock availability
+3. **Optional Parts Support** - Display and filter InvenTree's optional BOM items with visual indicators
 
-4. **InvenTree Export Integration** - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
+4. **Substitute Parts Support** - Show substitute parts as expandable rows with individual stock levels to help identify best purchasing options
+
+5. **InvenTree Export Integration** - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed implementation plans and prioritization.
 

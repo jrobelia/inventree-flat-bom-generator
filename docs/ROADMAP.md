@@ -386,75 +386,94 @@ Move these settings from plugin config to panel UI:
 
 ---
 
-### Optional Parts & Substitute Parts Support (6-10 hours, MEDIUM PRIORITY)
-**Goal:** Integrate InvenTree's optional and substitute part features into flat BOM display
+### Optional Parts Support (MEDIUM PRIORITY)
+**Goal:** Display and filter InvenTree's optional BOM items
 
-**InvenTree Native Features:**
-InvenTree has built-in support for both features:
-- **Optional Parts**: Boolean `optional` field on BomItem (parts that can be excluded from builds)
-- **Substitute Parts**: `BomItemSubstitute` model linking alternative parts to BOM items
-  - Multiple substitutes per BOM item allowed
-  - Substitute stock included in availability calculations
-  - Can be allocated during build orders
+**InvenTree Feature:**
+- `optional` field on BomItem - parts that can be excluded from builds
+- InvenTree allows optional parts in BOMs for configurations or variants
 
 **Current Plugin Behavior:**
 - Flattens BOM without considering `optional` flag
+- Optional parts always appear in flat view and calculations
+- No visual indication which parts are optional
+
+**Proposed Changes:**
+
+1. **Optional Flag Display**
+   - Add `optional` field to BomItem data retrieval
+   - Add "Flags" column with orange "Optional" badge
+   - Italic text styling for optional part rows
+   - Sortable column: sorts by flag presence (flagged parts grouped together)
+
+2. **Optional Parts Filtering**
+   - Add "Include Optional Parts" checkbox (default: unchecked)
+   - When excluded: remove from table, exclude from shortfall/stats calculations
+   - When included: show with clear visual indicator
+
+**Backend Changes:**
+- Mark items with `optional` flag in enrichment (`views.py`)
+- No changes to `bom_traversal.py` needed (post-flatten enrichment)
+
+**Testing Requirements:**
+- Unit tests: optional flag display logic
+- Integration tests: optional parts filtering with fixture data
+- UI verification: badges, checkbox controls, calculations
+
+**Benefits:**
+- Simple implementation (just a flag + filter)
+- Clear visual distinction for optional parts
+- User control over including optional items in planning
+
+**Open Questions:**
+1. Default state: Include optional parts ON or OFF?
+2. Should optional parts affect "Total Unique Parts" count?
+
+**Defer Until:** Gather user feedback on default behavior
+
+---
+
+### Substitute Parts Support (MEDIUM PRIORITY)
+**Goal:** Display InvenTree's substitute parts with individual stock visibility
+
+**InvenTree Feature:**
+- `BomItemSubstitute` model linking alternative parts to BOM items
+- Multiple substitutes per BOM item allowed
+- Substitute stock included in InvenTree's availability calculations
+- Can be allocated during build orders
+
+**Current Plugin Behavior:**
 - Does not include substitute parts in flat view
 - Does not show which parts have substitutes available
 - Stock calculations don't account for substitute availability
 
-**Design Decisions:**
-
-**Substitute Parts = Cutlist Pattern:**
+**Design Decision: Substitute Parts = Cutlist Pattern**
 - Treat substitutes like cutlist rows (additional rows tied to parent part)
 - Reuse existing cutlist infrastructure (already handles multiple rows per part)
 - Display substitute part names (not arrows like cutlist)
 - Each substitute gets its own row with full stock data
 - **Sorting behavior**: Only parent parts participate in sort; substitutes stay grouped below parent
-- When sorted, substitutes move with their parent (never separated)
-
-**UI Controls Refactoring:**
-- Move settings from plugin config to checkboxes near "Generate" button
-- Better UX: controls where you need them
-- Checkboxes to add:
-  - "Include Optional Parts" (default: unchecked - user decides)
-  - "Include Substitute Parts" (default: unchecked)
-  - "Include Allocations" (existing - move from separate location)
-  - "Include On Order" (existing - move from separate location)
-
-**Optional Parts = Badge with Filtering:**
-- Orange "Optional" badge in dedicated "Flags" column
-- "Flags" column can show: [Optional], [Substitute], or both badges
-- Italic text styling for optional part rows
-- Controlled by "Include Optional Parts" checkbox
-- When excluded, optional parts don't appear in table or shortfall calculations
-- Sortable column: sorts by flag presence (flagged parts grouped together)
 
 **Proposed Changes:**
 
-1. **Optional Parts Display** (2-3 hours)
-   - Add `optional` field to BomItem data retrieval
-   - Add "Flags" column with badge (orange for optional, sortable)
-   - Italic text styling for optional part rows
-   - Filter controlled by "Include Optional Parts" checkbox
-   - When excluded: remove from table, exclude from shortfall/stats calculations
-
-2. **Substitute Parts Integration** (3-4 hours)
+1. **Substitute Parts Integration**
    - Query `BomItemSubstitute` relationships during BOM enrichment
    - Create additional rows per substitute (like cutlist breakdown)
    - Display: "[Substitute] Part Name" in Component column
    - Show "[Substitute]" badge in Flags column
    - Each substitute row shows individual stock, allocated, on order, shortfall
-   - Controlled by "Include Substitute Parts" checkbox near Generate button
+
+2. **Substitute Parts Filtering**
+   - Add "Include Substitute Parts" checkbox (default: unchecked)
+   - When excluded: show only primary parts
+   - When included: expand to show substitute alternatives
    - Substitutes stay grouped with parent during sorting (don't sort independently)
 
-3. **UI Controls Consolidation** (2-3 hours)
-   - Group checkboxes near "Generate Flat BOM" button
-   - Move existing "Include Allocations" and "Include On Order" from current location
-   - Add "Include Optional Parts" checkbox
-   - Add "Include Substitute Parts" checkbox
-   - Cleaner interface: all generation options in one place
-   - Add "Flags" column to table (13th column, sortable by flag presence)
+**Backend Changes:**
+- Update `views.py` to query `BomItemSubstitute` relationships
+- Create substitute rows (similar to cutlist row generation)
+- Add parent grouping logic to keep substitutes attached during sorting
+- No changes to `bom_traversal.py` needed (substitutes are post-flatten enrichment)
 
 **Implementation Notes:**
 - Substitutes leverage `deduplicate_and_sum()` cutlist pattern
@@ -462,34 +481,22 @@ InvenTree has built-in support for both features:
 - Stock calculations per substitute (not aggregated)
 - User can see which substitute has best availability
 
-**Backend Changes:**
-- Update `views.py` to query `BomItemSubstitute` relationships
-- Mark items with `optional` flag in enrichment
-- Create substitute rows (similar to cutlist row generation)
-- Add parent grouping logic to keep substitutes attached during sorting
-- No changes to `bom_traversal.py` needed (substitutes are post-flatten enrichment)
-
 **Testing Requirements:**
-- Unit tests: optional flag display logic
 - Integration tests: BomItemSubstitute relationships with fixture data
-- UI verification: badges, checkbox controls, substitute rows
+- UI verification: substitute rows, checkbox controls, grouping behavior
 
 **Benefits:**
 - Reuses proven cutlist infrastructure
-- Better UX: controls consolidated near Generate button
 - Clear visibility: see each substitute's individual stock
-- Simple optional indicator (no complex filtering)
 - Helps identify which substitute to use based on availability
-
-**Updated Time Estimate:** 7-10 hours (increased from 6-9 due to optional column + filtering)
+- No complex aggregation logic needed
 
 **Open Questions:**
 1. Should substitute stock count toward shortfall calculation? (Probably no - show each separately)
 2. Sort order: Primary part first, then substitutes alphabetically?
 3. Should "Total Unique Parts" count include substitutes? (Probably no - they're alternatives)
-4. Default state: Include optional parts ON or OFF?
 
-**Defer Until:** Gather user feedback on checkbox placement and default behavior
+**Defer Until:** Gather user feedback on default behavior
 
 ---
 

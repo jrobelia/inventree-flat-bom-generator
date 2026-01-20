@@ -52,7 +52,7 @@ When planning a build, you typically need to answer: "What parts do I need to or
 
 ### Performance Note
 
-**Each generation request performs a complete recursive BOM traversal with no caching.** For large assemblies (1000+ parts, 10+ levels deep), this can take several seconds. The plugin:
+**Each generation request performs a complete recursive BOM traversal with no caching.** For large assemblies (1000+ parts, 10+ levels deep), this can take 10's of seconds. The plugin:
 - Traverses every part in the BOM hierarchy from scratch
 - Calculates cumulative quantities through all levels
 - Filters and deduplicates results
@@ -306,19 +306,45 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - Negative value indicates deficit (need to order)
 - Positive value indicates surplus (extra stock after build)
 
+## Known Limitations
+
+### Variant Parts
+
+**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock.
+
+**Impact**: 
+- Template parts (with variants) show zero stock (actual stock is on the variant children)
+- BOM items with "allow any variant" enabled don't show total available variant stock
+- Cannot see which specific variant has best availability for purchasing decisions
+
+**Why This Happens**: The plugin uses `part.total_stock` (specific part only), not `part.variant_stock` (sum across all variants).
+
+**Example Scenario**:
+```
+BOM calls for: "Resistor 10K" (template part, allow_variants=True)
+Available variants:
+  - Resistor 10K 0805: 100 in stock
+  - Resistor 10K 1206: 50 in stock
+
+Plugin shows: 0 in stock (template has no physical stock)
+Reality: 150 total across variants (any could fulfill requirement)
+```
+
+**Planned Enhancement**: See "Variant Parts Support" in Future Work section below.
+
 ## Future Work
 
 ### Planned Features
 
 **Status**: Plugin v0.10.0 has completed major refactoring (frontend architecture, test infrastructure, serializers). Future development focuses on new features:
 
-1. **Settings UI/UX Improvement** (3-5 hours) - Move plugin settings from admin panel to in-panel drawer for better user experience with progressive disclosure pattern
+1. **Settings UI/UX Improvement** - Move plugin settings from admin panel to in-panel drawer for better user experience with progressive disclosure pattern
 
-2. **Optional Parts & Substitute Parts Support** (7-10 hours) - Display InvenTree's optional parts (with filtering) and substitute parts (as expandable rows showing individual stock levels)
+2. **Optional Parts & Substitute Parts Support** - Display InvenTree's optional parts (with filtering) and substitute parts (as expandable rows showing individual stock levels)
 
-3. **Variant Parts Support** (2-10 hours) - Integrate InvenTree's template/variant system, showing variant stock availability
+3. **Variant Parts Support** - Integrate InvenTree's template/variant system, showing variant stock availability
 
-4. **InvenTree Export Integration** (3-4 hours) - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
+4. **InvenTree Export Integration** - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed implementation plans and prioritization.
 

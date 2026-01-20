@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Badge,
   Button,
   Checkbox,
   Divider,
@@ -12,7 +13,8 @@ import {
 import {
   IconAdjustments,
   IconDownload,
-  IconRefresh
+  IconRefresh,
+  IconSettings
 } from '@tabler/icons-react';
 import type { DataTableColumn } from 'mantine-datatable';
 
@@ -29,6 +31,8 @@ interface ControlBarProps {
   columns: DataTableColumn<any>[];
   hiddenColumns: Set<string>;
   onToggleColumn: (accessor: string) => void;
+  hasCustomSettings?: boolean;
+  onOpenSettings?: () => void;
 }
 
 /**
@@ -46,7 +50,9 @@ export function ControlBar({
   onExport,
   columns,
   hiddenColumns,
-  onToggleColumn
+  onToggleColumn,
+  hasCustomSettings = false,
+  onOpenSettings
 }: ControlBarProps) {
   return (
     <Group gap='xs' align='flex-end' wrap='wrap'>
@@ -72,6 +78,28 @@ export function ControlBar({
           onChange={(e) => onIncludeOnOrderChange(e.currentTarget.checked)}
         />
       </Stack>
+      {onOpenSettings && (
+        <ActionIcon
+          variant='light'
+          size='lg'
+          onClick={onOpenSettings}
+          aria-label='open-settings'
+        >
+          <Tooltip label='Generation Settings' position='top'>
+            {hasCustomSettings ? (
+              <Badge
+                size='xs'
+                circle
+                color='blue'
+                style={{ position: 'absolute', top: -4, right: -4 }}
+              >
+                ●
+              </Badge>
+            ) : null}
+            <IconSettings />
+          </Tooltip>
+        </ActionIcon>
+      )}
       <Button
         leftSection={<IconRefresh size={16} />}
         onClick={onRefresh}

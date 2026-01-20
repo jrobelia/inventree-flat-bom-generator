@@ -26,6 +26,8 @@ import { createBomTableColumns } from './columns/bomTableColumns';
 // Import components
 import { ControlBar } from './components/ControlBar';
 import { ErrorAlert } from './components/ErrorAlert';
+import { SettingsDrawer } from './components/SettingsDrawer';
+import { SettingsPanel } from './components/SettingsPanel';
 import { StatisticsPanel } from './components/StatisticsPanel';
 import { WarningsAlert } from './components/WarningsAlert';
 
@@ -76,6 +78,7 @@ function FlatBOMGeneratorPanel({
   const [includeOnOrder, setIncludeOnOrder] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [warningsDismissed, setWarningsDismissed] = useState<boolean>(false);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState<boolean>(false);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<BomItem>>({
     columnAccessor: 'ipn',
     direction: 'asc'
@@ -90,7 +93,14 @@ function FlatBOMGeneratorPanel({
   });
 
   // Custom hooks for flat BOM functionality
-  const { settings } = usePluginSettings();
+  const {
+    settings,
+    updateSetting,
+    resetToDefaults,
+    hasCustomSettings,
+    hasGeneratedOnce,
+    markAsGenerated
+  } = usePluginSettings();
   const { bomData, loading, error, generateFlatBom, clearError } = useFlatBom(
     partId,
     context
@@ -107,6 +117,25 @@ function FlatBOMGeneratorPanel({
     includeAllocations,
     includeOnOrder
   );
+
+  // Extract cutlist units from BOM metadata
+  const cutlistUnits = useMemo(() => {
+    return bomData?.metadata?.cutlist_units_for_ifab || 'units';
+  }, [bomData?.metadata?.cutlist_units_for_ifab]);
+
+  // Handle initial generation (marks as generated for progressive disclosure)
+  const handleGenerate = async () => {
+    await generateFlatBom(settings);
+    if (!hasGeneratedOnce) {
+      markAsGenerated();
+    }
+  };
+
+  // Handle settings apply from drawer (regenerates BOM)
+  const handleApplySettings = async () => {
+    setSettingsDrawerOpen(false);
+    await generateFlatBom(settings);
+  };
 
   /**
    * Export BOM to CSV using utility functions
@@ -188,11 +217,32 @@ function FlatBOMGeneratorPanel({
 
   return (
     <Stack gap='md'>
+      {/* Settings Panel - shown before first generation (progressive disclosure) */}
+      {!hasGeneratedOnce && !bomData && !loading && (
+        <SettingsPanel
+          settings={settings}
+          cutlistUnits={cutlistUnits}
+          onUpdateSetting={updateSetting}
+          onResetToDefaults={resetToDefaults}
+        />
+      )}
+
+      {/* Settings Drawer - shown after first generation */}
+      <SettingsDrawer
+        opened={settingsDrawerOpen}
+        onClose={() => setSettingsDrawerOpen(false)}
+        settings={settings}
+        cutlistUnits={cutlistUnits}
+        onUpdateSetting={updateSetting}
+        onResetToDefaults={resetToDefaults}
+        onApply={handleApplySettings}
+      />
+
       {!bomData && !loading && (
         <Group justify='flex-end'>
           <Button
             leftSection={<IconRefresh size={16} />}
-            onClick={() => generateFlatBom(settings)}
+            onClick={handleGenerate}
             loading={loading}
             disabled={!partId}
           >
@@ -245,12 +295,18 @@ function FlatBOMGeneratorPanel({
                 onIncludeAllocationsChange={setIncludeAllocations}
                 includeOnOrder={includeOnOrder}
                 onIncludeOnOrderChange={setIncludeOnOrder}
-                onRefresh={() => generateFlatBom(settings)}
+                onRefresh={handleGenerate}
                 loading={loading}
                 onExport={exportToCsv}
                 columns={columns}
                 hiddenColumns={hiddenColumns}
                 onToggleColumn={toggleColumn}
+                hasCustomSettings={hasCustomSettings}
+                onOpenSettings={
+                  hasGeneratedOnce
+                    ? () => setSettingsDrawerOpen(true)
+                    : undefined
+                }
               />
             </Group>
           </Paper>

@@ -1,6 +1,6 @@
 # GitHub Copilot Instructions - FlatBOMGenerator Plugin
 
-**Audience:** AI Agents (GitHub Copilot) | **Category:** Quick Reference | **Purpose:** Auto-discovered entry point for GitHub Copilot agents | **Last Updated:** 2025-12-15
+**Audience:** AI Agents (GitHub Copilot) | **Category:** Quick Reference | **Purpose:** Auto-discovered entry point for GitHub Copilot agents | **Last Updated:** January 12, 2026
 
 **This file is automatically read by GitHub Copilot to provide context about this plugin.**
 
@@ -8,12 +8,20 @@
 
 ## Quick Start for AI Agents
 
-When working in this plugin workspace, **always review these files first**:
+**CRITICAL: Before Starting Any Work**
+
+1. **Check Git History**: `git log --oneline -10` - What's been deployed? What's untested?
+2. **Check Git Status**: `git status` - What's uncommitted? Are there WIP files?
+3. **Check Last Deployment**: Look for version tags (e.g., v0.9.2) - Is latest code on server?
+
+**Then Review Documentation:**
 
 1. **[ARCHITECTURE.md](../ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
-2. **[docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md)** - Current refactoring status and plan
-3. **[docs/internal/TEST-QUALITY-REVIEW.md](../docs/internal/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
-4. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
+2. **[docs/internal/DEPLOYMENT-WORKFLOW.md](../docs/internal/DEPLOYMENT-WORKFLOW.md)** - **Deployment checklist and testing workflow (READ THIS)**
+3. **[docs/internal/TEST-WRITING-METHODOLOGY.md](../docs/internal/TEST-WRITING-METHODOLOGY.md)** - **Code-first approach for writing/validating tests (ESSENTIAL FOR TEST WORK)**
+4. **[docs/internal/ROADMAP.md](../docs/internal/ROADMAP.md)** - Current refactoring status and plan
+5. **[docs/internal/TEST-QUALITY-REVIEW.md](../docs/internal/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
+6. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
 
 ---
 
@@ -34,20 +42,23 @@ When working in this plugin workspace, **always review these files first**:
 
 ## Current Work Status
 
-**Phase:** Serializer refactoring (Phase 2 complete)
-- ✅ Phase 1: BOMWarningSerializer (4 fields)
-- ✅ Phase 2: FlatBOMItemSerializer (24 fields)
-- 📋 Phase 3: FlatBOMResponseSerializer (planned)
+**Phase:** Testing complete - Ready for refactoring
+- ✅ Phase 1-3: Serializer refactoring (BOMWarningSerializer, FlatBOMItemSerializer, FlatBOMResponseSerializer)
+- ✅ Priority 1-4: Integration test coverage (plugin settings, errors, warnings, complex BOMs)
+- ✅ Warning Generation: 8 integration tests via fixture-based approach
+- ✅ Test Quality: Grade B+ (85% Grade A, 92% coverage)
 
-**Test Status:** 106 tests (105 passing, 1 skipped), grade C+
+**Test Status:** 151 tests (150 passing, 1 skipped), ready for refactoring phase
 
 **Recent Changes:**
-- Implemented Django REST Framework serializers for API responses
-- Replaced manual dictionary construction with validated serializers
-- Created comprehensive test suite (23 serializer tests)
-- Production validated on staging server
+- Fixture-based testing breakthrough: Programmatic fixture loading bypasses InvenTree validation
+- Priority 3 (Warning Generation) completed: 8 integration tests for view-level aggregation
+- 151 tests total (60 unit + 91 integration): 150 passing, 1 skipped
+- Test quality: Grade B+ (85% Grade A tests, 92% estimated coverage)
+- Resolved 4 InvenTree model evolution issues during fixture debugging
+- **Code-first test methodology established** (TEST-WRITING-METHODOLOGY.md) - read code THEN write tests
 
-See [docs/internal/REFAC-PANEL-PLAN.md](../docs/internal/REFAC-PANEL-PLAN.md) for detailed status.
+See [docs/ROADMAP.md](../docs/ROADMAP.md) for detailed status.
 
 ---
 
@@ -59,7 +70,7 @@ This plugin follows **single source of truth** principle:
 - **ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
 - **docs/TEST-PLAN.md** → Testing strategy, workflow, test-first approach, CI/CD
 - **docs/TEST-QUALITY-REVIEW.md** → Test quality analysis, gaps, prioritized improvements
-- **docs/REFAC-PANEL-PLAN.md** → What to refactor, how to refactor, current status, next steps
+- **docs/ROADMAP.md** → What to refactor, how to refactor, current status, next steps
 - **README.md** → User-facing: features, installation, usage
 
 **Key Principles:**
@@ -83,15 +94,53 @@ For toolkit-level guidance (deployment, build commands, general patterns):
 
 ---
 
+## Collaborative Development Principles
+
+**This user values learning together, not just getting code written.**
+
+### Before Implementing:
+1. **Explain the approach** - What are we changing and why?
+2. **Discuss trade-offs** - What are the pros/cons of this approach?
+3. **Get approval** - Wait for user to agree before proceeding
+4. **Teach patterns** - Help user understand the architecture, not just the code
+
+### When Writing Code:
+- **Educational comments** - Explain WHY, not just WHAT
+- **Show alternatives** - "We could also do X, but Y is better because..."
+- **Ask questions** - "Does this make sense?" "Would you prefer approach A or B?"
+- **Admit uncertainty** - "I'm not sure if this is the best way, let's test it"
+
+### After Changes:
+- **Verify it works** - Don't assume tests passing means code works on server
+- **Manual testing** - Deploy to staging, test in UI, check browser console
+- **Document lessons** - What did we learn? What would we do differently next time?
+
+---
+
 ## Common Commands
 
 **Testing:**
 ```powershell
-# Run all tests
-python -m unittest discover
+# Run unit tests (fast, no database)
+python -m unittest discover -s flat_bom_generator/tests/unit -v
 
-# Run specific test file
-python -m unittest flat_bom_generator.tests.test_serializers -v
+# Run integration tests (requires InvenTree dev setup)
+cd ..\..\inventree-dev\InvenTree
+& .venv\Scripts\Activate.ps1
+invoke dev.test -r FlatBOMGenerator.tests.integration -v
+
+# Or use toolkit script (recommended)
+cd ..\..  # Back to toolkit root
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
+.\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -All
+```
+
+**Integration Testing Setup (one-time):**
+```powershell
+# From toolkit root
+.\scripts\Setup-InvenTreeDev.ps1
+.\scripts\Link-PluginToDev.ps1 -Plugin "FlatBOMGenerator"
 ```
 
 **Build & Deploy:**

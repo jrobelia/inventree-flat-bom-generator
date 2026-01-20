@@ -7,57 +7,6 @@ from .categorization import categorize_part, _extract_length_from_notes
 logger = logging.getLogger("inventree")
 
 
-def get_flat_bom_with_children(tree: Dict) -> List[Dict]:
-    """
-    Flatten BOM tree to include Internal Fab parent rows with their children as grouped/expandable rows.
-    Each Internal Fab part is included as a parent row, with its children as a 'children' list.
-    All other parts are included as flat rows.
-
-    Args:
-        tree: BOM tree from traverse_bom()
-
-    Returns:
-        List of dicts, each representing a row (parent or child), with Internal Fab parents having a 'children' key.
-    """
-
-    # Debug: print summary of root node
-    logger.info(
-        f"[FlatBOM] get_flat_bom_with_children root: part_type={tree.get('part_type')}, part_id={tree.get('part_id')}, children={len(tree.get('children', []))}"
-    )
-
-    result = []
-    internal_fab_with_children_count = 0
-
-    def _recurse(node):
-        nonlocal internal_fab_with_children_count
-        part_type = node.get("part_type", "Unknown")
-        if part_type == "Internal Fab":
-            logger.info(
-                f"[FlatBOM] _recurse: Internal Fab node part_id={node.get('part_id')}, children={len(node.get('children', []))}"
-            )
-        # If Internal Fab, include as parent with children
-        if part_type == "Internal Fab" and node.get("children"):
-            if node["children"]:
-                internal_fab_with_children_count += 1
-            parent_row = {k: v for k, v in node.items() if k != "children"}
-            # Recursively flatten children
-            parent_row["children"] = [_recurse(child) for child in node["children"]]
-            result.append(parent_row)
-        elif node.get("children"):
-            # For other assemblies, just flatten children
-            for child in node["children"]:
-                _recurse(child)
-        else:
-            # Leaf part
-            result.append({k: v for k, v in node.items() if k != "children"})
-
-    _recurse(tree)
-    logger.info(
-        f"[FlatBOM] Internal Fab parents with children: {internal_fab_with_children_count}"
-    )
-    return result
-
-
 def get_bom_items(part) -> List[Dict]:
     """
     Fetch BOM items for a given part with related data.
@@ -117,7 +66,10 @@ def traverse_bom(
     Recursively traverse BOM structure and build tree.
 
     CRITICAL: Uses visited.copy() pattern to allow same part in different
-    branches while preventing circular references.
+    branches while preventing infinite loops from circular references.
+
+    NOTE: InvenTree prevents circular BOMs at database level. The circular
+    check here is a safety mechanism that raises ValueError if triggered.
 
     Args:
         part: Part model instance
@@ -141,22 +93,21 @@ def traverse_bom(
     # Initialize visited set on first call
     if visited is None:
         visited = set()
-    # Initialize IMP counter on first call
+    # Initialize IFP counter on first call
     if imp_counter is None:
         imp_counter = {"count": 0}
 
     part_id = part.pk
 
-    # CRITICAL: Check for circular reference BEFORE adding to visited
+    # CRITICAL: Prevent infinite loops from circular BOMs
+    # NOTE: InvenTree validates BOMs at database level, so this should never trigger.
+    # If it does, database integrity is compromised.
     if part_id in visited:
-        logger.warning(f"Circular reference detected for part ID {part_id}")
-        return {
-            "error": "circular_reference",
-            "part_id": part_id,
-            "ipn": part.IPN or "",
-            "part_name": part.name,
-            "level": level,
-        }
+        raise ValueError(
+            f"CRITICAL: Circular BOM reference detected for {part.IPN or 'Unknown'} "
+            f"(Part ID: {part_id}) at level {level}. This should not be possible - "
+            f"InvenTree database integrity may be compromised. Please report this issue."
+        )
 
     # Add to visited for this branch
     visited.add(part_id)
@@ -264,15 +215,22 @@ def traverse_bom(
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
 
-                # If parent is Internal Fab, mark child for cut row logic
-                if part_type == "Internal Fab":
+                # If parent is Internal Fab and child is a leaf part (Fab/Coml), mark for cut row logic
+                # Don't mark assemblies - their descendants should be treated as regular parts
+                child_part_type = child_node.get("part_type", "")
+                if part_type == "Internal Fab" and child_part_type in ("Fab", "Coml"):
                     child_node["from_internal_fab_parent"] = True
                     child_node["parent_ipn"] = ipn
                     child_node["parent_part_id"] = part_id
                     # For Internal Fab children, cut_length is the BOM quantity (native unit)
                     child_node["cut_length"] = child_qty
+                    # Ensure cut_length is set (should never be None if BOM is valid)
+                    if child_qty is None:
+                        raise ValueError(
+                            f"Internal Fab child has None quantity: parent={ipn} (ID={part_id}), child={child_part.IPN}"
+                        )
                     logger.info(
-                        f"[FlatBOM][traverse_bom] Marked child as from_internal_fab_parent: child_part_id={child_node.get('part_id')}, parent_part_id={part_id}, child_unit={child_node.get('unit')}"
+                        f"[FlatBOM][traverse_bom] Marked child as from_internal_fab_parent: child_part_id={child_node.get('part_id')}, child_type={child_part_type}, parent_part_id={part_id}, child_unit={child_node.get('unit')}"
                     )
 
                 # Add to children list
@@ -317,10 +275,6 @@ def get_leaf_parts_only(
     if leaves is None:
         leaves = []
 
-    # Skip error nodes
-    if "error" in tree:
-        return leaves
-
     # Check if this is a leaf part
     part_type = tree.get("part_type", "Unknown")
     is_purchaseable_assembly = part_type == "Purchased Assy"
@@ -332,6 +286,14 @@ def get_leaf_parts_only(
         "Fab",  # Fabricated non-assembly parts
         "CtL",  # Raw material with specified length
     ]
+
+    # Fallback: If no category assigned and part is not an assembly,
+    # treat it as a leaf part (graceful degradation without categories)
+    if not is_non_assembly_leaf and not tree["is_assembly"]:
+        is_non_assembly_leaf = True
+        logger.info(
+            f"[FlatBOM][get_leaf] Part {tree['part_id']} ({tree['ipn']}) is leaf (non-assembly) despite part_type='{part_type}'"
+        )
 
     if is_non_assembly_leaf:
         # Always include non-assembly leaf parts
@@ -461,10 +423,12 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     # Use defaultdict to accumulate quantities
     totals = defaultdict(float)
     part_info = {}
+    part_references = defaultdict(list)  # Store all reference strings for aggregation
     cut_lists = defaultdict(list)  # Store cut list details for CtL parts
     internal_fab_cut_lists = defaultdict(
         list
     )  # Store cut list details for Internal Fab children
+    ctl_warnings = []  # Store warnings for CtL and Internal Fab issues
 
     # Retrieve allowed units for Internal Fab cut breakdown from attached attribute (set by get_flat_bom)
     if hasattr(deduplicate_and_sum, "ifab_units"):
@@ -511,21 +475,24 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                     "length": cut_length,
                 })
         elif from_ifab and cut_length is not None:
-            # Only include as cut row if unit matches allowed_ifab_units
-            if unit in allowed_ifab_units:
+            # Internal fab parts should have consistent units
+            # If unit doesn't match allowed set, skip cut_list logic (treat as regular part)
+            if unit not in allowed_ifab_units:
+                # Silently treat as regular part (no warning)
+                # For internal fab leaves, cut_length is the quantity (cumulative_qty not used)
+                piece_count_inc = leaf.get("quantity") or 1
+                totals[key] += cut_length * piece_count_inc
+            else:
                 # Piece count is the BOM qty of the Internal Fab child in its parent
-                piece_count_inc = leaf.get("quantity", 1)
+                piece_count_inc = leaf.get("quantity") or 1
 
                 logger.info(
                     f"[FlatBOM][deduplicate_and_sum] Adding internal_fab_cut_list for Internal Fab child part_id={part_id}, unit={unit}, piece_qty={cut_length}, piece_count_inc={piece_count_inc}, parent_ipn={leaf.get('parent_ipn')}, parent_part_id={leaf.get('parent_part_id')}"
                 )
                 # Track total qty as piece_qty * piece_count (reflect cut-list rollup)
+                # Note: quantity is not set in leaf dict, so this always defaults to 1
                 piece_count_inc = leaf.get("quantity") or 1
-                try:
-                    totals[key] += cut_length * piece_count_inc
-                except Exception:
-                    # Fallback to cumulative_qty if multiplication fails for any reason
-                    totals[key] += leaf.get("cumulative_qty", 0)
+                totals[key] += cut_length * piece_count_inc
                 found = False
                 for piece in internal_fab_cut_lists[key]:
                     if (
@@ -541,36 +508,14 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                         "piece_qty": cut_length,
                         "unit": unit,
                     })
-            else:
-                logger.info(
-                    f"[FlatBOM][deduplicate_and_sum] SKIP internal_fab_cut_list for Internal Fab child part_id={part_id}, unit={unit} (not in allowed_ifab_units={allowed_ifab_units})"
-                )
-        elif from_ifab:
-            # Only include as cut row for traceability if unit matches allowed_ifab_units
-            if unit in allowed_ifab_units:
-                logger.info(
-                    f"[FlatBOM][deduplicate_and_sum] Adding internal_fab_cut_list (no piece_qty) for Internal Fab child part_id={part_id}, unit={unit}, parent_ipn={leaf.get('parent_ipn')}, parent_part_id={leaf.get('parent_part_id')}"
-                )
-                # For Internal Fab children without cut_length, still track them
-                totals[key] += leaf["cumulative_qty"]
-                found = False
-                for piece in internal_fab_cut_lists[key]:
-                    if piece.get("piece_qty") is None and piece.get("unit") == unit:
-                        piece["count"] += leaf["cumulative_qty"]
-                        found = True
-                        break
-                if not found:
-                    internal_fab_cut_lists[key].append({
-                        "count": leaf["cumulative_qty"],
-                        "piece_qty": None,
-                        "unit": unit,
-                    })
-            else:
-                logger.info(
-                    f"[FlatBOM][deduplicate_and_sum] SKIP internal_fab_cut_list (no piece_qty) for Internal Fab child part_id={part_id}, unit={unit} (not in allowed_ifab_units={allowed_ifab_units})"
-                )
         else:
+            # Regular parts (not CtL, not internal fab)
             totals[key] += leaf["cumulative_qty"]
+
+        # Collect reference designators for aggregation (from BOM item notes)
+        note = leaf.get("note", "")
+        if note and note.strip():
+            part_references[key].append(note)
 
         # Store part info (first occurrence wins for metadata)
         if key not in part_info:
@@ -589,52 +534,9 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                 "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
             }
 
-    # --- Internal Fab Cut Breakdown (group by part, unit, and per-use qty) ---
-    def internal_fab_cut_breakdown(enable_ifab_cuts, ifab_units):
-        if enable_ifab_cuts:
-            logger.info(f"[FlatBOM] INTERNAL_FAB_CUT_UNITS: {ifab_units}")
-            # Group Internal Fab children by (part_id, unit, per-use qty)
-            piece_lists = defaultdict(list)  # (part_id, unit) -> list of per-use qtys
-            parent_ids = set()
-            for leaf in leaf_parts:
-                part_id = leaf["part_id"]
-                part_type = leaf["part_type"]
-                unit = leaf.get("unit")
-                qty = leaf["cumulative_qty"]
-                logger.info(
-                    f"[FlatBOM] Checking part_id={part_id}, part_type={part_type}, unit='{unit}'"
-                )
-                # Only apply to matching units and non-CtL parts
-                if part_type not in ("CtL",) and unit in ifab_units:
-                    logger.info("[FlatBOM] -> INCLUDED in Internal Fab cut breakdown")
-                    piece_lists[(part_id, unit)].append(qty)
-                    parent_ids.add(part_id)
-                else:
-                    logger.info("[FlatBOM] -> SKIPPED for Internal Fab cut breakdown")
-            # Attach piece_list breakdowns to correct parent part_info
-            from collections import Counter
-
-            for (part_id, unit), qtys in piece_lists.items():
-                qty_counter = Counter(qtys)
-                # Find the correct part_info key (must match part_id)
-                if part_id in part_info:
-                    if "piece_list" not in part_info[part_id]:
-                        part_info[part_id]["piece_list"] = []
-                    for q, count in qty_counter.items():
-                        part_info[part_id]["piece_list"].append({
-                            "count": count,
-                            "piece_qty": q,
-                            "unit": unit,
-                        })
-
-    # --- End Internal Fab Cut Breakdown ---
-
-    # This function will be called by get_flat_bom with explicit args
-    deduplicate_and_sum.internal_fab_cut_breakdown = internal_fab_cut_breakdown
     # Check CtL parts for unit mismatches across all their note variants
     from .categorization import _check_unit_mismatch
 
-    ctl_warnings = []
     ctl_parts_notes = {}  # part_id -> set of unique note strings
     for leaf in leaf_parts:
         part_type = leaf.get("part_type")
@@ -720,6 +622,11 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
     enable_ifab_cuts = getattr(deduplicate_and_sum, "enable_ifab_cuts", False)
     result = []
     for key in sorted(all_keys, key=lambda k: part_info[k]["ipn"]):
+        # Combine all reference designators from multiple BOM paths
+        combined_reference = (
+            ", ".join(part_references[key]) if part_references[key] else ""
+        )
+
         row = {
             "part_id": part_info[key]["part_id"],
             "total_qty": totals.get(key, 0),
@@ -732,6 +639,7 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             "default_supplier_id": part_info[key]["default_supplier_id"],
             "part_type": part_info[key]["part_type"],
             "note": part_info[key]["note"],  # BOM item notes
+            "reference": combined_reference,  # Aggregated reference designators
             "cut_list": cut_lists[key] if cut_lists.get(key) else None,
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),

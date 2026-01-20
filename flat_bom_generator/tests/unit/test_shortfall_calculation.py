@@ -3,7 +3,24 @@ Unit tests for shortfall calculation logic.
 
 These tests verify the 4 different shortfall calculation scenarios based on
 the Include Allocations and Include On Order checkboxes.
-"""
+⚠️ IMPORTANT: Frontend-Backend Sync Required
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This test duplicates the shortfall calculation logic from Panel.tsx (lines 881-889).
+The Python implementation must match the TypeScript implementation exactly.
+
+Why duplicate logic?
+- Language barrier: Can't import TypeScript into Python tests
+- Fast testing: Python tests run in milliseconds vs seconds for browser tests
+- Bug protection: Catches drift between frontend and backend expectations
+
+Maintenance Contract:
+- If you modify Panel.tsx shortfall calculation, UPDATE THIS TEST to match
+- If this test fails after Panel.tsx changes, the frontend logic changed
+- Tests act as documentation and verification of UI behavior
+
+Last synced with Panel.tsx: January 9, 2026
+Panel.tsx lines: 881-889 (shortfall column render)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
 
 import unittest
 
@@ -14,10 +31,19 @@ class ShortfallCalculationTests(unittest.TestCase):
     def calculate_shortfall(self, total_required, in_stock, allocated, on_order, 
                            include_allocations, include_on_order):
         """
-        Calculate shortfall using the same logic as Panel.tsx.
+        Calculate shortfall using the same logic as Panel.tsx (lines 881-889).
+        
+        ⚠️ CRITICAL: This logic MUST match Panel.tsx exactly.
+        See file header for maintenance contract.
+        
+        Algorithm (matches Panel.tsx):
+        1. Start with in_stock value
+        2. If include_allocations: subtract allocated
+        3. If include_on_order: add on_order
+        4. Calculate: max(0, total_required - stock_value)
         
         Args:
-            total_required: Total quantity needed for build
+            total_required: Total quantity needed for build (total_qty * buildQuantity)
             in_stock: Current stock level
             allocated: Stock already allocated to other builds/orders
             on_order: Stock on order from suppliers
@@ -275,6 +301,60 @@ class ShortfallCalculationTests(unittest.TestCase):
             self.calculate_shortfall(50, 30, 8, 25, True, True),
             3
         )
+
+    def test_negative_stock_after_allocations(self):
+        """Allocated > in_stock should result in negative stock_value, increasing shortfall.
+        
+        Example: in_stock=100, allocated=150
+        - Without allocations: shortfall = max(0, 50 - 100) = 0
+        - With allocations: shortfall = max(0, 50 - (100-150)) = max(0, 50 - (-50)) = 100
+        
+        This represents over-allocation (data integrity issue).
+        """
+        total_required = 50
+        in_stock = 100
+        allocated = 150  # Over-allocated
+        on_order = 0
+        
+        # Without allocations - appears sufficient
+        self.assertEqual(
+            self.calculate_shortfall(
+                total_required, in_stock, allocated, on_order,
+                include_allocations=False, include_on_order=False
+            ),
+            0  # 50 needed, 100 available
+        )
+        
+        # With allocations - reveals over-allocation problem
+        self.assertEqual(
+            self.calculate_shortfall(
+                total_required, in_stock, allocated, on_order,
+                include_allocations=True, include_on_order=False
+            ),
+            100  # 50 needed, -50 available → shortfall = 100
+        )
+
+    def test_negative_total_required(self):
+        """Negative total_required is invalid input but should not crash.
+        
+        Since total_required = base_qty * build_quantity, negative would mean
+        negative build quantity (invalid UI state). Function should handle gracefully.
+        
+        max(0, negative - stock) = 0 (no shortfall for nonsense input)
+        """
+        total_required = -10  # Invalid but possible if UI state corrupted
+        in_stock = 100
+        allocated = 20
+        on_order = 50
+        
+        # Should return 0 (max() prevents negative shortfall)
+        result = self.calculate_shortfall(
+            total_required, in_stock, allocated, on_order,
+            include_allocations=True, include_on_order=True
+        )
+        
+        self.assertEqual(result, 0)
+        self.assertGreaterEqual(result, 0)  # Shortfall never negative
 
 
 if __name__ == '__main__':

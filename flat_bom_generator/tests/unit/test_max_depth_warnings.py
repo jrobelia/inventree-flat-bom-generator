@@ -199,6 +199,150 @@ class TestMaxDepthWarningLogic(unittest.TestCase):
             "Summary warning should not be tied to specific part"
         )
 
+    def test_no_warning_when_no_parts_at_max_depth(self):
+        """
+        When no parts are stopped by max_depth, no warning should be generated.
+        """
+        # Simulate flat_bom with no parts at max_depth
+        flat_bom = [
+            {"part_id": 100, "ipn": "PART-1", "max_depth_exceeded": False},
+            {"part_id": 101, "ipn": "PART-2", "max_depth_exceeded": False},
+            {"part_id": 102, "ipn": "PART-3"},  # Missing key defaults to False
+        ]
+
+        # Logic from views.py
+        warnings = []
+        parts_at_max_depth = [
+            item for item in flat_bom if item.get("max_depth_exceeded")
+        ]
+        
+        if parts_at_max_depth:
+            warnings.append({
+                "type": "max_depth_reached",
+                "part_id": None,
+                "part_name": "Multiple assemblies",
+                "message": "...",
+            })
+
+        # Assert: No warnings generated
+        self.assertEqual(
+            len(warnings), 0,
+            "Should not generate warning when no parts at max_depth"
+        )
+        self.assertEqual(
+            len(parts_at_max_depth), 0,
+            "Should find no parts at max_depth"
+        )
+
+    def test_empty_flat_bom_no_warning(self):
+        """
+        Empty BOM should not generate max_depth warning.
+        """
+        flat_bom = []
+
+        # Logic from views.py
+        warnings = []
+        parts_at_max_depth = [
+            item for item in flat_bom if item.get("max_depth_exceeded")
+        ]
+        
+        if parts_at_max_depth:
+            warnings.append({"type": "max_depth_reached"})
+
+        # Assert: No warnings generated
+        self.assertEqual(len(warnings), 0)
+        self.assertEqual(len(parts_at_max_depth), 0)
+
+    def test_single_part_at_max_depth_singular_message(self):
+        """
+        When only one assembly is at max_depth, warning should reflect singular count.
+        """
+        flat_bom = [
+            {"part_id": 100, "ipn": "ASSY-1", "max_depth_exceeded": True},
+            {"part_id": 200, "ipn": "PART-1", "max_depth_exceeded": False},
+        ]
+        
+        max_depth_reached = 5
+
+        # Logic from views.py
+        warnings = []
+        parts_at_max_depth = [
+            item for item in flat_bom if item.get("max_depth_exceeded")
+        ]
+        
+        if parts_at_max_depth:
+            warnings.append({
+                "type": "max_depth_reached",
+                "part_id": None,
+                "part_name": "Multiple assemblies",
+                "message": f"BOM traversal stopped at depth {max_depth_reached}. {len(parts_at_max_depth)} assemblies not fully expanded. Increase 'Maximum Traversal Depth' setting to see sub-components.",
+            })
+
+        # Assert: Warning generated with count of 1
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("1 assemblies", warnings[0]["message"])
+        # Note: Grammar is "1 assemblies" (not ideal, but follows current code)
+
+    def test_assembly_with_children_but_max_depth_exceeded(self):
+        """
+        Edge case: Assembly has children in tree, but max_depth_exceeded=True
+        means it was stopped before fully expanding.
+        
+        This can happen if max_depth is hit mid-expansion.
+        assembly_no_children flag should still be False (has children).
+        """
+        tree = {
+            "part_id": 400,
+            "ipn": "TEST-004",
+            "part_name": "Partially Expanded Assembly",
+            "description": "Has children but stopped by max_depth",
+            "cumulative_qty": 1.0,
+            "unit": "",
+            "is_assembly": True,
+            "purchaseable": False,
+            "default_supplier_id": None,
+            "part_type": "Assy",
+            "reference": "",
+            "note": "",
+            "level": 3,
+            "children": [  # Has children
+                {
+                    "part_id": 401,
+                    "ipn": "CHILD-1",
+                    "part_name": "Child Part",
+                    "description": "",
+                    "cumulative_qty": 2.0,
+                    "unit": "pcs",
+                    "is_assembly": False,
+                    "purchaseable": True,
+                    "default_supplier_id": 5,
+                    "part_type": "Coml",
+                    "reference": "",
+                    "note": "",
+                    "level": 4,
+                    "children": [],
+                }
+            ],
+            "max_depth_exceeded": True,  # But was stopped
+        }
+
+        # Logic from get_leaf_parts_only()
+        children = tree.get("children", [])
+        max_depth_exceeded = tree.get("max_depth_exceeded", False)
+        
+        if tree.get("is_assembly") and not children:
+            assembly_no_children_flag = not max_depth_exceeded
+        else:
+            assembly_no_children_flag = False
+
+        # Assert: Should NOT be flagged as no_children (it has children)
+        self.assertFalse(
+            assembly_no_children_flag,
+            "Assembly with children should not be flagged, even if max_depth_exceeded"
+        )
+        self.assertTrue(max_depth_exceeded)
+        self.assertGreater(len(children), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

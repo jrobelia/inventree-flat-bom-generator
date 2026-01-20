@@ -216,3 +216,86 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "assembly_no_children",
             "max_depth_exceeded",
         ]
+
+
+class FlatBOMResponseSerializer(serializers.Serializer):
+    """Serializes complete flat BOM API response structure.
+
+    Wraps the entire API response including root part info, flattened BOM items,
+    statistics, and warnings. This serializer defines the complete API contract
+    and ensures consistent response structure.
+
+    Response structure:
+    {
+        "part_id": 123,
+        "part_name": "Assembly Name",
+        "ipn": "ASM-001",
+        "total_unique_parts": 45,
+        "total_ifps_processed": 12,
+        "max_depth_reached": 5,
+        "bom_items": [...],  # List of FlatBOMItemSerializer
+        "metadata": {
+            "warnings": [...]  # List of BOMWarningSerializer
+        }
+    }
+    """
+
+    # Root part identification
+    part_id = serializers.IntegerField(
+        required=True, help_text="Database ID of root part (top-level assembly)"
+    )
+
+    part_name = serializers.CharField(
+        required=True, help_text="Name of root part (top-level assembly)"
+    )
+
+    ipn = serializers.CharField(
+        required=True,
+        allow_blank=True,
+        help_text="Internal Part Number (IPN) of root part, empty string if not set",
+    )
+
+    # Statistics
+    total_unique_parts = serializers.IntegerField(
+        required=True,
+        help_text="Count of unique leaf parts in flattened BOM (after deduplication)",
+    )
+
+    total_ifps_processed = serializers.IntegerField(
+        required=True,
+        help_text="Count of Internal Fab Parts (IFP) processed for cut list generation",
+    )
+
+    max_depth_reached = serializers.IntegerField(
+        required=True, help_text="Maximum BOM depth reached during traversal"
+    )
+
+    # Flattened BOM data
+    bom_items = FlatBOMItemSerializer(
+        many=True,
+        required=True,
+        help_text="List of enriched flat BOM items (leaf parts only)",
+    )
+
+    # Metadata with warnings
+    metadata = serializers.DictField(
+        required=True,
+        child=serializers.ListField(
+            child=BOMWarningSerializer(), help_text="List of BOM warnings"
+        ),
+        help_text="Additional response metadata including warnings",
+    )
+
+    class Meta:
+        """Meta options for this serializer."""
+
+        fields = [
+            "part_id",
+            "part_name",
+            "ipn",
+            "total_unique_parts",
+            "total_ifps_processed",
+            "max_depth_reached",
+            "bom_items",
+            "metadata",
+        ]

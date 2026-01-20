@@ -1,0 +1,188 @@
+# Fixture for get_bom_items() integration tests
+# Bypasses InvenTree's Part.check_add_to_bom() validation
+
+# Part Categories
+- model: part.partcategory
+  pk: 8001
+  fields:
+    name: 'Test Electronics'
+    description: 'Electronic components for testing'
+    tree_id: 801
+    level: 0
+    lft: 1
+    rght: 2
+
+# Company (Supplier)
+- model: company.company
+  pk: 8001
+  fields:
+    name: 'Test Supplier'
+    is_supplier: true
+    is_customer: false
+    is_manufacturer: false
+    active: true
+
+# Parent Assembly
+- model: part.part
+  pk: 8001
+  fields:
+    name: 'Main Assembly'
+    IPN: 'ASM-001'
+    description: 'Main test assembly'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: false
+    component: false
+    is_template: false
+    tree_id: 8001
+    level: 0
+    lft: 1
+    rght: 2
+
+# Child Parts
+- model: part.part
+  pk: 8002
+  fields:
+    name: 'Resistor, 10k'
+    IPN: 'RES-10K'
+    description: 'Standard 10k resistor'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    default_supplier: 8001  # Links to SupplierPart pk 8001
+    tree_id: 8002
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8003
+  fields:
+    name: 'Capacitor, 100nF'
+    IPN: 'CAP-100N'
+    description: '100nF ceramic capacitor'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    tree_id: 8003
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8004
+  fields:
+    name: 'Connector, USB-C'
+    IPN: 'CON-USBC'
+    description: 'USB-C connector'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    tree_id: 8004
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8005
+  fields:
+    name: 'No Ref Part'
+    IPN: 'NO-REF'
+    description: 'Part without reference designator'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    component: true
+    is_template: false
+    tree_id: 8005
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8006
+  fields:
+    name: 'Empty Assembly'
+    IPN: 'EMPTY-001'
+    description: 'Assembly with no BOM items'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: false
+    component: false
+    is_template: false
+    tree_id: 8006
+    level: 0
+    lft: 1
+    rght: 2
+
+# Supplier Parts (for default_supplier relationships)
+- model: company.supplierpart
+  pk: 8001
+  fields:
+    part: 8002  # Resistor
+    supplier: 8001
+    SKU: 'R-10K'
+    active: true
+
+# BOM Items for Main Assembly (pk 8001)
+# Test 1-3: Basic structure (3 items: resistor, capacitor, connector)
+- model: part.bomitem
+  pk: 80001
+  fields:
+    part: 8001  # Main Assembly
+    sub_part: 8002  # Resistor
+    quantity: 10.0
+    reference: 'R1-R10'
+    note: 'Standard resistor'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 80002
+  fields:
+    part: 8001  # Main Assembly
+    sub_part: 8003  # Capacitor
+    quantity: 5.0
+    reference: 'C1-C5'
+    note: ''  # Empty note (test 9)
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 80003
+  fields:
+    part: 8001  # Main Assembly
+    sub_part: 8004  # Connector
+    quantity: 1.0
+    reference: 'J1'
+    note: 'Optional USB connector'
+    optional: true  # Test 11: optional flag
+    inherited: false
+    validated: true
+
+# Test 7: BOM item with no reference
+- model: part.bomitem
+  pk: 80004
+  fields:
+    part: 8001  # Main Assembly
+    sub_part: 8005  # No Ref Part
+    quantity: 1.0
+    reference: ''  # Empty reference
+    note: 'Part without reference'
+    optional: false
+    inherited: false
+    validated: true

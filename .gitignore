@@ -199,3 +199,9 @@ pnpm-lock.yaml
 # Local environment files
 .env
 .env.local
+
+# Personal development notes (not needed by other users)
+docs/internal/
+
+# Personal utility scripts (one-time use, may contain sensitive operations)
+tools/

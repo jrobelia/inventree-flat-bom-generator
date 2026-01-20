@@ -2,9 +2,9 @@
 
 **Version:** 0.10.0 | **InvenTree:** 1.1.6+
 
-> Personal project for automated flat BOM generation. Currently in testing phase and undergoing refactoring to improve code quality. Feedback and bug reports welcome!
+> Personal project to create a flattened BOM viewer for large assemblies in InvenTree. Currently stable after a refactor to improve code quality. Feedback and bug reports welcome!
 
-InvenTree plugin that flattens nested bill of materials into a single-level view of purchaseable components with automatic quantity aggregation. **The plugin is accessed via a "Flat BOM" panel on the part detail page of any assembly.**
+InvenTree plugin that flattens nested bill of materials into a temporary single-level view of purchaseable components with automatic quantity aggregation. **The plugin is accessed via a "Flat BOM" panel on the part detail page of any assembly.**
 
 ## What This Plugin Adds
 
@@ -308,24 +308,19 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 ## Future Work
 
-### Refactoring Plans
+### Planned Features
 
-**Current Status**: The plugin is functional but undergoing code quality improvements. Ongoing refactoring work includes:
+**Status**: Plugin v0.10.0 has completed major refactoring (frontend architecture, test infrastructure, serializers). Future development focuses on new features:
 
-- **Serializer Implementation**: Replacing manual dictionary construction with Django REST Framework serializers for improved type safety and maintainability
-- **Test Coverage Expansion**: Adding integration tests for API endpoints and core BOM traversal functions (currently 106 tests with identified gaps)
-- **Code Organization**: Breaking down large components and improving separation of concerns
+1. **Settings UI/UX Improvement** (3-5 hours) - Move plugin settings from admin panel to in-panel drawer for better user experience with progressive disclosure pattern
 
-### Feature Enhancements
+2. **Optional Parts & Substitute Parts Support** (7-10 hours) - Display InvenTree's optional parts (with filtering) and substitute parts (as expandable rows showing individual stock levels)
 
-These features are planned for future releases:
+3. **Variant Parts Support** (2-10 hours) - Integrate InvenTree's template/variant system, showing variant stock availability
 
--**Support for optional parts**: Filtering out optional BOM items from flat BOM view?
+4. **InvenTree Export Integration** (3-4 hours) - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
 
--**Support for substitute parts**: Display substitutes some how in flat BOM view?
-
--**Support for consumable parts**: Filtering out of consumables from flat BOM view?
-
+See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed implementation plans and prioritization.
 
 ### Related Plugins (Planned)
 

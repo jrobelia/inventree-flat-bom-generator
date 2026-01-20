@@ -33,6 +33,7 @@ import { WarningsAlert } from './components/WarningsAlert';
 import { useBuildQuantity } from './hooks/useBuildQuantity';
 import { useColumnVisibility } from './hooks/useColumnVisibility';
 import { useFlatBom } from './hooks/useFlatBom';
+import { usePluginSettings } from './hooks/usePluginSettings';
 import { useShortfallCalculation } from './hooks/useShortfallCalculation';
 
 // Import types
@@ -89,6 +90,7 @@ function FlatBOMGeneratorPanel({
   });
 
   // Custom hooks for flat BOM functionality
+  const { settings } = usePluginSettings();
   const { bomData, loading, error, generateFlatBom, clearError } = useFlatBom(
     partId,
     context
@@ -190,7 +192,7 @@ function FlatBOMGeneratorPanel({
         <Group justify='flex-end'>
           <Button
             leftSection={<IconRefresh size={16} />}
-            onClick={generateFlatBom}
+            onClick={() => generateFlatBom(settings)}
             loading={loading}
             disabled={!partId}
           >
@@ -243,7 +245,7 @@ function FlatBOMGeneratorPanel({
                 onIncludeAllocationsChange={setIncludeAllocations}
                 includeOnOrder={includeOnOrder}
                 onIncludeOnOrderChange={setIncludeOnOrder}
-                onRefresh={generateFlatBom}
+                onRefresh={() => generateFlatBom(settings)}
                 loading={loading}
                 onExport={exportToCsv}
                 columns={columns}

@@ -2,6 +2,7 @@ import type { InvenTreePluginContext } from '@inventreedb/ui';
 import { useState } from 'react';
 
 import type { FlatBomResponse } from '../types/BomTypes';
+import type { PluginSettings } from '../types/PluginSettings';
 
 /**
  * Hook result interface for flat BOM API operations
@@ -10,7 +11,7 @@ export interface UseFlatBomResult {
   bomData: FlatBomResponse | null;
   loading: boolean;
   error: string | null;
-  generateFlatBom: () => Promise<void>;
+  generateFlatBom: (settings: PluginSettings) => Promise<void>;
   clearError: () => void;
 }
 
@@ -36,8 +37,9 @@ export function useFlatBom(
 
   /**
    * Generate flat BOM by calling the plugin API
+   * @param settings - Plugin settings to apply (converted to query params)
    */
-  const generateFlatBom = async () => {
+  const generateFlatBom = async (settings: PluginSettings) => {
     if (!partId) {
       setError('No part ID available');
       return;
@@ -47,11 +49,31 @@ export function useFlatBom(
     setError(null);
 
     try {
+      // Build query params from settings (only include non-defaults)
+      const queryParams = new URLSearchParams();
+
+      // max_depth: Include if non-zero (0 = unlimited)
+      if (settings.maxDepth > 0) {
+        queryParams.append('max_depth', settings.maxDepth.toString());
+      }
+
+      // expand_purchased_assemblies: Include if true (default false)
+      if (settings.expandPurchasedAssemblies) {
+        queryParams.append('expand_purchased_assemblies', 'true');
+      }
+
+      // include_internal_fab_in_cutlist: Include if true (default false)
+      if (settings.includeInternalFabInCutlist) {
+        queryParams.append('include_internal_fab_in_cutlist', 'true');
+      }
+
+      const queryString = queryParams.toString();
+      const url = `/plugin/flat-bom-generator/flat-bom/${partId}/${
+        queryString ? `?${queryString}` : ''
+      }`;
+
       // Call the plugin API endpoint with 30 second timeout
-      const response = await context.api.get(
-        `/plugin/flat-bom-generator/flat-bom/${partId}/`,
-        { timeout: 30000 }
-      );
+      const response = await context.api.get(url, { timeout: 30000 });
 
       if (response.status === 200) {
         console.log('[FlatBOM] API Response:', response.data);

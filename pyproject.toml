@@ -32,6 +32,7 @@ FlatBOMGenerator = "flat_bom_generator.core:FlatBOMGenerator"
 
 [tool.setuptools.packages.find]
 where = [""]
+exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]
 
 [tool.setuptools.dynamic]
 version = {attr = "flat_bom_generator.PLUGIN_VERSION"} 

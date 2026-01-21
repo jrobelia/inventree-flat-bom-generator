@@ -38,9 +38,3 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
  * Scoped globally (not per-part)
  */
 export const SETTINGS_STORAGE_KEY = 'flatbom_plugin_settings';
-
-/**
- * localStorage key for tracking if user has generated BOM before
- * Used for progressive disclosure (show settings panel vs. gear icon)
- */
-export const HAS_GENERATED_STORAGE_KEY = 'flatbom_has_generated_once';

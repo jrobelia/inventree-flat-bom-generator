@@ -71,8 +71,8 @@ export function SettingsDrawer({
         />
 
         <Switch
-          label={`Include Ifab in Cutlist (${cutlistUnits})`}
-          description='Show internal fabrication parts in cutlist breakdown with units'
+          label={`Include Internal Fab in Cutlists${cutlistUnits !== 'units' ? ` (${cutlistUnits})` : ''}`}
+          description='Show internal fabrication parts expanded in cutlist breakdown'
           checked={settings.includeInternalFabInCutlist}
           onChange={(event) =>
             onUpdateSetting(

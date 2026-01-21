@@ -42,7 +42,7 @@ export default defineConfig({
     target: 'esnext',
     cssCodeSplit: false,
     manifest: true,
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps for faster builds (enable for debugging)
     rollupOptions: {
       preserveEntrySignatures: "exports-only",
       input: [

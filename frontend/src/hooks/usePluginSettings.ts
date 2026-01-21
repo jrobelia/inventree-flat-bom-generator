@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 
 import {
   DEFAULT_PLUGIN_SETTINGS,
-  HAS_GENERATED_STORAGE_KEY,
   type PluginSettings,
   SETTINGS_STORAGE_KEY
 } from '../types/PluginSettings';
@@ -25,12 +24,6 @@ export interface UsePluginSettingsResult {
 
   /** Check if settings differ from defaults */
   hasCustomSettings: boolean;
-
-  /** Track if user has generated BOM at least once (for progressive disclosure) */
-  hasGeneratedOnce: boolean;
-
-  /** Mark as generated (triggers progressive disclosure) */
-  markAsGenerated: () => void;
 }
 
 /**
@@ -59,16 +52,6 @@ export function usePluginSettings(): UsePluginSettingsResult {
     return DEFAULT_PLUGIN_SETTINGS;
   });
 
-  // Track if user has generated BOM before (for progressive disclosure)
-  const [hasGeneratedOnce, setHasGeneratedOnce] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(HAS_GENERATED_STORAGE_KEY) === 'true';
-    } catch (err) {
-      console.warn('Failed to load generation state from localStorage:', err);
-      return false;
-    }
-  });
-
   // Persist settings to localStorage whenever they change
   useEffect(() => {
     try {
@@ -78,18 +61,6 @@ export function usePluginSettings(): UsePluginSettingsResult {
       // Continue with in-memory settings only
     }
   }, [settings]);
-
-  // Persist hasGeneratedOnce to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        HAS_GENERATED_STORAGE_KEY,
-        hasGeneratedOnce.toString()
-      );
-    } catch (err) {
-      console.warn('Failed to save generation state to localStorage:', err);
-    }
-  }, [hasGeneratedOnce]);
 
   /**
    * Update individual setting
@@ -118,19 +89,10 @@ export function usePluginSettings(): UsePluginSettingsResult {
     settings.includeInternalFabInCutlist !==
       DEFAULT_PLUGIN_SETTINGS.includeInternalFabInCutlist;
 
-  /**
-   * Mark as generated (triggers progressive disclosure)
-   */
-  const markAsGenerated = useCallback(() => {
-    setHasGeneratedOnce(true);
-  }, []);
-
   return {
     settings,
     updateSetting,
     resetToDefaults,
-    hasCustomSettings,
-    hasGeneratedOnce,
-    markAsGenerated
+    hasCustomSettings
   };
 }

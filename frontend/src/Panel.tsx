@@ -14,7 +14,12 @@ import {
   Text,
   TextInput
 } from '@mantine/core';
-import { IconRefresh, IconSearch, IconX } from '@tabler/icons-react';
+import {
+  IconInfoCircle,
+  IconRefresh,
+  IconSearch,
+  IconX
+} from '@tabler/icons-react';
 import {
   DataTable,
   type DataTableColumn,
@@ -76,7 +81,9 @@ function FlatBOMGeneratorPanel({
   // Local UI state (must be declared before hooks that use them)
   const [includeAllocations, setIncludeAllocations] = useState<boolean>(true);
   const [includeOnOrder, setIncludeOnOrder] = useState<boolean>(true);
+  const [showCutlistRows, setShowCutlistRows] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
   const [warningsDismissed, setWarningsDismissed] = useState<boolean>(false);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState<boolean>(false);
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<BomItem>>({
@@ -93,14 +100,7 @@ function FlatBOMGeneratorPanel({
   });
 
   // Custom hooks for flat BOM functionality
-  const {
-    settings,
-    updateSetting,
-    resetToDefaults,
-    hasCustomSettings,
-    hasGeneratedOnce,
-    markAsGenerated
-  } = usePluginSettings();
+  const { settings, updateSetting, resetToDefaults } = usePluginSettings();
   const { bomData, loading, error, generateFlatBom, clearError } = useFlatBom(
     partId,
     context
@@ -123,12 +123,9 @@ function FlatBOMGeneratorPanel({
     return bomData?.metadata?.cutlist_units_for_ifab || 'units';
   }, [bomData?.metadata?.cutlist_units_for_ifab]);
 
-  // Handle initial generation (marks as generated for progressive disclosure)
+  // Handle initial generation
   const handleGenerate = async () => {
     await generateFlatBom(settings);
-    if (!hasGeneratedOnce) {
-      markAsGenerated();
-    }
   };
 
   // Handle settings apply from drawer (regenerates BOM)
@@ -163,10 +160,15 @@ function FlatBOMGeneratorPanel({
     // Step 1: Flatten data (insert cut list child rows)
     let data = flattenBomData(bomData.bom_items);
 
-    // Step 2: Filter by search query
+    // Step 2: Filter cutlist rows if checkbox unchecked
+    if (!showCutlistRows) {
+      data = data.filter((item) => !item.is_cut_list_child);
+    }
+
+    // Step 3: Filter by search query
     data = filterBomData(data, searchQuery);
 
-    // Step 3: Sort data
+    // Step 4: Sort data
     if (sortStatus.columnAccessor) {
       data = sortBomData(
         data,
@@ -177,13 +179,14 @@ function FlatBOMGeneratorPanel({
         includeOnOrder
       );
 
-      // Step 4: Group children with parents after sorting
+      // Step 5: Group children with parents after sorting
       data = groupChildrenWithParents(data);
     }
 
     return data;
   }, [
     bomData,
+    showCutlistRows,
     searchQuery,
     sortStatus,
     buildQuantity,
@@ -216,17 +219,7 @@ function FlatBOMGeneratorPanel({
   };
 
   return (
-    <Stack gap='md'>
-      {/* Settings Panel - shown before first generation (progressive disclosure) */}
-      {!hasGeneratedOnce && !bomData && !loading && (
-        <SettingsPanel
-          settings={settings}
-          cutlistUnits={cutlistUnits}
-          onUpdateSetting={updateSetting}
-          onResetToDefaults={resetToDefaults}
-        />
-      )}
-
+    <Stack gap='lg'>
       {/* Settings Drawer - shown after first generation */}
       <SettingsDrawer
         opened={settingsDrawerOpen}
@@ -238,17 +231,36 @@ function FlatBOMGeneratorPanel({
         onApply={handleApplySettings}
       />
 
+      {/* Pre-generation UI - shown before first generation */}
       {!bomData && !loading && (
-        <Group justify='flex-end'>
-          <Button
-            leftSection={<IconRefresh size={16} />}
-            onClick={handleGenerate}
-            loading={loading}
-            disabled={!partId}
-          >
-            Generate Flat BOM
-          </Button>
-        </Group>
+        <>
+          <div>
+            <Button
+              leftSection={<IconRefresh size={16} />}
+              onClick={handleGenerate}
+              loading={loading}
+              disabled={!partId}
+            >
+              Generate Flat BOM
+            </Button>
+          </div>
+
+          <Alert color='blue' variant='light' icon={<IconInfoCircle />}>
+            <Text size='sm'>
+              Click <strong>"Generate Flat BOM"</strong> to traverse the bill of
+              materials hierarchy for OpenCPC and calculate cumulative
+              quantities.
+            </Text>
+          </Alert>
+
+          <SettingsPanel
+            title='Generation Settings'
+            settings={settings}
+            cutlistUnits={cutlistUnits}
+            onUpdateSetting={updateSetting}
+            onResetToDefaults={resetToDefaults}
+          />
+        </>
       )}
 
       {error && <ErrorAlert error={error} onClose={clearError} />}
@@ -295,17 +307,16 @@ function FlatBOMGeneratorPanel({
                 onIncludeAllocationsChange={setIncludeAllocations}
                 includeOnOrder={includeOnOrder}
                 onIncludeOnOrderChange={setIncludeOnOrder}
+                showCutlistRows={showCutlistRows}
+                onShowCutlistRowsChange={setShowCutlistRows}
                 onRefresh={handleGenerate}
                 loading={loading}
                 onExport={exportToCsv}
                 columns={columns}
                 hiddenColumns={hiddenColumns}
                 onToggleColumn={toggleColumn}
-                hasCustomSettings={hasCustomSettings}
                 onOpenSettings={
-                  hasGeneratedOnce
-                    ? () => setSettingsDrawerOpen(true)
-                    : undefined
+                  bomData ? () => setSettingsDrawerOpen(true) : undefined
                 }
               />
             </Group>
@@ -371,16 +382,6 @@ function FlatBOMGeneratorPanel({
             }}
           />
         </Stack>
-      )}
-
-      {!bomData && !loading && !error && (
-        <Alert color='blue' variant='light'>
-          <Text size='sm'>
-            Click <strong>"Generate Flat BOM"</strong> to traverse the complete
-            bill of materials hierarchy for <strong>{partName}</strong> and
-            calculate cumulative quantities.
-          </Text>
-        </Alert>
       )}
     </Stack>
   );

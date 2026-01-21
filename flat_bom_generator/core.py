@@ -117,7 +117,7 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
                             "description": "View flattened bill of materials with all sub-assemblies",
                             "icon": "ti:list-tree:outline",
                             "source": self.plugin_static_file(
-                                "Panel.js:renderFlatBOMGeneratorPanel"
+                                f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
                             ),
                         })
                 except Part.DoesNotExist:

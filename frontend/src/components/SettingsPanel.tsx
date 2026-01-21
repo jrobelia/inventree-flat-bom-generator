@@ -4,12 +4,14 @@ import {
   NumberInput,
   Paper,
   Stack,
-  Switch
+  Switch,
+  Text
 } from '@mantine/core';
 
 import type { PluginSettings } from '../types/PluginSettings';
 
 interface SettingsPanelProps {
+  title?: string;
   settings: PluginSettings;
   cutlistUnits: string;
   onUpdateSetting: <K extends keyof PluginSettings>(
@@ -26,6 +28,7 @@ interface SettingsPanelProps {
  * Progressive disclosure: collapses to gear icon after first successful generation.
  */
 export function SettingsPanel({
+  title,
   settings,
   cutlistUnits,
   onUpdateSetting,
@@ -34,6 +37,11 @@ export function SettingsPanel({
   return (
     <Paper withBorder p='md' mb='md'>
       <Stack gap='md'>
+        {title && (
+          <Text size='xs' tt='uppercase' fw={600} c='dimmed'>
+            {title}
+          </Text>
+        )}
         <NumberInput
           label='Maximum Traversal Depth'
           description='0 = unlimited, higher values stop BOM traversal earlier'
@@ -59,8 +67,8 @@ export function SettingsPanel({
         />
 
         <Switch
-          label={`Include Ifab in Cutlist (${cutlistUnits})`}
-          description='Show internal fabrication parts in cutlist breakdown with units'
+          label={`Include Internal Fab in Cutlists${cutlistUnits !== 'units' ? ` (${cutlistUnits})` : ''}`}
+          description='Show internal fabrication parts expanded in cutlist breakdown'
           checked={settings.includeInternalFabInCutlist}
           onChange={(event) =>
             onUpdateSetting(

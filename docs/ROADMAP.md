@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Plugin Improvement Roadmap
 
-> **Status:** Frontend refactoring Phase 3 complete - Clean architecture established  
-> **Last Updated:** January 18, 2026
+> **Status:** Settings UI Implementation Complete - Ready for Production Deployment  
+> **Last Updated:** January 21, 2026
 
 ---
 
@@ -16,17 +16,21 @@
 - **Code Quality** - Removed 96 lines dead code, fixed 3 incorrect fallbacks, found/fixed 1 production bug (Part.DoesNotExist)
 - **Fixture Breakthrough** - Programmatic fixture loading pattern established
 - **Frontend Refactoring (Phase 3)** - Extracted components from Panel.tsx: 1240 → 302 lines (76% reduction)
+- **Settings UI Implementation** - Moved settings from admin to frontend with progressive disclosure (v0.11.6-v0.11.18)
 
 ### 🚧 Remaining Test Gaps (Minor, Deferred)
 Very low-risk gaps deferred until issues arise:
 - CtL features integration (edge cases already tested in unit tests)
 
 ### 🎯 Next Milestone
-**Feature Development Phase** - Establish clean architecture, then add features:
-1. Frontend refactoring (clean foundation before adding features)
-2. Optional/substitute parts support (build on clean architecture)
-3. Variant parts support (determine usage patterns first)
-4. InvenTree export integration (backend-only, can do anytime)
+**Production Deployment** - Ready to deploy feature/settings-ui to production:
+1. ✅ Settings UI implementation complete
+2. ✅ Testing complete on staging server
+3. 📋 Merge feature branch to main
+4. 📋 Deploy to production server
+5. Optional/substitute parts support (after clean deployment)
+6. Variant parts support (determine usage patterns first)
+7. InvenTree export integration (backend-only, can do anytime)
 
 ---
 
@@ -74,6 +78,15 @@ Very low-risk gaps deferred until issues arise:
 - DataTable crashes with "can't access property 'filter', R is undefined" when using wrong property
 - TypeScript doesn't include `switchable` in DataTableColumn type definition (runtime-only property)
 - Solution: Created `type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };`
+
+### Phase 7: Settings UI Implementation (Jan 20-21, 2026)
+- Moved 3 settings from admin panel to frontend UI with localStorage persistence
+- Added "Show Cutlist Rows" frontend filter to ControlBar
+- Implemented progressive disclosure (settings panel → drawer after first generation)
+- Added visual clarity enhancements (info icon, better spacing, section header)
+- Simplified progressive disclosure pattern (removed hasGeneratedOnce tracking)
+- All changes tested and verified on staging server (v0.11.6-v0.11.18)
+- **Status:** ✅ COMPLETE - Ready for production deployment
 
 ---
 
@@ -147,7 +160,37 @@ Very low-risk gaps deferred until issues arise:
 
 ---
 
-### Settings UI/UX Improvement (3-5 hours, MEDIUM PRIORITY)
+### ✅ Settings UI/UX Improvement (COMPLETE - v0.11.6-v0.11.18)
+**Goal:** Move plugin settings from admin panel to panel UI for better user experience
+
+**Implementation Complete:**
+- ✅ Moved 3 backend settings to frontend with localStorage persistence
+  - Maximum Traversal Depth (NumberInput)
+  - Expand Purchased Assemblies (Switch)
+  - Include Internal Fab Parts in Cutlist (Switch with dynamic units label)
+- ✅ Added "Show Cutlist Rows" frontend filter (Checkbox in ControlBar)
+- ✅ Implemented progressive disclosure (settings panel before first generation, drawer after)
+- ✅ Added visual clarity enhancements:
+  - Info icon in Alert box
+  - Increased spacing (gap='lg')
+  - "GENERATION SETTINGS" section header
+  - Refined button sizing to match InvenTree standards
+- ✅ All changes tested and verified on staging server
+
+**Benefits Achieved:**
+- ✅ Better UX: Change settings without leaving panel
+- ✅ Per-session settings: Experiment without affecting other users
+- ✅ InvenTree consistency: Uses toggle switches and drawer pattern
+- ✅ Faster workflow: No page navigation required
+- ✅ Progressive disclosure: Show complexity only when needed
+- ✅ Guided first use: Settings prominent before first generation
+- ✅ Clean data focus: Settings collapse after first generation
+
+**Deployment Status:** Ready for production
+
+---
+
+### Settings UI/UX Improvement (3-5 hours, COMPLETED)
 **Goal:** Move plugin settings from admin panel to panel UI for better user experience
 
 **InvenTree Pattern Analysis:**

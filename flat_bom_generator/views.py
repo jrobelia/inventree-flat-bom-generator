@@ -255,24 +255,16 @@ class FlatBOMView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Parse boolean parameters (default: False)
-        expand_purchased_assemblies = (
-            expand_purchased_assemblies_param is not None
-            and expand_purchased_assemblies_param.lower() == "true"
-        )
-        enable_ifab_cuts = (
-            include_ifab_cuts_param is not None
-            and include_ifab_cuts_param.lower() == "true"
-        )
-
-        # Get plugin for remaining settings (categories, suppliers, units)
-        plugin = registry.get_plugin("flat-bom-generator")
-        # Get plugin for remaining settings (categories, suppliers, units)
+        # Get plugin for settings (categories, suppliers, units, defaults)
         plugin = registry.get_plugin("flat-bom-generator")
 
         internal_supplier_ids = []
         category_mappings = {}
         ifab_units = set()
+
+        # Load plugin settings as defaults for boolean parameters
+        expand_purchased_default = False
+        enable_ifab_cuts_default = False
 
         if plugin:
             internal_supplier_ids = get_internal_supplier_ids(plugin)
@@ -281,11 +273,57 @@ class FlatBOMView(APIView):
             if units_csv:
                 ifab_units = set(u.strip() for u in units_csv.split(",") if u.strip())
 
+            # Load plugin settings as defaults (overridden by query params if provided)
+            # Convert to bool in case plugin returns string "True"/"False"
+            expand_purchased_setting = plugin.get_setting(
+                "SHOW_PURCHASED_ASSEMBLIES", False
+            )
+            expand_purchased_default = (
+                bool(expand_purchased_setting)
+                if isinstance(expand_purchased_setting, bool)
+                else (
+                    str(expand_purchased_setting).lower() == "true"
+                    if expand_purchased_setting
+                    else False
+                )
+            )
+
+            enable_ifab_cuts_setting = plugin.get_setting(
+                "ENABLE_INTERNAL_FAB_CUT_BREAKDOWN", False
+            )
+            enable_ifab_cuts_default = (
+                bool(enable_ifab_cuts_setting)
+                if isinstance(enable_ifab_cuts_setting, bool)
+                else (
+                    str(enable_ifab_cuts_setting).lower() == "true"
+                    if enable_ifab_cuts_setting
+                    else False
+                )
+            )
+        else:
+            logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
+
+        # Parse boolean parameters (use plugin defaults if query param not provided)
+        if expand_purchased_assemblies_param is not None:
+            expand_purchased_assemblies = (
+                expand_purchased_assemblies_param.lower() == "true"
+            )
+        else:
+            expand_purchased_assemblies = expand_purchased_default
+
+        if include_ifab_cuts_param is not None:
+            enable_ifab_cuts = include_ifab_cuts_param.lower() == "true"
+        else:
+            enable_ifab_cuts = enable_ifab_cuts_default
+
+        if plugin:
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
-                f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (from query param)"
+                f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (from {'query param' if expand_purchased_assemblies_param else 'plugin default'})"
             )
-            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts} (from query param)")
+            logger.info(
+                f"  - enable_ifab_cuts: {enable_ifab_cuts} (from {'query param' if include_ifab_cuts_param else 'plugin default'})"
+            )
             logger.info(f"  - max_depth: {max_depth} (from query param)")
             logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
             logger.info(f"  - category_mappings: {category_mappings}")
@@ -293,8 +331,6 @@ class FlatBOMView(APIView):
             logger.info(
                 f"[FlatBOM][DEBUG] Using settings for cut_list logic: enable_ifab_cuts={enable_ifab_cuts}, ifab_units={ifab_units}"
             )
-        else:
-            logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
         # Validate part exists and is an assembly
         try:

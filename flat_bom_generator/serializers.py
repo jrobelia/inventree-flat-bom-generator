@@ -284,6 +284,42 @@ class FlatBOMResponseSerializer(serializers.Serializer):
         help_text="Additional response metadata including warnings and cutlist units",
     )
 
+    def validate_metadata(self, value):
+        """Validate metadata structure and warning serialization.
+
+        Metadata must contain:
+        - 'warnings': list of valid BOMWarningSerializer objects
+        - Other keys: must have list values (not strings or other types)
+
+        Raises:
+            ValidationError: If warnings are invalid or values are wrong type
+        """
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Metadata must be a dictionary")
+
+        # Validate warnings list
+        if "warnings" in value:
+            warnings = value["warnings"]
+            if not isinstance(warnings, list):
+                raise serializers.ValidationError("metadata.warnings must be a list")
+
+            # Validate each warning object
+            for i, warning in enumerate(warnings):
+                warning_serializer = BOMWarningSerializer(data=warning)
+                if not warning_serializer.is_valid():
+                    raise serializers.ValidationError(
+                        f"Invalid warning at index {i}: {warning_serializer.errors}"
+                    )
+
+        # Validate other metadata values are lists
+        for key, val in value.items():
+            if key != "warnings" and not isinstance(val, list):
+                raise serializers.ValidationError(
+                    f"metadata.{key} must be a list, got {type(val).__name__}"
+                )
+
+        return value
+
     class Meta:
         """Meta options for this serializer."""
 

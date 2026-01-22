@@ -1,6 +1,6 @@
 # Flat BOM Generator for InvenTree
 
-**Version:** 0.10.0 | **InvenTree:** 1.1.6+
+**Version:** 0.11.23 | **InvenTree:** 1.1.6+
 
 > Personal project to create a flattened BOM viewer for large assemblies in InvenTree. Currently stable after a refactor to improve code quality. Feedback and bug reports welcome!
 
@@ -14,7 +14,9 @@ InvenTree's built-in BOM view shows the hierarchical structure. This plugin **fl
 
 - **Automatic Leaf-Part Extraction**: Traverses the entire BOM tree and extracts only the purchaseable leaf components (Fab Parts, Commercial Parts, Purchaseable Assemblies), filtering out intermediate assemblies
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
+- **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag)
 - **Cut-to-Length Part Support**: Custom handling for cut-to-length raw materials (wire, tubing, bar stock) with per-cut quantity breakdown
+- **In-Panel Settings**: Configure plugin settings directly in the panel UI without leaving the page (progressive disclosure pattern)
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
 
@@ -22,7 +24,8 @@ InvenTree's built-in BOM view shows the hierarchical structure. This plugin **fl
 
 - **Single-Page View**: See all purchaseable components in one table instead of navigating through BOM levels
 - **Interactive Controls**: Adjust build quantity and instantly see scaled requirements across all parts
-- **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order) in real-time
+- **In-Panel Settings**: Configure generation settings (max depth, expand assemblies, cutlist options) directly in the UI with progressive disclosure
+- **Planning Toggles**: Switch between planning scenarios (with/without allocations, with/without on-order, show/hide cutlists) in real-time
 - **CSV Export**: Export the complete flat BOM with all calculated quantities for purchasing workflows
 
 *Screenshot: Main panel view with controls and BOM table*  
@@ -256,6 +259,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
 | **Type** | Color-coded badge: Coml (green), Fab (blue), CtL (teal), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
+| **Flags** | Optional (orange badge) and Consumable (yellow badge) indicators (hidden by default, can be shown via column menu) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |

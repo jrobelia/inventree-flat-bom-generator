@@ -8,7 +8,7 @@ InvenTree plugin providing advanced flat bill of materials analysis with intelli
 
 **Tech Stack:**
 - Backend: Django REST Framework (Python)
-- Frontend: React 18 + TypeScript + Mantine UI v7 + mantine-datatable
+- Frontend: React 19 + TypeScript + Mantine UI v8 + mantine-datatable
 - Build: Python setuptools + Vite 6
 - InvenTree: Plugin system with panel integration
 
@@ -50,6 +50,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "is_assembly": false,
       "purchaseable": true,
       "default_supplier_id": 789,
+      "optional": false,
+      "consumable": false,
       "reference": "U1, U2",
       "note": "",
       "level": 1,
@@ -78,6 +80,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `purchaseable`: Boolean - whether part can be purchased
 - `has_default_supplier`: Boolean - whether part has default supplier configured
 - `default_supplier_id`: ID of default supplier (null if none)
+- `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
+- `consumable`: Boolean - whether part is consumable (not tracked in build orders)
 - `note`: BOM item notes
 - `level`: Depth in original BOM tree
 - `in_stock`: Total inventory
@@ -109,7 +113,29 @@ frontend/
 ├── src/
 │   ├── Panel.tsx           # Main React component
 │   ├── locale.tsx          # i18n setup
-│   └── vite-env.d.ts       # TypeScript definitions
+│   ├── vite-env.d.ts       # TypeScript definitions
+│   ├── columns/            # DataTable column definitions
+│   │   └── bomTableColumns.tsx
+│   ├── components/         # Reusable UI components
+│   │   ├── ControlBar.tsx
+│   │   ├── ErrorAlert.tsx
+│   │   ├── SettingsDrawer.tsx
+│   │   ├── SettingsPanel.tsx
+│   │   ├── StatisticsPanel.tsx
+│   │   └── WarningsAlert.tsx
+│   ├── hooks/              # Custom React hooks
+│   │   ├── useBuildQuantity.ts
+│   │   ├── useColumnVisibility.ts
+│   │   ├── useFlatBom.ts
+│   │   ├── usePluginSettings.ts
+│   │   └── useShortfallCalculation.ts
+│   ├── types/              # TypeScript interfaces
+│   │   ├── BomTypes.ts
+│   │   └── PluginSettings.ts
+│   └── utils/              # Utility functions
+│       ├── colorUtils.ts
+│       ├── csvExport.ts
+│       └── filterAndSort.ts
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
@@ -200,8 +226,8 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
 ### Frontend Files
 
 #### `frontend/src/Panel.tsx`
-- **Purpose**: Main React component for flat BOM UI
-- **Component**: `FlatBOMGeneratorPanel`
+- **Purpose**: Main React component for flat BOM UI (refactored from 1250 to 306 lines in v0.11.6)
+- **Component**: `Panel` (exported function)
 - **Key Features**:
   - DataTable with sorting, filtering, pagination
   - Build quantity multiplier
@@ -209,17 +235,39 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
   - Stats panel with counters
   - CSV export
   - Search by IPN/Part Name
+  - In-panel settings with progressive disclosure (v0.11.6+)
+  - Column visibility toggles (v0.11.23+)
+  - Optional/Consumable part flags (v0.11.23+)
 
-**State Variables:**
+**State Variables (via custom hooks):**
 ```typescript
+// useBuildQuantity
 buildQuantity: number           // Multiplier for requirements
+
+// useShortfallCalculation
 includeAllocations: boolean     // Use available vs total stock
 includeOnOrder: boolean         // Include incoming in shortfall
+showCutlistRows: boolean        // Show/hide cutlist breakdown rows
+
+// usePluginSettings
+maxDepth: number                // Maximum BOM traversal depth
+enableIfabCuts: boolean         // Enable Internal Fab cutlist extraction
+enableCtlCuts: boolean          // Enable Cut-to-Length processing
+
+// useColumnVisibility
+hiddenColumns: Record<string, boolean> // Column visibility state
+
+// useFlatBom
+bomData: FlatBomResponse | null // API response
+loading: boolean                // Loading state
+error: string | null            // Error state
+
+// Local state
 searchQuery: string             // Filter text
 sortStatus: DataTableSortStatus // Column + direction
 page: number                    // Current page
 recordsPerPage: number | 'All'  // Pagination size (can be 'All')
-bomData: FlatBomResponse | null // API response
+settingsExpanded: boolean       // Settings panel expansion state
 ```
 
 **Data Flow:**
@@ -243,14 +291,23 @@ interface BomItem {
     description: string;
     
     // Categorization
-    part_type: 'Fab Part' | 'Coml Part' | 'Purchaseable Assembly';
+    part_type: 'TLA' | 'Coml' | 'Fab' | 'CtL' | 'Purchased Assy' | 'Internal Fab' | 'Assy' | 'Other';
     is_assembly: boolean;
     purchaseable: boolean;
     has_default_supplier: boolean;
+    optional?: boolean;
+    consumable?: boolean;
     
     // Quantities
     total_qty: number;      // Aggregated from BOM traversal
     unit: string;
+    
+    // Cut list support
+    cut_list?: Array<{ quantity: number; length: number }> | null;
+    internal_fab_cut_list?: Array<{ count: number; piece_qty: number; unit: string }> | null;
+    is_cut_list_child?: boolean;
+    cut_length?: number | null;
+    cut_unit?: string;
     
     // Stock levels
     in_stock: number;       // Total physical stock
@@ -259,11 +316,13 @@ interface BomItem {
     on_order: number;       // Incoming from POs
     building?: number;      // In production
     
+    // Procurement
+    default_supplier_name?: string;
+    
     // Display
     image?: string;
     thumbnail?: string;
     link: string;
-    default_supplier_name?: string;
 }
 ```
 
@@ -274,8 +333,13 @@ interface BomItem {
   "part_name": "Assembly Name",
   "ipn": "ASM-001",
   "total_unique_parts": 45,
-  "total_imps_processed": 12,
-  "bom_items": [/* array of BomItem */]
+  "total_ifps_processed": 12,
+  "max_depth_reached": 0,
+  "bom_items": [/* array of BomItem */],
+  "metadata": {
+    "warnings": [/* array of Warning */],
+    "cutlist_units_for_ifab": "mm"
+  }
 }
 ```
 
@@ -301,33 +365,38 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**12 Columns** (all sortable):
-1. **Component** - Thumbnail + clickable full_name
-2. **IPN** - Monospace font
-3. **Description** - Line clamped
-4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo)
-5. **Total Qty** - Scaled by buildQuantity with [unit]
-6. **In Stock** - Color badge (green/orange/red) with [unit]
-7. **On Order** - Blue badge if > 0 with [unit]
-8. **Building** - Cyan badge if > 0
-9. **Allocated** - Yellow badge if > 0 with [unit]
-10. **Available** - Color badge (green/orange/red) based on requirement
-11. **Shortfall** - Red badge or green checkmark (uses toggles)
-12. **Supplier** - Default supplier name
+**11 Columns** (all sortable, some toggleable):
+1. **Component** - Thumbnail + clickable full_name (always visible)
+2. **IPN** - Monospace font (toggleable)
+3. **Description** - Line clamped (toggleable)
+4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
+5. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
+6. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
+7. **Cut Length** - For cutlist child rows, shows individual piece length (toggleable, hidden by default)
+8. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+9. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+10. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+11. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
-**Sort Logic Location**: `filteredAndSortedData` useMemo hook (lines ~180-260)
+**Column Visibility:**
+- Always visible: Component
+- Default visible: IPN, Description, Type, Total Qty, In Stock, Allocated, On Order, Build Margin
+- Hidden by default: Flags, Cut Length
+- User can toggle visibility via gear icon in ControlBar (v0.11.23+)
+
+**Sort Logic Location**: `utils/filterAndSort.ts` (extracted from Panel.tsx in v0.11.6)
 
 ---
 
 ## Common Modification Patterns
 
 ### Adding a New Column
-1. Update `BomItem` interface in `Panel.tsx`
+1. Update `BomItem` interface in `types/BomTypes.ts`
 2. Add field to enrichment in `views.py` (backend)
-3. Add column definition to `columns` array
-4. Add sort case in `switch` statement
-5. Update CSV export headers and data mapping
-6. Update `columns` dependency array
+3. Add column definition to `columns/bomTableColumns.tsx`
+4. Add sort case in `utils/filterAndSort.ts`
+5. Update CSV export in `utils/csvExport.ts`
+6. Update `FlatBOMItemSerializer` in `serializers.py`
 
 ### Modifying Calculations
 1. **Shortfall**: Update render function in shortfall column + sort logic
@@ -335,9 +404,9 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 3. **Quantities**: Check `deduplicate_and_sum()` in `bom_traversal.py`
 
 ### Changing Filters
-1. Update `filteredAndSortedData` useMemo hook
-2. Ensure dependency array includes all state variables used
-3. Update filter UI components if needed
+1. Update `utils/filterAndSort.ts` (filter/sort logic)
+2. Update `Panel.tsx` if new UI controls needed
+3. Update `components/ControlBar.tsx` if adding to control bar
 
 ---
 
@@ -388,7 +457,11 @@ python -m build
 - [ ] Pagination includes "All" option and works correctly
 - [ ] Component column displays full_name instead of part_name
 - [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, and On Order columns
-- [ ] IMP Processed counter displays in statistics panel
+- [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
+- [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
+- [ ] Column visibility toggles work correctly (gear icon)
+- [ ] Settings panel collapses after first generation (progressive disclosure)
+- [ ] Cutlist rows can be shown/hidden with checkbox
 
 **Integration:**
 - [ ] Panel appears on assembly part pages
@@ -442,11 +515,11 @@ python -m build
 
 ## Version Information
 
-- **InvenTree**: Compatible with stable branch API
-- **React**: 18.x
-- **Mantine**: 7.x
+- **InvenTree**: Compatible with 1.1.6+ (stable branch API)
+- **React**: 19.x
+- **Mantine**: 8.x
 - **DataTable**: mantine-datatable 8.2.0
-- **Python**: 3.8+
+- **Python**: 3.9+
 - **Django**: Via InvenTree version
 
 ---
@@ -577,6 +650,7 @@ If you skip documentation updates during development:
 
 ---
 
-*Last Updated: January 12, 2026*
+*Last Updated: January 22, 2026*
 *Documentation Maintenance Section Added: December 10, 2025*
 *Return Signature Documentation Added: January 12, 2026*
+*v0.11.23 Updates: Component extraction, settings UI, optional/consumable flags*

@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Plugin Improvement Roadmap
 
-> **Status:** Settings UI Implementation Complete - Ready for Production Deployment  
-> **Last Updated:** January 21, 2026
+> **Status:** Optional/Consumable Parts Complete - Ready for Production Deployment  
+> **Last Updated:** January 22, 2026
 
 ---
 
@@ -17,20 +17,22 @@
 - **Fixture Breakthrough** - Programmatic fixture loading pattern established
 - **Frontend Refactoring (Phase 3)** - Extracted components from Panel.tsx: 950 → 306 lines (68% reduction) → [Archived Guide](internal/archive/2026-01-frontend-refactoring/FRONTEND-REFACTORING-GUIDE.md)
 - **Settings UI Implementation** - Moved settings from admin to frontend with progressive disclosure (v0.11.6-v0.11.18) → [Archived Plan](internal/archive/2026-01-settings-ui/SETTINGS-UI-IMPLEMENTATION-PLAN.md)
+- **Optional/Consumable Parts** - Flag display, sorting, and smart aggregation logic (v0.11.23)
 
 ### 🚧 Remaining Test Gaps (Minor, Deferred)
 Very low-risk gaps deferred until issues arise:
 - CtL features integration (edge cases already tested in unit tests)
 
 ### 🎯 Next Milestone
-**Production Deployment** - Ready to deploy feature/settings-ui to production:
+**Production Deployment** - Ready to deploy v0.11.23 to production:
 1. ✅ Settings UI implementation complete
-2. ✅ Testing complete on staging server
-3. 📋 Merge feature branch to main
-4. 📋 Deploy to production server
-5. Optional/substitute parts support (after clean deployment)
-6. Variant parts support (determine usage patterns first)
-7. InvenTree export integration (backend-only, can do anytime)
+2. ✅ Optional/consumable parts support complete
+3. ✅ Merged feature/optional-parts to main
+4. 📋 Create release tag v0.11.23
+5. 📋 Deploy to production server
+6. Substitute parts support (after production validation)
+7. Variant parts support (determine usage patterns first)
+8. InvenTree export integration (backend-only, can do anytime)
 
 ---
 
@@ -87,7 +89,24 @@ Very low-risk gaps deferred until issues arise:
 - Added visual clarity enhancements (info icon, better spacing, section header)
 - Simplified progressive disclosure pattern (removed hasGeneratedOnce tracking)
 - All changes tested and verified on staging server (v0.11.6-v0.11.18)
-- **Status:** ✅ COMPLETE - Ready for production deployment
+
+**📁 Archived:** [SETTINGS-UI-IMPLEMENTATION-PLAN.md](internal/archive/2026-01-settings-ui/SETTINGS-UI-IMPLEMENTATION-PLAN.md)
+
+### Phase 8: Optional/Consumable Parts (Jan 22, 2026) ✅ COMPLETE
+- Added `optional` and `consumable` boolean fields to BomItem interface
+- Backend: Extract flags from BomItem model in `get_bom_items()`
+- Backend: Propagate flags through `traverse_bom()` and `get_leaf_parts_only()`
+- Backend: Smart aggregation in `deduplicate_and_sum()` - flag=True only if ALL instances have flag
+- Serializer: Added `optional` and `consumable` fields to FlatBOMItemSerializer
+- Frontend: New "Flags" column with orange "Optional" and yellow "Consumable" badges
+- Frontend: Tooltips explain flag meaning
+- Frontend: Sorting by flag priority (optional+consumable > optional > consumable > none)
+- All changes tested and merged to main (v0.11.23)
+
+**Key Implementation:**
+- Aggregation logic: Part marked optional/consumable only if it appears that way in ALL BOM paths
+- Example: If part appears 3 times (2 optional, 1 required) → final flag = False (not all optional)
+- Sorting: Score-based (optional=2, consumable=1, total score determines order)
 
 **📁 Archived:** [SETTINGS-UI-IMPLEMENTATION-PLAN.md](internal/archive/2026-01-settings-ui/SETTINGS-UI-IMPLEMENTATION-PLAN.md)
 
@@ -473,53 +492,6 @@ const hasCutlistRows = useMemo(() => {
 **Reference:** See InvenTree source for standard BOM export implementation
 
 **Defer Until:** Backend 100% stable with comprehensive tests
-
----
-
-### Optional Parts Support (MEDIUM PRIORITY)
-**Goal:** Display and filter InvenTree's optional BOM items
-
-**InvenTree Feature:**
-- `optional` field on BomItem - parts that can be excluded from builds
-- InvenTree allows optional parts in BOMs for configurations or variants
-
-**Current Plugin Behavior:**
-- Flattens BOM without considering `optional` flag
-- Optional parts always appear in flat view and calculations
-- No visual indication which parts are optional
-
-**Proposed Changes:**
-
-1. **Optional Flag Display**
-   - Add `optional` field to BomItem data retrieval
-   - Add "Flags" column with orange "Optional" badge
-   - Italic text styling for optional part rows
-   - Sortable column: sorts by flag presence (flagged parts grouped together)
-
-2. **Optional Parts Filtering**
-   - Add "Include Optional Parts" checkbox (default: unchecked)
-   - When excluded: remove from table, exclude from shortfall/stats calculations
-   - When included: show with clear visual indicator
-
-**Backend Changes:**
-- Mark items with `optional` flag in enrichment (`views.py`)
-- No changes to `bom_traversal.py` needed (post-flatten enrichment)
-
-**Testing Requirements:**
-- Unit tests: optional flag display logic
-- Integration tests: optional parts filtering with fixture data
-- UI verification: badges, checkbox controls, calculations
-
-**Benefits:**
-- Simple implementation (just a flag + filter)
-- Clear visual distinction for optional parts
-- User control over including optional items in planning
-
-**Open Questions:**
-1. Default state: Include optional parts ON or OFF?
-2. Should optional parts affect "Total Unique Parts" count?
-
-**Defer Until:** Gather user feedback on default behavior
 
 ---
 

@@ -229,6 +229,12 @@ export function sortBomData(
         aValue = a.default_supplier_name || '';
         bValue = b.default_supplier_name || '';
         break;
+      case 'flags':
+        // Sort by flag priority: optional + consumable > optional > consumable > none
+        // Calculate priority score: optional=2, consumable=1
+        aValue = (a.optional ? 2 : 0) + (a.consumable ? 1 : 0);
+        bValue = (b.optional ? 2 : 0) + (b.consumable ? 1 : 0);
+        break;
       default:
         return 0;
     }

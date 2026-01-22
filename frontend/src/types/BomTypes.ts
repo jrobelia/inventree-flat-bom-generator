@@ -27,6 +27,8 @@ export interface BomItem {
   is_assembly: boolean;
   purchaseable: boolean;
   has_default_supplier: boolean;
+  optional?: boolean;
+  consumable?: boolean;
 
   // Quantities (aggregated/deduplicated)
   total_qty: number;

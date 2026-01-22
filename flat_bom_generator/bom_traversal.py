@@ -38,6 +38,7 @@ def get_bom_items(part) -> List[Dict]:
                 "note": bom_item.note or "",
                 "notes": bom_item.note or "",  # Alias for categorization
                 "optional": bom_item.optional,
+                "consumable": bom_item.consumable,
                 "inherited": bom_item.inherited,
                 "has_default_supplier": bool(bom_item.sub_part.default_supplier),
             })
@@ -214,6 +215,8 @@ def traverse_bom(
                 child_node["quantity"] = child_qty
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
+                child_node["optional"] = bom_item.get("optional", False)
+                child_node["consumable"] = bom_item.get("consumable", False)
 
                 # If parent is Internal Fab and child is a leaf part (Fab/Coml), mark for cut row logic
                 # Don't mark assemblies - their descendants should be treated as regular parts
@@ -328,6 +331,8 @@ def get_leaf_parts_only(
             "parent_ipn": tree.get("parent_ipn"),
             "parent_part_id": tree.get("parent_part_id"),
             "max_depth_exceeded": tree.get("max_depth_exceeded", False),
+            "optional": tree.get("optional", False),
+            "consumable": tree.get("consumable", False),
         })
     elif is_purchaseable_assembly and not expand_purchased_assemblies:
         # Include purchased assembly as a leaf and DON'T recurse into children
@@ -349,6 +354,8 @@ def get_leaf_parts_only(
             "parent_ipn": tree.get("parent_ipn"),
             "parent_part_id": tree.get("parent_part_id"),
             "max_depth_exceeded": tree.get("max_depth_exceeded", False),
+            "optional": tree.get("optional", False),
+            "consumable": tree.get("consumable", False),
         })
         # Stop here - don't recurse into children
         return leaves
@@ -393,6 +400,8 @@ def get_leaf_parts_only(
             "parent_part_id": tree.get("parent_part_id"),
             "assembly_no_children": assembly_no_children_flag,  # Only flag if NOT due to max_depth
             "max_depth_exceeded": max_depth_exceeded,
+            "optional": tree.get("optional", False),
+            "consumable": tree.get("consumable", False),
         })
         return leaves
 
@@ -532,7 +541,25 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
                 "note": leaf.get("note", ""),  # BOM item notes
                 "assembly_no_children": leaf.get("assembly_no_children", False),
                 "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
+                "optional": leaf.get(
+                    "optional", False
+                ),  # Start as False, set to True only if ALL instances are optional
+                "consumable": leaf.get(
+                    "consumable", False
+                ),  # Start as False, set to True only if ALL instances are consumable
+                "optional_instances": 0,  # Track how many times part appears as optional
+                "consumable_instances": 0,  # Track how many times part appears as consumable
+                "total_instances": 0,  # Track total appearances
             }
+
+        # Track flag statistics for aggregation logic
+        # A part is optional=True only if it's optional in ALL BOM appearances
+        # A part is consumable=True only if it's consumable in ALL BOM appearances
+        part_info[key]["total_instances"] += 1
+        if leaf.get("optional", False):
+            part_info[key]["optional_instances"] += 1
+        if leaf.get("consumable", False):
+            part_info[key]["consumable_instances"] += 1
 
     # Check CtL parts for unit mismatches across all their note variants
     from .categorization import _check_unit_mismatch
@@ -627,6 +654,19 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             ", ".join(part_references[key]) if part_references[key] else ""
         )
 
+        # Finalize optional and consumable flags based on ALL instances
+        # Part is optional=True only if it's optional in ALL BOM appearances
+        # Part is consumable=True only if it's consumable in ALL BOM appearances
+        info = part_info[key]
+        is_optional = (
+            info["total_instances"] > 0
+            and info["optional_instances"] == info["total_instances"]
+        )
+        is_consumable = (
+            info["total_instances"] > 0
+            and info["consumable_instances"] == info["total_instances"]
+        )
+
         row = {
             "part_id": part_info[key]["part_id"],
             "total_qty": totals.get(key, 0),
@@ -643,6 +683,8 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             "cut_list": cut_lists[key] if cut_lists.get(key) else None,
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
+            "optional": is_optional,
+            "consumable": is_consumable,
         }
         if enable_ifab_cuts:
             row["internal_fab_cut_list"] = (

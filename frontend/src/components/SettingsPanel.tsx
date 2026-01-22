@@ -44,7 +44,7 @@ export function SettingsPanel({
         )}
         <NumberInput
           label='Maximum Traversal Depth'
-          description='0 = unlimited, higher values stop BOM traversal earlier'
+          description='0 = unlimited, lower values stop BOM traversal earlier'
           value={settings.maxDepth}
           onChange={(val) =>
             onUpdateSetting('maxDepth', typeof val === 'number' ? val : 0)

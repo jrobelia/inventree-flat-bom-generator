@@ -382,6 +382,50 @@ Move these settings from plugin config to panel UI:
 
 ---
 
+### UX Polish: Cutlist Checkbox State (0.5 hours, LOW PRIORITY)
+**Goal:** Improve cutlist checkbox UX when no cutlist parts present
+
+**Current Behavior:**
+- "Show Cutlist Rows" checkbox always enabled
+- When no cutlist parts in BOM, checkbox has no effect (nothing to show/hide)
+- No visual indication that checkbox is irrelevant
+
+**Proposed Changes:**
+1. Disable checkbox when `bomData` contains zero cutlist rows
+2. Update label to indicate why disabled: "Show Cutlist Rows (none in BOM)"
+3. Grey out checkbox with Mantine `disabled` prop
+
+**Implementation:**
+```typescript
+// In ControlBar component
+const hasCutlistRows = useMemo(() => {
+  return bomData?.bom_items?.some(item => 
+    item.cutlist_breakdown && item.cutlist_breakdown.length > 0
+  ) || false;
+}, [bomData]);
+
+<Checkbox
+  label={hasCutlistRows ? "Show Cutlist Rows" : "Show Cutlist Rows (none in BOM)"}
+  checked={showCutlistRows}
+  onChange={(e) => setShowCutlistRows(e.currentTarget.checked)}
+  disabled={!hasCutlistRows}
+/>
+```
+
+**Benefits:**
+- Clearer UX - users understand when cutlist feature is inactive
+- Prevents confusion about non-functional checkbox
+- Follows accessibility best practices (disabled state for unavailable actions)
+
+**Testing:**
+- Verify disabled state when BOM has no cutlist parts
+- Verify enabled state when cutlist parts present
+- Check label text updates correctly
+
+**Defer Until:** After optional/substitute parts feature complete (may affect cutlist detection logic)
+
+---
+
 ### InvenTree Export Integration (4-6 hours, MEDIUM PRIORITY)
 **Goal:** Replace custom CSV export with InvenTree's built-in export system
 

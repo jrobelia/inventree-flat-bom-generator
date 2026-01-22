@@ -531,12 +531,13 @@ class FlatBOMView(APIView):
             for idx, warning in enumerate(warnings):
                 logger.info(f"[FlatBOM] Warning {idx + 1}: {warning}")
 
-            # Get units string for frontend label
-            cutlist_units = (
+            # Get units list for frontend label (serializer requires list, not string)
+            cutlist_units_str = (
                 plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
                 if plugin
                 else "mm,in,cm"
             )
+            cutlist_units_list = [u.strip() for u in cutlist_units_str.split(",")]
 
             # Prepare response data
             response_data = {
@@ -549,7 +550,7 @@ class FlatBOMView(APIView):
                 "bom_items": enriched_bom,
                 "metadata": {
                     "warnings": warnings,
-                    "cutlist_units_for_ifab": cutlist_units,
+                    "cutlist_units_for_ifab": cutlist_units_list,
                 },
             }
 

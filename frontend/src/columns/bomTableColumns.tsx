@@ -4,8 +4,11 @@ import type { DataTableColumn } from 'mantine-datatable';
 import type { BomItem } from '../types/BomTypes';
 import { getDimmedOpacity, getPartTypeColor } from '../utils/colorUtils';
 
-// Extend DataTableColumn to include switchable property (exists at runtime)
-type ExtendedColumn<T> = DataTableColumn<T> & { switchable?: boolean };
+// Extend DataTableColumn to include switchable and defaultVisible properties (exist at runtime)
+type ExtendedColumn<T> = DataTableColumn<T> & {
+  switchable?: boolean;
+  defaultVisible?: boolean;
+};
 
 interface BomTableColumnOptions {
   buildQuantity: number;
@@ -122,6 +125,63 @@ export function createBomTableColumns({
             </Badge>
           </Tooltip>
         );
+      }
+    },
+    {
+      accessor: 'flags',
+      title: 'Flags',
+      sortable: true,
+      switchable: true,
+      defaultVisible: false,
+      render: (record) => {
+        // Cutlist children don't have their own flags
+        if (record.is_cut_list_child) {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+
+        const flags = [];
+
+        if (record.optional) {
+          flags.push(
+            <Tooltip
+              key='optional'
+              label='This part is optional in the BOM'
+              withArrow
+            >
+              <Badge color='orange' variant='light' size='sm'>
+                Optional
+              </Badge>
+            </Tooltip>
+          );
+        }
+
+        if (record.consumable) {
+          flags.push(
+            <Tooltip
+              key='consumable'
+              label='This part is consumed during assembly'
+              withArrow
+            >
+              <Badge color='yellow' variant='light' size='sm'>
+                Consumable
+              </Badge>
+            </Tooltip>
+          );
+        }
+
+        if (flags.length === 0) {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+
+        return <Group gap='xs'>{flags}</Group>;
       }
     },
     {

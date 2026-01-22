@@ -147,6 +147,18 @@ class FlatBOMItemSerializer(serializers.Serializer):
         help_text="Categorized part type (TLA, Fab, Coml, Internal Fab, etc.)",
     )
 
+    optional = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether part is optional in BOM (can be excluded from builds)",
+    )
+
+    consumable = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether part is consumable (not tracked in build orders)",
+    )
+
     # BOM data
     note = serializers.CharField(
         required=False,
@@ -208,6 +220,8 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "purchaseable",
             "default_supplier_id",
             "part_type",
+            "optional",
+            "consumable",
             # BOM data
             "note",
             "cut_list",

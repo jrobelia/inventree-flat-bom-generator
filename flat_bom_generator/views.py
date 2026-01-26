@@ -12,6 +12,7 @@ from .serializers import (
     BOMWarningSerializer,
     FlatBOMItemSerializer,
     FlatBOMResponseSerializer,
+    SubstitutePartSerializer,
 )
 
 logger = logging.getLogger("inventree")
@@ -502,6 +503,88 @@ class FlatBOMView(APIView):
                         if hasattr(part_obj, "get_absolute_url")
                         else f"/part/{part_obj.pk}/",
                     }
+
+                    # NEW: Enrich with substitute parts if setting enabled
+                    include_substitutes = (
+                        plugin.get_setting("SHOW_SUBSTITUTE_PARTS", False)
+                        if plugin
+                        else False
+                    )
+
+                    if include_substitutes:
+                        # Import here to avoid loading unnecessary models
+                        from part.models import BomItem, BomItemSubstitute
+
+                        # Query BomItemSubstitute relationships for this part
+                        # Find BomItems where this part is the sub_part
+                        bom_items_with_this_part = BomItem.objects.filter(
+                            sub_part_id=item["part_id"]
+                        ).values_list("pk", flat=True)
+
+                        if bom_items_with_this_part:
+                            # Get all substitutes for these BomItems
+                            substitutes = BomItemSubstitute.objects.filter(
+                                bom_item__pk__in=bom_items_with_this_part
+                            ).select_related("part")
+
+                            if substitutes.exists():
+                                enriched_data["has_substitutes"] = True
+                                substitute_data = []
+
+                                for sub in substitutes:
+                                    sub_part = sub.part
+                                    # Build raw data dict
+                                    sub_raw = {
+                                        "substitute_id": sub.pk,
+                                        "part_id": sub_part.pk,
+                                        "ipn": sub_part.IPN or "",
+                                        "part_name": sub_part.name,
+                                        "full_name": sub_part.full_name
+                                        if hasattr(sub_part, "full_name")
+                                        else sub_part.name,
+                                        "description": sub_part.description or "",
+                                        "unit": sub_part.units or "",
+                                        "parent_total_qty": item["total_qty"],
+                                        "parent_unit": item.get("unit", ""),
+                                        # Stock data
+                                        "in_stock": float(sub_part.total_stock or 0),
+                                        "on_order": float(sub_part.on_order or 0),
+                                        "allocated": float(sub_part.allocation_count()),
+                                        "available": float(
+                                            sub_part.available_stock or 0
+                                        ),
+                                        # Display metadata
+                                        "image": sub_part.image.url
+                                        if sub_part.image
+                                        else None,
+                                        "thumbnail": sub_part.image.thumbnail.url
+                                        if sub_part.image
+                                        else None,
+                                        "link": sub_part.get_absolute_url()
+                                        if hasattr(sub_part, "get_absolute_url")
+                                        else f"/part/{sub_part.pk}/",
+                                    }
+                                    substitute_data.append(sub_raw)
+
+                                # Validate with serializer (ensures API contract)
+                                sub_serializer = SubstitutePartSerializer(
+                                    data=substitute_data, many=True
+                                )
+                                if sub_serializer.is_valid(raise_exception=True):
+                                    enriched_data["substitute_parts"] = (
+                                        sub_serializer.validated_data
+                                    )
+                            else:
+                                enriched_data["has_substitutes"] = False
+                                enriched_data["substitute_parts"] = None
+                        else:
+                            enriched_data["has_substitutes"] = False
+                            enriched_data["substitute_parts"] = None
+                    else:
+                        # Setting disabled - set defaults
+                        enriched_data["has_substitutes"] = False
+                        enriched_data["substitute_parts"] = None
+
                     serializer = FlatBOMItemSerializer(data=enriched_data)
                     serializer.is_valid(raise_exception=True)
                     enriched_bom.append(serializer.validated_data)

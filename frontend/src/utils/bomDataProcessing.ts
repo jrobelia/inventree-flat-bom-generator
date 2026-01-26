@@ -38,7 +38,10 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           available: null as any,
           default_supplier_name: '',
           cut_length: cut.length,
-          is_cut_list_child: true,
+          // Generic child row fields
+          is_child_row: true,
+          child_row_type: 'cutlist_ctl',
+          parent_row_part_id: item.part_id,
           cut_list: null
         });
       }
@@ -59,10 +62,51 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           default_supplier_name: '',
           cut_length: piece.piece_qty,
           cut_unit: piece.unit,
-          is_cut_list_child: true,
+          // Generic child row fields
+          is_child_row: true,
+          child_row_type: 'cutlist_ifab',
+          parent_row_part_id: item.part_id,
           cut_list: null,
           internal_fab_cut_list: null
         });
+      }
+    }
+
+    // Add substitute part children
+    if (
+      item.has_substitutes &&
+      item.substitute_parts &&
+      item.substitute_parts.length > 0
+    ) {
+      for (const sub of item.substitute_parts) {
+        // Smart quantity inheritance: inherit parent qty only if units match
+        const subUnit = (sub.unit || '').trim().toLowerCase();
+        const parentUnit = (item.unit || '').trim().toLowerCase();
+        const unitsMatch = subUnit === parentUnit;
+        const displayQty = unitsMatch ? item.total_qty : 0;
+
+        flattenedData.push({
+          ...sub,
+          // Inherit parent qty only when units match or both empty
+          total_qty: displayQty,
+          unit: sub.unit || item.unit, // Prefer substitute's unit, fallback to parent
+          optional: item.optional,
+          consumable: item.consumable,
+          // Generic child row fields
+          is_child_row: true,
+          child_row_type: 'substitute',
+          parent_row_part_id: item.part_id,
+          // Substitute-specific type
+          part_type: 'Other' as any,
+          is_assembly: false,
+          purchaseable: true,
+          has_default_supplier: false,
+          // Clear fields that don't apply to substitutes
+          cut_list: null,
+          internal_fab_cut_list: null,
+          has_substitutes: false,
+          substitute_parts: null
+        } as BomItem);
       }
     }
   }
@@ -97,7 +141,7 @@ export function filterBomData(
 }
 
 /**
- * Group cut list children with their parents after sorting
+ * Group child rows (cutlists, substitutes, variants) with their parents after sorting
  * Ensures children stay attached to parent when column sort is applied
  *
  * @param items - Sorted array of BOM items
@@ -107,17 +151,17 @@ export function filterBomData(
  * // After sorting by stock, children might be separated from parent
  * const sorted = sortItems(items);
  * // Group brings them back together
- * const grouped = groupChildrenWithParents(sorted);
+ * const grouped = groupChildRowsWithParents(sorted);
  */
-export function groupChildrenWithParents(items: BomItem[]): BomItem[] {
+export function groupChildRowsWithParents(items: BomItem[]): BomItem[] {
   const parents: BomItem[] = [];
   const childrenByParentId = new Map<number, BomItem[]>();
 
   // Separate parents and children
   for (const item of items) {
-    if (item.is_cut_list_child) {
-      // Children inherit parent's part_id
-      const parentId = item.part_id;
+    if (item.is_child_row) {
+      // Use parent_row_part_id to find parent (handles different part_ids)
+      const parentId = item.parent_row_part_id || item.part_id;
       if (!childrenByParentId.has(parentId)) {
         childrenByParentId.set(parentId, []);
       }

@@ -26,6 +26,8 @@ interface ControlBarProps {
   onIncludeOnOrderChange: (checked: boolean) => void;
   showCutlistRows: boolean;
   onShowCutlistRowsChange: (checked: boolean) => void;
+  showSubstitutes: boolean;
+  onShowSubstitutesChange: (checked: boolean) => void;
   onRefresh: () => void;
   loading: boolean;
   onExport: () => void;
@@ -47,6 +49,8 @@ export function ControlBar({
   onIncludeOnOrderChange,
   showCutlistRows,
   onShowCutlistRowsChange,
+  showSubstitutes,
+  onShowSubstitutesChange,
   onRefresh,
   loading,
   onExport,
@@ -73,6 +77,11 @@ export function ControlBar({
             label='Show Cutlist Rows'
             checked={showCutlistRows}
             onChange={(e) => onShowCutlistRowsChange(e.currentTarget.checked)}
+          />
+          <Checkbox
+            label='Show Substitutes'
+            checked={showSubstitutes}
+            onChange={(e) => onShowSubstitutesChange(e.currentTarget.checked)}
           />
           <Checkbox
             label='Include Allocations in Build Margin (-)'

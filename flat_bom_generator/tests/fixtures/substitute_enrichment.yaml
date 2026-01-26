@@ -1,0 +1,251 @@
+# Fixture for substitute enrichment integration tests
+# This fixture bypasses InvenTree's Part.check_add_to_bom() validation
+# which rejects dynamic BOM creation in tests.
+#
+# Test Scenario:
+# - Assembly (pk=8001) with BOM linking to Primary part (pk=8002)
+# - Primary part has 2 substitutes (pk=8003, 8004)
+# - StockItems: Primary=50 (allocated=10), Sub1=100, Sub2=25
+#
+# Usage: call_command('loaddata', absolute_path, verbosity=0)
+
+# PartCategory
+- model: part.PartCategory
+  pk: 8001
+  fields:
+    name: Test Category
+    description: Category for substitute enrichment tests
+    parent: null
+    pathstring: Test Category
+    level: 0
+    tree_id: 8001
+    lft: 1
+    rght: 2
+    _icon: ''
+
+# Company (for stock location)
+- model: company.Company
+  pk: 8001
+  fields:
+    name: Test Company
+    description: Company for substitute enrichment tests
+    website: ''
+    is_customer: false
+    is_manufacturer: false
+    is_supplier: true
+    active: true
+
+# StockLocation
+- model: stock.StockLocation
+  pk: 8001
+  fields:
+    name: Test Location
+    description: Location for substitute enrichment tests
+    parent: null
+    pathstring: Test Location
+    level: 0
+    tree_id: 8001
+    lft: 1
+    rght: 2
+    structural: false
+    external: false
+    custom_icon: ''
+
+# Assembly Part
+- model: part.Part
+  pk: 8001
+  fields:
+    name: Test Assembly
+    description: Assembly for testing substitutes
+    IPN: ASM-001
+    revision: ''
+    category: 8001
+    variant_of: null
+    keywords: ''
+    units: ''
+    assembly: true
+    component: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    active: true
+    virtual: false
+    is_template: false
+    minimum_stock: 0
+    level: 0
+    tree_id: 8001
+    lft: 1
+    rght: 2
+
+# Primary Part (Resistor 10k)
+- model: part.Part
+  pk: 8002
+  fields:
+    name: Resistor 10k - Primary
+    description: Primary resistor part
+    IPN: R-10K-PRI
+    revision: ''
+    category: 8001
+    variant_of: null
+    keywords: ''
+    units: 'pcs'
+    assembly: false
+    component: true
+    trackable: false
+    purchaseable: true
+    salable: false
+    active: true
+    virtual: false
+    is_template: false
+    minimum_stock: 0
+    level: 0
+    tree_id: 8002
+    lft: 1
+    rght: 2
+
+# Substitute Part 1 (Resistor 10k Alt1)
+- model: part.Part
+  pk: 8003
+  fields:
+    name: Resistor 10k - Alt1
+    description: Alternative resistor part 1
+    IPN: R-10K-ALT1
+    revision: ''
+    category: 8001
+    variant_of: null
+    keywords: ''
+    units: 'pcs'
+    assembly: false
+    component: true
+    trackable: false
+    purchaseable: true
+    salable: false
+    active: true
+    virtual: false
+    is_template: false
+    minimum_stock: 0
+    level: 0
+    tree_id: 8003
+    lft: 1
+    rght: 2
+
+# Substitute Part 2 (Resistor 10k Alt2)
+- model: part.Part
+  pk: 8004
+  fields:
+    name: Resistor 10k - Alt2
+    description: Alternative resistor part 2
+    IPN: R-10K-ALT2
+    revision: ''
+    category: 8001
+    variant_of: null
+    keywords: ''
+    units: 'pcs'
+    assembly: false
+    component: true
+    trackable: false
+    purchaseable: true
+    salable: false
+    active: true
+    virtual: false
+    is_template: false
+    minimum_stock: 0
+    level: 0
+    tree_id: 8004
+    lft: 1
+    rght: 2
+
+# BomItem linking Assembly to Primary Part
+- model: part.BomItem
+  pk: 8001
+  fields:
+    part: 8001  # Assembly
+    sub_part: 8002  # Primary Part
+    quantity: 2
+    reference: R1
+    note: ''
+    validated: true
+    optional: false
+    consumable: false
+    allow_variants: false
+    inherited: false
+
+# BomItemSubstitute 1 (Primary → Alt1)
+- model: part.BomItemSubstitute
+  pk: 8001
+  fields:
+    bom_item: 8001
+    part: 8003  # Alt1
+
+# BomItemSubstitute 2 (Primary → Alt2)
+- model: part.BomItemSubstitute
+  pk: 8002
+  fields:
+    bom_item: 8001
+    part: 8004  # Alt2
+
+# StockItem for Primary Part (50 qty, 10 allocated)
+- model: stock.StockItem
+  pk: 8001
+  fields:
+    part: 8002
+    supplier_part: null
+    location: 8001
+    quantity: 50
+    batch: ''
+    serial: null
+    status: 10  # OK status
+    belongs_to: null
+    customer: null
+    packaging: ''
+    link: ''
+    notes: ''
+    purchase_price: null
+    tree_id: 8001
+    level: 0
+    lft: 1
+    rght: 2
+
+# StockItem for Substitute 1 (100 qty)
+- model: stock.StockItem
+  pk: 8002
+  fields:
+    part: 8003
+    supplier_part: null
+    location: 8001
+    quantity: 100
+    batch: ''
+    serial: null
+    status: 10  # OK status
+    belongs_to: null
+    customer: null
+    packaging: ''
+    link: ''
+    notes: ''
+    purchase_price: null
+    tree_id: 8002
+    level: 0
+    lft: 1
+    rght: 2
+
+# StockItem for Substitute 2 (25 qty)
+- model: stock.StockItem
+  pk: 8003
+  fields:
+    part: 8004
+    supplier_part: null
+    location: 8001
+    quantity: 25
+    batch: ''
+    serial: null
+    status: 10  # OK status
+    belongs_to: null
+    customer: null
+    packaging: ''
+    link: ''
+    notes: ''
+    purchase_price: null
+    tree_id: 8003
+    level: 0
+    lft: 1
+    rght: 2

@@ -69,6 +69,12 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "validator": str,
             "default": "mm,in,cm",
         },
+        "SHOW_SUBSTITUTE_PARTS": {
+            "name": "Show Substitute Parts",
+            "description": "Include substitute parts in flat BOM display (shown as child rows with individual stock levels). Disable to hide substitutes.",
+            "validator": bool,
+            "default": False,
+        },
     }
 
     # Custom URL endpoints (from UrlsMixin)

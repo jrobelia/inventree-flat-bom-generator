@@ -10,7 +10,7 @@ import type { BomItem } from '../types/BomTypes';
 import {
   filterBomData,
   flattenBomData,
-  groupChildrenWithParents,
+  groupChildRowsWithParents,
   sortBomData
 } from './bomDataProcessing';
 
@@ -36,7 +36,7 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     link: '/part/1/',
     default_supplier_id: undefined,
     default_supplier_name: '',
-    is_cut_list_child: false,
+    is_child_row: false,
     ...overrides
   } as BomItem;
 }
@@ -72,9 +72,9 @@ describe('flattenBomData', () => {
     const result = flattenBomData(items);
 
     expect(result).toHaveLength(3); // 1 parent + 2 children
-    expect(result[0].is_cut_list_child).toBe(false);
-    expect(result[1].is_cut_list_child).toBe(true);
-    expect(result[2].is_cut_list_child).toBe(true);
+    expect(result[0].is_child_row).toBe(false);
+    expect(result[1].is_child_row).toBe(true);
+    expect(result[2].is_child_row).toBe(true);
 
     // Verify child quantities and lengths
     expect(result[1].total_qty).toBe(2);
@@ -228,16 +228,16 @@ describe('filterBomData', () => {
   });
 });
 
-describe('groupChildrenWithParents', () => {
+describe('groupChildRowsWithParents', () => {
   it('should keep children attached to parent when parent is first', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'A-child1', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A-child2', is_cut_list_child: true }),
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false })
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'A-child1', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A-child2', is_child_row: true }),
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(4);
     expect(result[0].ipn).toBe('A');
@@ -249,13 +249,13 @@ describe('groupChildrenWithParents', () => {
   it('should group children with parent after sorting separates them', () => {
     // Simulate sort by IPN descending: B, B-child, A-child, A
     const items = [
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false }),
-      createBomItem({ part_id: 2, ipn: 'B-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false })
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false }),
+      createBomItem({ part_id: 2, ipn: 'B-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     // Should regroup to: B, B-child, A, A-child
     expect(result).toHaveLength(4);
@@ -267,13 +267,13 @@ describe('groupChildrenWithParents', () => {
 
   it('should handle multiple children per parent', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'Parent', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'Child1', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'Child2', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'Child3', is_cut_list_child: true })
+      createBomItem({ part_id: 1, ipn: 'Parent', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'Child1', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'Child2', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'Child3', is_child_row: true })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(4);
     expect(result[0].ipn).toBe('Parent');
@@ -284,12 +284,12 @@ describe('groupChildrenWithParents', () => {
 
   it('should handle parents without children', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false }),
-      createBomItem({ part_id: 3, ipn: 'C', is_cut_list_child: false })
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false }),
+      createBomItem({ part_id: 3, ipn: 'C', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(3);
     expect(result[0].ipn).toBe('A');
@@ -300,13 +300,13 @@ describe('groupChildrenWithParents', () => {
   it('should preserve parent sort order', () => {
     // Parents sorted Z -> A
     const items = [
-      createBomItem({ part_id: 3, ipn: 'Z', is_cut_list_child: false }),
-      createBomItem({ part_id: 3, ipn: 'Z-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'A-child', is_cut_list_child: true })
+      createBomItem({ part_id: 3, ipn: 'Z', is_child_row: false }),
+      createBomItem({ part_id: 3, ipn: 'Z-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'A-child', is_child_row: true })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     // Should maintain parent order: Z, A
     expect(result[0].ipn).toBe('Z');

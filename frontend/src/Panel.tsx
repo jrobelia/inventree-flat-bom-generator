@@ -50,7 +50,7 @@ import type { BomItem } from './types/BomTypes';
 import {
   filterBomData,
   flattenBomData,
-  groupChildrenWithParents,
+  groupChildRowsWithParents,
   sortBomData
 } from './utils/bomDataProcessing';
 import {
@@ -82,6 +82,7 @@ function FlatBOMGeneratorPanel({
   const [includeAllocations, setIncludeAllocations] = useState<boolean>(true);
   const [includeOnOrder, setIncludeOnOrder] = useState<boolean>(true);
   const [showCutlistRows, setShowCutlistRows] = useState<boolean>(true);
+  const [showSubstitutes, setShowSubstitutes] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [warningsDismissed, setWarningsDismissed] = useState<boolean>(false);
@@ -162,7 +163,17 @@ function FlatBOMGeneratorPanel({
 
     // Step 2: Filter cutlist rows if checkbox unchecked
     if (!showCutlistRows) {
-      data = data.filter((item) => !item.is_cut_list_child);
+      data = data.filter(
+        (item) =>
+          !item.is_child_row || !item.child_row_type?.startsWith('cutlist')
+      );
+    }
+
+    // Step 2.5: Filter substitute rows if checkbox unchecked
+    if (!showSubstitutes) {
+      data = data.filter(
+        (item) => !item.is_child_row || item.child_row_type !== 'substitute'
+      );
     }
 
     // Step 3: Filter by search query
@@ -180,13 +191,14 @@ function FlatBOMGeneratorPanel({
       );
 
       // Step 5: Group children with parents after sorting
-      data = groupChildrenWithParents(data);
+      data = groupChildRowsWithParents(data);
     }
 
     return data;
   }, [
     bomData,
     showCutlistRows,
+    showSubstitutes,
     searchQuery,
     sortStatus,
     buildQuantity,
@@ -309,6 +321,8 @@ function FlatBOMGeneratorPanel({
                 onIncludeOnOrderChange={setIncludeOnOrder}
                 showCutlistRows={showCutlistRows}
                 onShowCutlistRowsChange={setShowCutlistRows}
+                showSubstitutes={showSubstitutes}
+                onShowSubstitutesChange={setShowSubstitutes}
                 onRefresh={handleGenerate}
                 loading={loading}
                 onExport={exportToCsv}
@@ -371,10 +385,23 @@ function FlatBOMGeneratorPanel({
             onSortStatusChange={setSortStatus}
             minHeight={200}
             noRecordsText='No parts found'
+            rowStyle={(record) => {
+              if (
+                record.is_child_row &&
+                record.child_row_type === 'substitute'
+              ) {
+                return {
+                  backgroundColor: 'var(--mantine-color-blue-0)',
+                  borderLeft: '4px solid var(--mantine-color-blue-5)',
+                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
+                };
+              }
+            }}
             paginationText={({ from, to, totalRecords }) => {
-              // Count child/cut parts (rows with is_cut_list_child true)
+              // Count child/cut parts (rows with is_child_row true)
               const cutParts = filteredAndSortedData.filter(
-                (row) => row.is_cut_list_child
+                (row) =>
+                  row.is_child_row && row.child_row_type?.startsWith('cutlist')
               ).length;
               return cutParts > 0
                 ? `Showing ${from} to ${to} of ${totalRecords} parts (including ${cutParts} cut parts)`

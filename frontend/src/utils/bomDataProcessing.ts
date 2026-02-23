@@ -82,14 +82,15 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
         // Smart quantity inheritance: inherit parent qty only if units match
         const subUnit = (sub.unit || '').trim().toLowerCase();
         const parentUnit = (item.unit || '').trim().toLowerCase();
+        // Both empty = unitless parts, treat as matching
         const unitsMatch = subUnit === parentUnit;
-        const displayQty = unitsMatch ? item.total_qty : 0;
 
         flattenedData.push({
           ...sub,
-          // Inherit parent qty only when units match or both empty
-          total_qty: displayQty,
-          unit: sub.unit || item.unit, // Prefer substitute's unit, fallback to parent
+          // Always inherit parent qty; unit_mismatch flag controls display
+          total_qty: item.total_qty,
+          unit: sub.unit || '', // Use substitute's own unit, empty if none
+          unit_mismatch: !unitsMatch,
           optional: item.optional,
           consumable: item.consumable,
           // Generic child row fields

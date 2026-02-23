@@ -67,6 +67,9 @@ export interface BomItem {
   // Substitute parts support (added in v0.11.39)
   has_substitutes?: boolean;
   substitute_parts?: SubstitutePart[] | null;
+
+  // Set on substitute child rows when parent and sub units differ
+  unit_mismatch?: boolean;
 }
 
 /**

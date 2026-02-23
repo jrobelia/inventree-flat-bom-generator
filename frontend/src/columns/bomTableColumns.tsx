@@ -231,7 +231,47 @@ export function createBomTableColumns({
       switchable: true,
       render: (record) => {
         const totalRequired = record.total_qty * buildQuantity;
+        if (record.is_child_row && record.child_row_type === 'substitute') {
+          // Unit mismatch: qty is meaningless, show indicator instead
+          if (record.unit_mismatch) {
+            return (
+              <Group
+                gap='xs'
+                justify='space-between'
+                wrap='nowrap'
+                style={{ maxWidth: '100%' }}
+              >
+                <Text size='sm' c='dimmed'>
+                  —
+                </Text>
+                <Text size='xs' c='orange'>
+                  unit mismatch
+                </Text>
+              </Group>
+            );
+          }
+          // Units match: render like a standard row
+          const totalQty = record.total_qty * buildQuantity;
+          return (
+            <Group
+              gap='xs'
+              justify='space-between'
+              wrap='nowrap'
+              style={{ maxWidth: '100%' }}
+            >
+              <Text size='sm' fw={700}>
+                {totalQty.toFixed(2)}
+              </Text>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
         if (record.is_child_row) {
+          // Cutlist child rows — count-based, always pieces
           const totalPieces = record.total_qty * buildQuantity;
           return (
             <Group

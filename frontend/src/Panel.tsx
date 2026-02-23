@@ -127,12 +127,18 @@ function FlatBOMGeneratorPanel({
   // Handle initial generation
   const handleGenerate = async () => {
     await generateFlatBom(settings);
+    // Auto-show substitute rows when substitutes are included
+    if (settings.includeSubstitutes) {
+      setShowSubstitutes(true);
+    }
   };
 
   // Handle settings apply from drawer (regenerates BOM)
   const handleApplySettings = async () => {
     setSettingsDrawerOpen(false);
     await generateFlatBom(settings);
+    // Sync substitute row visibility with the generation setting
+    setShowSubstitutes(settings.includeSubstitutes);
   };
 
   /**
@@ -391,12 +397,11 @@ function FlatBOMGeneratorPanel({
                 record.child_row_type === 'substitute'
               ) {
                 return {
+                  // light: subtle blue-0 tint; dark: blue at 18% opacity — stands out against dark-7/8 table rows
                   backgroundColor:
-                    'light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6))',
+                    'light-dark(var(--mantine-color-blue-0), rgba(34, 139, 230, 0.18))',
                   borderLeft:
-                    '4px solid light-dark(var(--mantine-color-blue-5), var(--mantine-color-blue-7))',
-                  boxShadow:
-                    'inset 0 1px 3px light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.3))'
+                    '4px solid light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-6))'
                 };
               }
             }}

@@ -391,9 +391,12 @@ function FlatBOMGeneratorPanel({
                 record.child_row_type === 'substitute'
               ) {
                 return {
-                  backgroundColor: 'var(--mantine-color-blue-0)',
-                  borderLeft: '4px solid var(--mantine-color-blue-5)',
-                  boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.05)'
+                  backgroundColor:
+                    'light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6))',
+                  borderLeft:
+                    '4px solid light-dark(var(--mantine-color-blue-5), var(--mantine-color-blue-7))',
+                  boxShadow:
+                    'inset 0 1px 3px light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.3))'
                 };
               }
             }}

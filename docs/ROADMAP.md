@@ -19,8 +19,8 @@
 **See [Completed Work Archive](#completed-work-archive) for detailed phase history.**
 
 ### 🎯 Next Steps
-1. Check box UX polish (disable when no cutlist parts)
-2. Substitute parts support (show alternatives with individual stock)
+1. **Frontend InvenTree Patterns** - Optional refactoring to align with InvenTree core patterns ([See Plan](FRONTEND-REFACTORING-PLAN.md))
+2. Consolidate checkbox filters into dropdown menu (like column visibility)
 3. Variant parts support (aggregate variant stock)
 4. InvenTree export integration (replace custom CSV)
 
@@ -147,6 +147,27 @@ key = (part_id, optional, consumable, allow_variants, cut_length)
 4. Should inactive variants be included in calculations?
 
 **Defer Until:** Determine actual variant usage patterns in production BOMs
+
+### UX Polish: Consolidate Filter Checkboxes (1-2 hours, MEDIUM PRIORITY)
+**Goal:** Move checkbox filters from ControlBar into a dropdown menu (similar to column visibility)
+
+**Current:** 4 checkboxes in ControlBar taking up space:
+- Show Cutlist Rows
+- Show Substitutes
+- Include Allocations in Build Margin
+- Include On Order in Build Margin
+
+**Proposed:** Dropdown button with icon (filter funnel) containing all filters
+
+**Benefits:**
+- Cleaner UI with more horizontal space
+- Scales better as more filters are added
+- Consistent pattern with column visibility dropdown
+
+**Implementation:**
+- Reuse Menu component pattern from column visibility
+- Keep state in Panel.tsx (no API changes needed)
+- Update ControlBar.tsx to replace checkboxes with dropdown
 
 ### UX Polish: Cutlist Checkbox (0.5 hours, LOW PRIORITY)
 **Current:** "Show Cutlist Rows" checkbox always enabled  

@@ -242,6 +242,9 @@ class FlatBOMView(APIView):
         include_ifab_cuts_param = request.query_params.get(
             "include_internal_fab_in_cutlist", None
         )
+        include_substitutes_param = request.query_params.get(
+            "include_substitutes", None
+        )
 
         # Parse max_depth
         max_depth = None
@@ -266,6 +269,7 @@ class FlatBOMView(APIView):
         # Load plugin settings as defaults for boolean parameters
         expand_purchased_default = False
         enable_ifab_cuts_default = False
+        include_substitutes_default = False
 
         if plugin:
             internal_supplier_ids = get_internal_supplier_ids(plugin)
@@ -301,6 +305,19 @@ class FlatBOMView(APIView):
                     else False
                 )
             )
+
+            include_substitutes_setting = plugin.get_setting(
+                "SHOW_SUBSTITUTE_PARTS", False
+            )
+            include_substitutes_default = (
+                bool(include_substitutes_setting)
+                if isinstance(include_substitutes_setting, bool)
+                else (
+                    str(include_substitutes_setting).lower() == "true"
+                    if include_substitutes_setting
+                    else False
+                )
+            )
         else:
             logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
@@ -317,6 +334,11 @@ class FlatBOMView(APIView):
         else:
             enable_ifab_cuts = enable_ifab_cuts_default
 
+        if include_substitutes_param is not None:
+            include_substitutes = include_substitutes_param.lower() == "true"
+        else:
+            include_substitutes = include_substitutes_default
+
         if plugin:
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
@@ -324,6 +346,9 @@ class FlatBOMView(APIView):
             )
             logger.info(
                 f"  - enable_ifab_cuts: {enable_ifab_cuts} (from {'query param' if include_ifab_cuts_param else 'plugin default'})"
+            )
+            logger.info(
+                f"  - include_substitutes: {include_substitutes} (from {'query param' if include_substitutes_param else 'plugin default'})"
             )
             logger.info(f"  - max_depth: {max_depth} (from query param)")
             logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
@@ -505,12 +530,9 @@ class FlatBOMView(APIView):
                     }
 
                     # NEW: Enrich with substitute parts if setting enabled
-                    include_substitutes = (
-                        plugin.get_setting("SHOW_SUBSTITUTE_PARTS", False)
-                        if plugin
-                        else False
+                    logger.info(
+                        f"[FlatBOM] Checking substitutes for part {item['part_id']}: include_substitutes={include_substitutes}"
                     )
-
                     if include_substitutes:
                         # Import here to avoid loading unnecessary models
                         from part.models import BomItem, BomItemSubstitute
@@ -582,6 +604,9 @@ class FlatBOMView(APIView):
                             enriched_data["substitute_parts"] = None
                     else:
                         # Setting disabled - set defaults
+                        logger.info(
+                            f"[FlatBOM] Substitutes disabled for part {item['part_id']}, setting has_substitutes=False"
+                        )
                         enriched_data["has_substitutes"] = False
                         enriched_data["substitute_parts"] = None
 

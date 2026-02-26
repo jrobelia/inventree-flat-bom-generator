@@ -34,8 +34,7 @@ Run:
     & .venv\Scripts\Activate.ps1
     invoke dev.test -r FlatBOMGenerator.flat_bom_generator.tests.integration.test_view_function -v
 
-See: docs/toolkit/INVENTREE-DEV-SETUP.md for complete setup guide
-See: docs/toolkit/TESTING-STRATEGY.md for API endpoint testing strategy
+See: docs/reference/INVENTREE-DEV-SETUP.md for complete setup guide
 """
 
 from rest_framework.test import APIRequestFactory, force_authenticate

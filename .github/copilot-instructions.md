@@ -16,12 +16,11 @@
 
 **Then Review Documentation:**
 
-1. **[ARCHITECTURE.md](../ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
-2. **[docs/internal/DEPLOYMENT-WORKFLOW.md](../docs/internal/DEPLOYMENT-WORKFLOW.md)** - **Deployment checklist and testing workflow (READ THIS)**
-3. **[docs/internal/TEST-WRITING-METHODOLOGY.md](../docs/internal/TEST-WRITING-METHODOLOGY.md)** - **Code-first approach for writing/validating tests (ESSENTIAL FOR TEST WORK)**
-4. **[docs/internal/ROADMAP.md](../docs/internal/ROADMAP.md)** - Current refactoring status and plan
-5. **[docs/internal/TEST-QUALITY-REVIEW.md](../docs/internal/TEST-QUALITY-REVIEW.md)** - Test quality analysis and improvement roadmap
-6. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
+1. **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
+2. **[docs/reference/DEPLOYMENT-WORKFLOW.md](../docs/reference/DEPLOYMENT-WORKFLOW.md)** - **Deployment checklist and testing workflow (READ THIS)**
+3. **[docs/reference/TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md)** - **Code-first approach for writing/validating tests (ESSENTIAL FOR TEST WORK)**
+4. **[docs/ROADMAP.md](../docs/ROADMAP.md)** - Current refactoring status and plan
+5. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
 
 ---
 
@@ -56,7 +55,7 @@
 - 151 tests total (60 unit + 91 integration): 150 passing, 1 skipped
 - Test quality: Grade B+ (85% Grade A tests, 92% estimated coverage)
 - Resolved 4 InvenTree model evolution issues during fixture debugging
-- **Code-first test methodology established** (TEST-WRITING-METHODOLOGY.md) - read code THEN write tests
+- **Code-first test methodology established** ([TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md)) - read code THEN write tests
 
 See [docs/ROADMAP.md](../docs/ROADMAP.md) for detailed status.
 
@@ -67,9 +66,8 @@ See [docs/ROADMAP.md](../docs/ROADMAP.md) for detailed status.
 This plugin follows **single source of truth** principle:
 
 **Each document has ONE focused purpose:**
-- **ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
-- **docs/TEST-PLAN.md** → Testing strategy, workflow, test-first approach, CI/CD
-- **docs/TEST-QUALITY-REVIEW.md** → Test quality analysis, gaps, prioritized improvements
+- **docs/ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
+- **docs/decisions.md** → Append-only log of non-obvious technical choices
 - **docs/ROADMAP.md** → What to refactor, how to refactor, current status, next steps
 - **README.md** → User-facing: features, installation, usage
 
@@ -87,10 +85,10 @@ For toolkit-level guidance (deployment, build commands, general patterns):
 
 **In workspace root:**
 - `.github/copilot-instructions.md` - Toolkit quick reference
-- `copilot/PROJECT-CONTEXT.md` - Toolkit architecture and InvenTree patterns
-- `copilot/AGENT-BEHAVIOR.md` - Communication style and code generation rules
-- `docs/toolkit/WORKFLOWS.md` - How-to guides for common tasks
-- `docs/toolkit/QUICK-REFERENCE.md` - Command cheat sheet
+- `docs/architecture.md` - Toolkit module map
+- `docs/decisions.md` - Decision log
+- `docs/reference/` - Stable how-to guides
+- `QUICK-REFERENCE.md` - Command cheat sheet
 
 ---
 
@@ -214,7 +212,7 @@ npm run dev
 - Uses Django's unittest.TestCase
 - Some tests use CSV data files in test_data/
 
-See [ARCHITECTURE.md](../ARCHITECTURE.md) for complete architecture details.
+See [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) for complete architecture details.
 
 ---
 

@@ -140,13 +140,21 @@ frontend/
 └── vite.config.ts          # Build configuration
 
 docs/                        # Documentation, planning, & reference
-├── README.md                # Documentation overview
+├── ARCHITECTURE.md          # This file (plugin architecture guide)
+├── ROADMAP.md               # Plugin improvement plan (living doc)
+├── decisions.md             # Append-only decision log
 ├── WARNINGS-RESEARCH.md
 ├── WARNINGS-ROADMAP.md
-├── ARCHITECTURE-WARNINGS.md
-├── ROADMAP.md
-├── PYPI-PUBLISHING-PLAN.md
-└── Flat BOM Generator Table.csv  # Reference output format
+├── reference/               # Stable how-to guides
+│   ├── ARCHITECTURE-WARNINGS.md
+│   ├── DEPLOYMENT-WORKFLOW.md
+│   ├── TEST-WRITING-METHODOLOGY.md
+│   └── Flat BOM Generator Table.csv
+├── planning/                # Future work proposals
+│   ├── EXPORT-PLAN.md
+│   ├── FRONTEND-REACT-REFACTORING-PLAN.md
+│   └── SUBSTITUTE-PARTS-IMPLEMENTATION-PLAN.md
+└── archive/                 # Superseded docs (gitignored)
 
 imgs/                        # Screenshots for README.md
 ├── flat-bom-panel-overview.png

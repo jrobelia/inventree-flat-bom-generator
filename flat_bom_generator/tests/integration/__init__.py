@@ -1,2 +1,2 @@
 # Integration tests require InvenTree development environment.
-# See: docs/toolkit/INVENTREE-DEV-SETUP.md
+# See: docs/reference/INVENTREE-DEV-SETUP.md

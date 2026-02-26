@@ -4,8 +4,7 @@ These tests call BOM traversal and enrichment functions directly with real
 InvenTree Part, BomItem, and StockItem objects.
 
 NOTE: Plugin URL integration testing is not supported by InvenTree. These tests 
-call functions directly instead of making HTTP requests. See docs/toolkit/INTEGRATION-TESTING-SUMMARY.md 
-for details.
+call functions directly instead of making HTTP requests.
 
 Prerequisites:
 - InvenTree development environment must be set up
@@ -23,7 +22,7 @@ Run:
     & .venv\Scripts\Activate.ps1
     invoke dev.test -r FlatBOMGenerator.flat_bom_generator.tests.integration -v
 
-See: docs/toolkit/INVENTREE-DEV-SETUP.md for complete setup guide
+See: docs/reference/INVENTREE-DEV-SETUP.md for complete setup guide
 """
 
 from InvenTree.unit_test import InvenTreeTestCase

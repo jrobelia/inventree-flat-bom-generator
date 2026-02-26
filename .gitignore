@@ -200,8 +200,8 @@ pnpm-lock.yaml
 .env
 .env.local
 
-# Personal development notes (not needed by other users)
-docs/internal/
+# Archived documentation (superseded, kept locally for reference)
+docs/archive/
 
 # Personal utility scripts (one-time use, may contain sensitive operations)
 tools/

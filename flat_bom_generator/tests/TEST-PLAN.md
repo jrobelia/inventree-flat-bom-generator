@@ -13,8 +13,8 @@ This document covers **testing strategy, execution, and improvement priorities**
 
 **Related Documents:**
 - [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan and architecture
-- [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) - Code-first validation approach
-- [ARCHITECTURE.md](../../ARCHITECTURE.md) - Plugin architecture and API reference
+- [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) - Code-first validation approach
+- [ARCHITECTURE.md](../../docs/ARCHITECTURE.md) - Plugin architecture and API reference
 
 ---
 
@@ -165,7 +165,7 @@ def test_serializer_validates_real_part(self):
 - ❌ Authentication/permissions on plugin endpoints
 - ✅ **Manual Test Instead:** Use InvenTree UI or API client (Postman/curl) on running server
 
-**Reference:** See [toolkit/TESTING-STRATEGY.md](../../../../docs/toolkit/TESTING-STRATEGY.md) for complete integration testing philosophy.
+**Reference:** See [docs/reference/INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) for integration testing setup.
 
 ---
 
@@ -445,7 +445,7 @@ def test_serializer_validates_real_part(self):
 4. Write tests that validate actual behavior
 5. Look for dead code and incorrect fallbacks
 
-**See:** [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) for detailed guide
+**See:** [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) for detailed guide
 
 ---
 
@@ -584,14 +584,12 @@ class MyFeatureTests(InvenTreeTestCase):
 ## References
 
 **Toolkit Testing Documentation:**
-- [TESTING-STRATEGY.md](../../../../docs/toolkit/TESTING-STRATEGY.md) - Unit vs integration philosophy
-- [INVENTREE-DEV-SETUP.md](../../../../docs/toolkit/INVENTREE-DEV-SETUP.md) - Dev environment setup
-- [INTEGRATION-TESTING-SUMMARY.md](../../../../docs/toolkit/INTEGRATION-TESTING-SUMMARY.md) - What we built
+- [INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) - Dev environment setup
 
 **Plugin Documentation:**
 - [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan
-- [TEST-WRITING-METHODOLOGY.md](../../docs/TEST-WRITING-METHODOLOGY.md) - Code-first validation
-- [DEPLOYMENT-WORKFLOW.md](../../docs/DEPLOYMENT-WORKFLOW.md) - Deployment checklist
+- [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) - Code-first validation
+- [DEPLOYMENT-WORKFLOW.md](../../docs/reference/DEPLOYMENT-WORKFLOW.md) - Deployment checklist
 
 **External Resources:**
 - [InvenTree Plugin Testing](https://docs.inventree.org/en/latest/plugins/test/)

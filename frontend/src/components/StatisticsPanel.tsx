@@ -47,17 +47,17 @@ export function StatisticsPanel({
 }: StatisticsPanelProps) {
   return (
     <Group gap='md' wrap='wrap'>
-      <Stat label='Total\nParts' value={totalUniqueParts} />
-      <Stat label='BOM\nDepth' value={maxDepthReached} color='violet' />
+      <Stat label={'Total\nParts'} value={totalUniqueParts} />
+      <Stat label={'BOM\nDepth'} value={maxDepthReached} color='violet' />
       <Stat
-        label='Internal Fab\nProcessed'
+        label={'Internal Fab\nProcessed'}
         value={totalIfpsProcessed}
         color='cyan'
         minWidth='80px'
       />
-      <Stat label='Out of\nStock' value={outOfStockCount} color='red' />
-      <Stat label='On\nOrder' value={onOrderCount} color='blue' />
-      <Stat label='Need to\nOrder' value={needToOrderCount} color='orange' />
+      <Stat label={'Out of\nStock'} value={outOfStockCount} color='red' />
+      <Stat label={'On\nOrder'} value={onOrderCount} color='blue' />
+      <Stat label={'Need to\nOrder'} value={needToOrderCount} color='orange' />
     </Group>
   );
 }

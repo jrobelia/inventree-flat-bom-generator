@@ -87,8 +87,10 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
 
         flattenedData.push({
           ...sub,
-          // Always inherit parent qty; unit_mismatch flag controls display
-          total_qty: item.total_qty,
+          // Use the substitute's own aggregated qty from backend (sum of
+          // contributions from only the BomItems that list THIS substitute).
+          // Falls back to parent total_qty if backend didn't provide it.
+          total_qty: sub.parent_total_qty ?? item.total_qty,
           unit: sub.unit || '', // Use substitute's own unit, empty if none
           unit_mismatch: !unitsMatch,
           optional: item.optional,

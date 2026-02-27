@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { BomItem } from '../types/BomTypes';
+import type { BomItem, SubstitutePart } from '../types/BomTypes';
 import {
   filterBomData,
   flattenBomData,
@@ -39,6 +39,30 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     is_child_row: false,
     ...overrides
   } as BomItem;
+}
+
+// Helper to create a minimal SubstitutePart for testing
+function createSubstitutePart(
+  overrides: Partial<SubstitutePart>
+): SubstitutePart {
+  return {
+    substitute_id: 1,
+    part_id: 99,
+    ipn: 'SUB-001',
+    part_name: 'Substitute Part',
+    full_name: 'SUB-001 | Substitute Part',
+    description: '',
+    unit: 'pcs',
+    parent_total_qty: 5,
+    in_stock: 0,
+    on_order: 0,
+    allocated: 0,
+    available: 0,
+    image: null,
+    thumbnail: null,
+    link: '',
+    ...overrides
+  };
 }
 
 describe('flattenBomData', () => {
@@ -172,6 +196,130 @@ describe('flattenBomData', () => {
     const result = flattenBomData(items);
 
     expect(result[1].part_id).toBe(123); // Child inherits parent's part_id
+  });
+});
+
+describe('flattenBomData -- substitute parts', () => {
+  it('should not add child rows when has_substitutes is false', () => {
+    const items = [createBomItem({ has_substitutes: false })];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(1);
+  });
+
+  it('should insert substitute as child row after parent', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ part_id: 99 })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(2);
+    expect(result[1].is_child_row).toBe(true);
+    expect(result[1].child_row_type).toBe('substitute');
+  });
+
+  it('should use parent_total_qty from substitute when available', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        total_qty: 3,
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ parent_total_qty: 7 })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].total_qty).toBe(7);
+  });
+
+  it('should fall back to parent total_qty when parent_total_qty is undefined', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        total_qty: 3,
+        has_substitutes: true,
+        substitute_parts: [
+          createSubstitutePart({ parent_total_qty: undefined })
+        ]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].total_qty).toBe(3);
+  });
+
+  it('should set unit_mismatch false when units match', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: 'pcs',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: 'pcs' })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(false);
+  });
+
+  it('should set unit_mismatch true when units differ', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: 'pcs',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: 'm' })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(true);
+  });
+
+  it('should set unit_mismatch false when both units are empty (unitless parts)', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: '',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: null })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(false);
+  });
+
+  it('should insert multiple substitutes as separate child rows', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        has_substitutes: true,
+        substitute_parts: [
+          createSubstitutePart({ part_id: 99, ipn: 'SUB-001' }),
+          createSubstitutePart({
+            part_id: 100,
+            ipn: 'SUB-002',
+            substitute_id: 2
+          })
+        ]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(3);
   });
 });
 
@@ -313,6 +461,26 @@ describe('groupChildRowsWithParents', () => {
     expect(result[1].ipn).toBe('Z-child');
     expect(result[2].ipn).toBe('A');
     expect(result[3].ipn).toBe('A-child');
+  });
+
+  it('should group substitute child correctly when child part_id differs from parent part_id', () => {
+    const parent = createBomItem({
+      part_id: 1,
+      ipn: 'PARENT-001',
+      is_child_row: false
+    });
+    const subChild = createBomItem({
+      part_id: 99,
+      ipn: 'SUB-001',
+      is_child_row: true,
+      parent_row_part_id: 1
+    });
+
+    const result = groupChildRowsWithParents([parent, subChild]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].part_id).toBe(1);
+    expect(result[1].part_id).toBe(99);
   });
 });
 

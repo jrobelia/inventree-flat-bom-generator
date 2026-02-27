@@ -1,14 +1,15 @@
 # FlatBOMGenerator - Plugin Improvement Roadmap
 
-> **Status:** Optional/Consumable Parts Complete - Ready for Production Deployment  
-> **Last Updated:** January 22, 2026
+> **Status:** Substitute Parts feature branch -- deployed, pending staging verification  
+> **Last Updated:** February 26, 2026
 
 ---
 
-## Current Status (v0.11.23)
+## Current Status (v0.11.47 on `feature/substitute-parts`)
 
 ### ✅ Major Accomplishments
-- **Test Infrastructure** - 151 tests (60 unit + 91 integration), Grade B+ quality, 92% coverage
+- **Substitute Parts** - Backend enrichment, frontend display with generic child row system, 13 tests (9 unit + 4 integration)
+- **Test Infrastructure** - 164+ tests (69+ unit + 95+ integration), Grade B+ quality, 92% coverage
 - **Code Quality** - Removed 96 lines dead code, fixed 3 incorrect fallbacks, 1 production bug
 - **Frontend Architecture** - Panel.tsx: 1250 → 306 lines (68% reduction) via component extraction
 - **Settings UI** - Moved from admin to frontend with progressive disclosure pattern
@@ -19,32 +20,37 @@
 **See [Completed Work Archive](#completed-work-archive) for detailed phase history.**
 
 ### 🎯 Next Steps
-1. **Frontend InvenTree Patterns** - Optional refactoring to align with InvenTree core patterns ([See Plan](FRONTEND-REFACTORING-PLAN.md))
-2. Consolidate checkbox filters into dropdown menu (like column visibility)
-3. Variant parts support (aggregate variant stock)
-4. InvenTree export integration (replace custom CSV)
+1. **Staging verification** -- test substitute parts feature on staging server
+2. CSV export: mark substitute rows (currently skipped)
+3. UX: disable "Show Substitutes" checkbox when no substitutes exist
+4. **Frontend InvenTree Patterns** - Optional refactoring to align with InvenTree core patterns ([See Plan](FRONTEND-REFACTORING-PLAN.md))
+5. Consolidate checkbox filters into dropdown menu (like column visibility)
+6. InvenTree export integration (replace custom CSV)
 
 ---
 
 ## Planned Features
 
-### Substitute Parts Support (3-4 hours, HIGH PRIORITY)
-**Goal:** Display substitute parts as expandable child rows with individual stock
+### Substitute Parts -- Finishing Touches (1-2 hours remaining)
+**Status:** Core feature complete on `feature/substitute-parts` branch. Deployed, pending staging test.
 
-**Design Pattern:** Reuse cutlist infrastructure (proven pattern)
-- Treat substitutes like cutlist breakdown (additional rows per parent)
-- Show "[Substitute] Part Name" with badge in Flags column
-- Each substitute shows its own stock, allocated, on order, shortfall
-- Group substitutes with parent during sorting
+**What's done:**
+- `SubstitutePartSerializer` (16 fields) with 9 unit tests
+- Backend enrichment in `views.py` -- queries `BomItemSubstitute`, groups by part, enriches with stock, generates unit-mismatch warnings
+- `SHOW_SUBSTITUTE_PARTS` plugin setting with query param override (`?include_substitutes=true`)
+- Generic child row system (`is_child_row`, `child_row_type`, `parent_row_part_id`) -- replaces old `is_cut_list_child`
+- Frontend: blue-themed rows, `↳` symbol, "Substitute" badge, dark mode support
+- "Show Substitutes" checkbox in ControlBar, auto-enabled on generation
+- 4 integration tests in `test_substitute_enrichment.py`
+- Tracking `bom_item_pk` through traversal and deduplication for correct substitute lookup
 
-**Implementation:**
-- Query `BomItemSubstitute` relationships during enrichment
-- Create substitute rows (similar to cutlist generation)
-- Add "Include Substitute Parts" checkbox (default: unchecked)
+**Remaining gaps:**
+- CSV export does not identify substitute rows (comment exists, logic not implemented)
+- "Show Substitutes" checkbox always enabled (should disable when no subs exist)
+- Zero frontend tests for substitute behavior in `bomDataProcessing.test.ts`
+- Needs staging verification before merge
 
-**Benefits:**
-- See which substitute has best availability at a glance
-- Reuses proven cutlist pattern (less risk)
+**See:** [Substitute Parts Implementation Plan](planning/SUBSTITUTE-PARTS-IMPLEMENTATION-PLAN.md)
 
 ### Mixed Flag Handling (2-3 hours, HIGH PRIORITY)
 **Goal:** Properly handle parts with different BOM line item properties
@@ -87,66 +93,24 @@ key = (part_id, optional, consumable, allow_variants, cut_length)
 **Status:** Not in production, document for when needed
 
 
-### Variant Parts Support (2-10 hours, MEDIUM PRIORITY)
-**Goal:** Integrate InvenTree's variant/template part system into flat BOM display
+### Variant Parts Support -- Not Planned
 
-**InvenTree Variant System:**
-- Template parts (`is_template=True`) with variant children (`variant_of` relationship)
-- Stock exists on variants, not templates
-- `allow_variants` BomItem flag allows any variant to fulfill requirement
-- Parts have `variant_stock` (total across all variants) vs `in_stock` (specific part only)
+InvenTree's variant/template part system (template parts with `is_template=True`,
+variants via `variant_of`, and `allow_variants` on BomItems) adds significant
+complexity to BOM traversal, stock aggregation, and deduplication. After
+evaluation, this is out of scope for the Flat BOM Generator plugin:
 
-**Current Plugin Behavior:**
-- Ignores variant relationships entirely
-- Shows template parts with zero stock (real stock on variants)
-- Does not respect `allow_variants` flag
-- Stock calculations use `in_stock` only (excludes variant stock)
+- Correctly respecting `allow_variants` requires per-BomItem flag tracking
+  through the entire traversal and deduplication pipeline
+- Mixed `allow_variants` flags on the same part create deduplication conflicts
+  (see Mixed Flag Handling above)
+- Variant stock aggregation interacts with every stock column and build margin
+  calculation
+- The effort (8-10 hours for a correct implementation) outweighs the value for
+  this plugin's use case
 
-**Implementation Options:**
-
-**Option 1: Variant Stock Visibility** (2-3 hours, LOW RISK)
-- Add `variant_stock` column to table (shows stock across all variants)
-- Add "Has Variants" badge indicator
-- No behavioral changes, just additional visibility
-- **Recommended starting point** - quick win, foundation for future enhancements
-
-**Option 2: Variant Expansion Mode** (6-8 hours, MEDIUM RISK)
-- Add "Expand Template Parts to Variants" checkbox
-- Replace template parts with individual variant rows (like cutlist pattern)
-- Show each variant's stock separately
-- User can see which variant has best availability
-- Reuses existing cutlist infrastructure
-
-**Option 3: Respect allow_variants Flag** (8-10 hours, HIGH COMPLEXITY)
-- Track `allow_variants` flag through BOM traversal
-- Stock calculations include variant_stock when flag is true
-- Badge: "Variants Allowed" on affected BomItems
-- Most accurate to InvenTree's build allocation logic
-- **Critical**: Requires separate line items for mixed `allow_variants` (see Mixed Flag Handling)
-
-**Proposed Approach:**
-1. Start with Option 1 (variant visibility)
-2. Gather user feedback on variant usage patterns
-3. Implement Option 2 or 3 based on actual needs
-
-**Testing Requirements:**
-- Fixtures with template parts and variants
-- Stock on variants but not templates
-- BomItems with `allow_variants=True`
-- Nested variant hierarchies (variant → sub-variant)
-
-**Benefits:**
-- Better visibility for parts with variant families
-- Stock availability more accurately represented
-- Aligns with InvenTree's build order allocation logic
-
-**Open Questions:**
-1. Are template parts common in your BOMs?
-2. Do you use the `allow_variants` flag?
-3. Should variant expansion be default ON or OFF?
-4. Should inactive variants be included in calculations?
-
-**Defer Until:** Determine actual variant usage patterns in production BOMs
+Users who need variant-aware BOM analysis should use InvenTree's built-in BOM
+view and build order system, which handles variants natively.
 
 ### UX Polish: Consolidate Filter Checkboxes (1-2 hours, MEDIUM PRIORITY)
 **Goal:** Move checkbox filters from ControlBar into a dropdown menu (similar to column visibility)
@@ -233,6 +197,14 @@ const hasCutlistRows = useMemo(() =>
 - Priority-based sorting
 - **Known Limitation**: Mixed flags (e.g., 3 optional + 2 required of same part) lose distinction
 
+### Phase 9: Substitute Parts (Jan 23 - Feb 2026)
+- `SubstitutePartSerializer` with DRF pattern (16 fields, 9 unit tests)
+- Backend enrichment: `BomItemSubstitute` query, stock data, unit-mismatch warnings
+- Generic child row system: `is_child_row` / `child_row_type` / `parent_row_part_id` (replaces `is_cut_list_child`)
+- Frontend: blue-themed substitute rows, badge, dark mode, auto-show on generation
+- 4 integration tests for enrichment logic
+- **Remaining:** CSV export, frontend tests, UX polish (checkbox disable)
+
 </details>
 
 ---
@@ -305,4 +277,4 @@ const hasCutlistRows = useMemo(() =>
 
 ---
 
-_Last updated: January 22, 2026_
+_Last updated: February 26, 2026_

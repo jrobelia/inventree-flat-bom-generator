@@ -124,6 +124,11 @@ function FlatBOMGeneratorPanel({
     return bomData?.metadata?.cutlist_units_for_ifab || 'units';
   }, [bomData?.metadata?.cutlist_units_for_ifab]);
 
+  // True when at least one item in the BOM has substitute parts available
+  const hasSubstitutes = useMemo(() => {
+    return bomData?.bom_items?.some((item) => item.has_substitutes) ?? false;
+  }, [bomData?.bom_items]);
+
   // Handle initial generation
   const handleGenerate = async () => {
     await generateFlatBom(settings);
@@ -329,6 +334,8 @@ function FlatBOMGeneratorPanel({
                 onShowCutlistRowsChange={setShowCutlistRows}
                 showSubstitutes={showSubstitutes}
                 onShowSubstitutesChange={setShowSubstitutes}
+                substituteSettingOn={settings.includeSubstitutes}
+                hasSubstitutes={hasSubstitutes}
                 onRefresh={handleGenerate}
                 loading={loading}
                 onExport={exportToCsv}

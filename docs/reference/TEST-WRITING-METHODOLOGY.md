@@ -389,6 +389,30 @@ When reviewing a test file:
 *Last Updated: December 18, 2025*
 *Test Validation Tracking Added: December 18, 2025*
 
+---
+
+## Frontend Test Conventions (Vitest)
+
+When writing or reviewing frontend tests, read the existing test files **before** writing a new one.
+Conventions that are not obvious from the task description alone:
+
+### File location and extension
+- Test file lives **next to the file it tests** -- `utils/foo.test.ts` tests `utils/foo.ts`
+- Use `.test.ts` unless the test file itself contains JSX (rare -- almost never needed for pure functions)
+- Never place a test in `components/` if it is testing a utility in `utils/`
+
+### Assertion style
+- Always use direct equality: `expect(result.foo).toBe(false)` -- not `.not.toBe(true)`
+- `.not.toBe(true)` passes for `undefined`, which hides missing return values
+
+### What not to test
+- Do **not** write "type contract" tests that check `typeof result.foo === 'boolean'`
+- TypeScript enforces types at compile time -- runtime `typeof` checks in tests add noise with zero safety benefit
+
+### When writing for a subagent
+Pass these conventions explicitly in the handoff prompt.
+The subagent does not read this document automatically -- it must be given the rules.
+
 
   piece_count_inc = 1
   totals[285] += 35 * 1 = 35

@@ -346,7 +346,7 @@ export function createBomTableColumns({
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
-        if (record.is_child_row) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -415,7 +415,7 @@ export function createBomTableColumns({
       render: (record) => {
         const isDimmed = !includeAllocations;
         const opacity = getDimmedOpacity(isDimmed);
-        if (record.is_child_row) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -469,7 +469,7 @@ export function createBomTableColumns({
       render: (record) => {
         const isDimmed = !includeOnOrder;
         const opacity = getDimmedOpacity(isDimmed);
-        if (record.is_child_row) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -516,7 +516,7 @@ export function createBomTableColumns({
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
-        if (record.is_child_row) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -

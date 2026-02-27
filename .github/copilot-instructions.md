@@ -12,7 +12,7 @@
 
 **Other key docs (consult as needed):**
 - [docs/reference/DEPLOYMENT-WORKFLOW.md](../docs/reference/DEPLOYMENT-WORKFLOW.md) -- deploy checklist
-- [docs/reference/TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md) -- code-first test approach
+- [docs/archive/TEST-WRITING-METHODOLOGY.md](../docs/archive/TEST-WRITING-METHODOLOGY.md) -- code-first test case study (archive)
 - [flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) -- test strategy
 - [docs/decisions.md](../docs/decisions.md) -- append-only log of non-obvious choices
 

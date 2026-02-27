@@ -1,6 +1,6 @@
 # Flat BOM Generator for InvenTree
 
-**Version:** 0.11.23 | **InvenTree:** 1.1.6+
+**Version:** 0.11.53 | **InvenTree:** 1.1.6+
 
 > Personal project to create a flattened BOM viewer for large assemblies in InvenTree. Currently stable after a refactor to improve code quality. Feedback and bug reports welcome!
 
@@ -312,11 +312,11 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 ## Known Limitations
 
-### Variant Parts
+### Variant Parts -- Not Supported
 
-**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock.
+**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock. Variant parts support (template parts, `allow_variants` flag) is **out of scope** for this plugin.
 
-**Impact**: 
+**Impact**:
 - Template parts (with variants) show zero stock (actual stock is on the variant children)
 - BOM items with "allow any variant" enabled don't show total available variant stock
 - Cannot see which specific variant has best availability for purchasing decisions
@@ -334,33 +334,30 @@ Plugin shows: 0 in stock (template has no physical stock)
 Reality: 150 total across variants (any could fulfill requirement)
 ```
 
-**Planned Enhancement**: See "Variant Parts Support" in Future Work section below.
+**Why Not Planned**: Correctly respecting `allow_variants` requires per-BomItem flag tracking through the entire traversal, deduplication, and stock calculation pipeline. The effort (8-10 hours) outweighs the value for this plugin's use case. Users who need variant-aware BOM analysis should use InvenTree's built-in BOM view and build order system, which handles variants natively. See [DEC-008 in decisions.md](docs/decisions.md) for full rationale.
 
 ## Future Work
 
 ### Planned Features
 
-**Status**: Plugin v0.10.0 has completed major refactoring (frontend architecture, test infrastructure, serializers). Future development focuses on new features:
+**Status**: v0.11.53 -- substitute parts, checkbox UX, and test infrastructure complete. Future work focuses on UX polish and new display features.
 
-1. **Settings UI/UX Improvement** - Move plugin settings from admin panel to in-panel drawer for better user experience with progressive disclosure pattern
-
-2. **Variant Parts Support** - Add variant stock visibility to address the template part limitation (see Known Limitations above)
-
-3. **Optional Parts Support** - Display and filter InvenTree's optional BOM items with visual indicators
-
-4. **Substitute Parts Support** - Show substitute parts as expandable rows with individual stock levels to help identify best purchasing options
-
-5. **InvenTree Export Integration** - Replace custom CSV export with InvenTree's built-in export system (CSV, JSON, XLSX formats)
+1. **Mixed Flag Handling** (HIGH) - Separate line items when the same part has different optional/consumable flags across BOM lines
+2. **Child Row Visual Consistency** (MEDIUM) - Unified styling for cut-to-length, substitute, and mixed-flag child rows that feels InvenTree-native
+3. **UI Overhaul: Control Bar** (MEDIUM) - Replace checkbox clutter with a cleaner pattern (dropdown menu, collapsible panel, or toolbar redesign)
+4. **Pre-Generation Info Panel** (LOW) - Explain plugin-specific features before the user hits Generate
+5. **Rows-Per-Page Fix** (LOW) - Replace "All" with 500/1000 to match InvenTree's standard pagination
+6. **InvenTree Export Integration** (LOW) - Replace custom CSV with InvenTree's built-in export system (CSV, JSON, XLSX)
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed implementation plans and prioritization.
 
-### Related Plugins (Planned)
+### Related Plugins
 
 This is the first of three planned plugins to enhance InvenTree's manufacturing planning capabilities for assemblies with nested sub-assemblies:
 
-1. **Flat BOM Generator** (this plugin) - High-level planning and purchasing focused on generating actionable flat BOMs from assembly structures
-2. **Build Order Generator** (planned) - Semi-automated build order creation from top-level build orders, with dependency tracking and scheduling
-3. **Purchase Order Generator** (planned) - Automated PO generation based on flat BOMs, using default supplier logic and project-based part allocation
+1. **Flat BOM Generator** (this plugin) - Flattens nested BOMs into a purchasing-focused view with stock analysis, substitute parts, and build margin planning
+2. **Build Order Generator** (planned) - Traverses the BOM tree and creates InvenTree build orders for every sub-assembly that needs building, with an interactive preview tree before creation
+3. **Purchase Order Generator** (planned) - Automates PO generation from flat BOMs using default supplier logic and project-based part allocation
 
-These plugins create actionable but temporary lists for manufacturing and purchasing workflows without modifying core InvenTree data structures.
+Each plugin produces actionable but temporary output for manufacturing and purchasing workflows. They share conventions (DRF serializers, React/Mantine frontend, Vitest testing) but are independent codebases -- no shared library required.
 

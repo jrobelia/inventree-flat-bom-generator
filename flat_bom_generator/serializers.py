@@ -46,6 +46,123 @@ class BOMWarningSerializer(serializers.Serializer):
         fields = ["type", "part_id", "part_name", "message"]
 
 
+class SubstitutePartSerializer(serializers.Serializer):
+    """Serializes substitute part data with stock information.
+
+    Substitutes are alternative parts that can fulfill the same BOM requirement.
+    Each substitute includes its own stock, allocation, and availability data,
+    allowing users to see which alternative has the best availability.
+
+    Used in FlatBOMItemSerializer to include substitute_parts array in API response.
+    """
+
+    # Core identifiers
+    substitute_id = serializers.IntegerField(
+        required=True, help_text="BomItemSubstitute primary key"
+    )
+
+    part_id = serializers.IntegerField(
+        required=True, help_text="Substitute Part primary key"
+    )
+
+    ipn = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Internal Part Number of substitute",
+    )
+
+    part_name = serializers.CharField(required=True, help_text="Substitute part name")
+
+    full_name = serializers.CharField(
+        required=True,
+        help_text="Full display name with variant info (IPN | Name | Variant)",
+    )
+
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Substitute part description",
+    )
+
+    unit = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Unit of measurement for this substitute part",
+    )
+
+    parent_total_qty = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        help_text="Parent BOM item's total quantity (for unit comparison)",
+    )
+
+    parent_unit = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Parent BOM item's unit (for unit comparison)",
+    )
+
+    # Stock data
+    in_stock = serializers.FloatField(
+        required=True, help_text="Total inventory for this substitute"
+    )
+
+    on_order = serializers.FloatField(
+        required=True,
+        help_text="Quantity on incomplete purchase orders for this substitute",
+    )
+
+    allocated = serializers.FloatField(
+        required=True,
+        help_text="Stock reserved for builds/sales for this substitute",
+    )
+
+    available = serializers.FloatField(
+        required=True, help_text="in_stock - allocated for this substitute"
+    )
+
+    # Display metadata
+    image = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="Full-size image URL (None if no image)",
+    )
+
+    thumbnail = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="Thumbnail image URL (None if no image)",
+    )
+
+    link = serializers.CharField(
+        required=True, help_text="URL to substitute part detail page"
+    )
+
+    class Meta:
+        """Meta options for this serializer."""
+
+        fields = [
+            "substitute_id",
+            "part_id",
+            "ipn",
+            "part_name",
+            "full_name",
+            "description",
+            "in_stock",
+            "on_order",
+            "allocated",
+            "available",
+            "image",
+            "thumbnail",
+            "link",
+        ]
+
+
 class FlatBOMItemSerializer(serializers.Serializer):
     """Serializes enriched flat BOM item data for frontend display.
 
@@ -194,6 +311,20 @@ class FlatBOMItemSerializer(serializers.Serializer):
         help_text="BOM traversal stopped at max depth (assembly not fully expanded)",
     )
 
+    # Substitute parts support
+    has_substitutes = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="True if this part has substitute options available",
+    )
+
+    substitute_parts = SubstitutePartSerializer(
+        many=True,
+        required=False,
+        allow_null=True,
+        help_text="List of substitute parts with individual stock data (None if no substitutes)",
+    )
+
     class Meta:
         """Meta options for this serializer."""
 
@@ -229,6 +360,9 @@ class FlatBOMItemSerializer(serializers.Serializer):
             # Warning flags
             "assembly_no_children",
             "max_depth_exceeded",
+            # Substitute parts
+            "has_substitutes",
+            "substitute_parts",
         ]
 
 

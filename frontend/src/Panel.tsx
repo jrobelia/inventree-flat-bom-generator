@@ -50,7 +50,7 @@ import type { BomItem } from './types/BomTypes';
 import {
   filterBomData,
   flattenBomData,
-  groupChildrenWithParents,
+  groupChildRowsWithParents,
   sortBomData
 } from './utils/bomDataProcessing';
 import {
@@ -82,6 +82,7 @@ function FlatBOMGeneratorPanel({
   const [includeAllocations, setIncludeAllocations] = useState<boolean>(true);
   const [includeOnOrder, setIncludeOnOrder] = useState<boolean>(true);
   const [showCutlistRows, setShowCutlistRows] = useState<boolean>(true);
+  const [showSubstitutes, setShowSubstitutes] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [warningsDismissed, setWarningsDismissed] = useState<boolean>(false);
@@ -123,15 +124,26 @@ function FlatBOMGeneratorPanel({
     return bomData?.metadata?.cutlist_units_for_ifab || 'units';
   }, [bomData?.metadata?.cutlist_units_for_ifab]);
 
+  // True when at least one item in the BOM has substitute parts available
+  const hasSubstitutes = useMemo(() => {
+    return bomData?.bom_items?.some((item) => item.has_substitutes) ?? false;
+  }, [bomData?.bom_items]);
+
   // Handle initial generation
   const handleGenerate = async () => {
     await generateFlatBom(settings);
+    // Auto-show substitute rows when substitutes are included
+    if (settings.includeSubstitutes) {
+      setShowSubstitutes(true);
+    }
   };
 
   // Handle settings apply from drawer (regenerates BOM)
   const handleApplySettings = async () => {
     setSettingsDrawerOpen(false);
     await generateFlatBom(settings);
+    // Sync substitute row visibility with the generation setting
+    setShowSubstitutes(settings.includeSubstitutes);
   };
 
   /**
@@ -162,7 +174,17 @@ function FlatBOMGeneratorPanel({
 
     // Step 2: Filter cutlist rows if checkbox unchecked
     if (!showCutlistRows) {
-      data = data.filter((item) => !item.is_cut_list_child);
+      data = data.filter(
+        (item) =>
+          !item.is_child_row || !item.child_row_type?.startsWith('cutlist')
+      );
+    }
+
+    // Step 2.5: Filter substitute rows if checkbox unchecked
+    if (!showSubstitutes) {
+      data = data.filter(
+        (item) => !item.is_child_row || item.child_row_type !== 'substitute'
+      );
     }
 
     // Step 3: Filter by search query
@@ -180,13 +202,14 @@ function FlatBOMGeneratorPanel({
       );
 
       // Step 5: Group children with parents after sorting
-      data = groupChildrenWithParents(data);
+      data = groupChildRowsWithParents(data);
     }
 
     return data;
   }, [
     bomData,
     showCutlistRows,
+    showSubstitutes,
     searchQuery,
     sortStatus,
     buildQuantity,
@@ -309,6 +332,10 @@ function FlatBOMGeneratorPanel({
                 onIncludeOnOrderChange={setIncludeOnOrder}
                 showCutlistRows={showCutlistRows}
                 onShowCutlistRowsChange={setShowCutlistRows}
+                showSubstitutes={showSubstitutes}
+                onShowSubstitutesChange={setShowSubstitutes}
+                substituteSettingOn={settings.includeSubstitutes}
+                hasSubstitutes={hasSubstitutes}
                 onRefresh={handleGenerate}
                 loading={loading}
                 onExport={exportToCsv}
@@ -371,10 +398,25 @@ function FlatBOMGeneratorPanel({
             onSortStatusChange={setSortStatus}
             minHeight={200}
             noRecordsText='No parts found'
+            rowStyle={(record) => {
+              if (
+                record.is_child_row &&
+                record.child_row_type === 'substitute'
+              ) {
+                return {
+                  // light: subtle blue-0 tint; dark: blue at 18% opacity — stands out against dark-7/8 table rows
+                  backgroundColor:
+                    'light-dark(var(--mantine-color-blue-0), rgba(34, 139, 230, 0.18))',
+                  borderLeft:
+                    '4px solid light-dark(var(--mantine-color-blue-4), var(--mantine-color-blue-6))'
+                };
+              }
+            }}
             paginationText={({ from, to, totalRecords }) => {
-              // Count child/cut parts (rows with is_cut_list_child true)
+              // Count child/cut parts (rows with is_child_row true)
               const cutParts = filteredAndSortedData.filter(
-                (row) => row.is_cut_list_child
+                (row) =>
+                  row.is_child_row && row.child_row_type?.startsWith('cutlist')
               ).length;
               return cutParts > 0
                 ? `Showing ${from} to ${to} of ${totalRecords} parts (including ${cutParts} cut parts)`

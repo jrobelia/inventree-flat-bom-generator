@@ -1,244 +1,79 @@
 # GitHub Copilot Instructions - FlatBOMGenerator Plugin
 
-**Audience:** AI Agents (GitHub Copilot) | **Category:** Quick Reference | **Purpose:** Auto-discovered entry point for GitHub Copilot agents | **Last Updated:** January 12, 2026
-
-**This file is automatically read by GitHub Copilot to provide context about this plugin.**
+**Auto-discovered by GitHub Copilot. Last Updated: February 26, 2026**
 
 ---
 
-## Quick Start for AI Agents
+## Before Starting Any Work
 
-**CRITICAL: Before Starting Any Work**
+1. `git log --oneline -10` and `git status` -- know what's deployed and uncommitted
+2. Read [docs/ROADMAP.md](../docs/ROADMAP.md) -- current status, next steps, what's done
+3. Read [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) -- module map, API reference, patterns
 
-1. **Check Git History**: `git log --oneline -10` - What's been deployed? What's untested?
-2. **Check Git Status**: `git status` - What's uncommitted? Are there WIP files?
-3. **Check Last Deployment**: Look for version tags (e.g., v0.9.2) - Is latest code on server?
-
-**Then Review Documentation:**
-
-1. **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** - Plugin architecture, tech stack, API reference, development patterns
-2. **[docs/reference/DEPLOYMENT-WORKFLOW.md](../docs/reference/DEPLOYMENT-WORKFLOW.md)** - **Deployment checklist and testing workflow (READ THIS)**
-3. **[docs/reference/TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md)** - **Code-first approach for writing/validating tests (ESSENTIAL FOR TEST WORK)**
-4. **[docs/ROADMAP.md](../docs/ROADMAP.md)** - Current refactoring status and plan
-5. **[flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md)** - Testing strategy and execution guide
+**Other key docs (consult as needed):**
+- [docs/reference/DEPLOYMENT-WORKFLOW.md](../docs/reference/DEPLOYMENT-WORKFLOW.md) -- deploy checklist
+- [docs/reference/TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md) -- code-first test approach
+- [flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) -- test strategy
+- [docs/decisions.md](../docs/decisions.md) -- append-only log of non-obvious choices
 
 ---
 
 ## Plugin Overview
 
-**Type:** InvenTree UI Plugin with Custom API Endpoints  
-**Purpose:** Advanced flat BOM analysis with stock tracking and production planning
+**Type:** InvenTree UI Plugin (Django REST Framework backend + React/TypeScript/Mantine frontend)  
+**Purpose:** Flat BOM analysis with stock tracking, substitute parts, and production planning
 
-**Key Features:**
-- Recursive BOM flattening with deduplication
-- Intelligent part categorization (TLA, FAB, COML, etc.)
-- Stock availability and allocation tracking
-- Shortfall calculation for production planning
-- Warning system for BOM structure issues
-- React/TypeScript frontend with Mantine UI
+**Core capabilities:** Recursive BOM flattening with deduplication, part categorization (TLA/FAB/COML/etc.), stock/allocation/on-order tracking, shortfall calculation, substitute part display, cut-to-length support, warning system, CSV export.
 
 ---
 
-## Current Work Status
+## User Context and Communication
 
-**Phase:** Testing complete - Ready for refactoring
-- ✅ Phase 1-3: Serializer refactoring (BOMWarningSerializer, FlatBOMItemSerializer, FlatBOMResponseSerializer)
-- ✅ Priority 1-4: Integration test coverage (plugin settings, errors, warnings, complex BOMs)
-- ✅ Warning Generation: 8 integration tests via fixture-based approach
-- ✅ Test Quality: Grade B+ (85% Grade A, 92% coverage)
-
-**Test Status:** 151 tests (150 passing, 1 skipped), ready for refactoring phase
-
-**Recent Changes:**
-- Fixture-based testing breakthrough: Programmatic fixture loading bypasses InvenTree validation
-- Priority 3 (Warning Generation) completed: 8 integration tests for view-level aggregation
-- 151 tests total (60 unit + 91 integration): 150 passing, 1 skipped
-- Test quality: Grade B+ (85% Grade A tests, 92% estimated coverage)
-- Resolved 4 InvenTree model evolution issues during fixture debugging
-- **Code-first test methodology established** ([TEST-WRITING-METHODOLOGY.md](../docs/reference/TEST-WRITING-METHODOLOGY.md)) - read code THEN write tests
-
-See [docs/ROADMAP.md](../docs/ROADMAP.md) for detailed status.
+- User is a **mechanical engineer** learning software development patterns
+- Prefers simple solutions and clear explanations over complex automation
+- Explain "why" not just "what"; use plain English for software concepts
+- No emoji in code (use ASCII: `[INFO]`, `[OK]`, `[ERROR]`)
+- Manual testing on staging is a hard gate -- never assume tests alone prove it works
+- Always deploy to staging and get user confirmation before committing
 
 ---
 
-## Documentation Organization
+## Code Standards
 
-This plugin follows **single source of truth** principle:
-
-**Each document has ONE focused purpose:**
-- **docs/ARCHITECTURE.md** → Plugin architecture, tech stack, API reference, patterns, backend/frontend structure
-- **docs/decisions.md** → Append-only log of non-obvious technical choices
-- **docs/ROADMAP.md** → What to refactor, how to refactor, current status, next steps
-- **README.md** → User-facing: features, installation, usage
-
-**Key Principles:**
-- Link between docs instead of duplicating content
-- Keep progress logs brief (3-5 lines per session, reference git commits)
-- Reorganize when documents exceed 500 lines
-- Focus on "what's next" rather than historical narrative
+- DRF serializers for all API responses
+- Type hints on all functions; docstrings with examples
+- Keep functions under 50 lines
+- Test edge cases: None values, empty strings, wrong types
+- Code-first test methodology: read the code THEN write tests
+- Test quality matters more than quantity
 
 ---
 
-## Toolkit Context
+## Commands
 
-For toolkit-level guidance (deployment, build commands, general patterns):
-
-**In workspace root:**
-- `.github/copilot-instructions.md` - Toolkit quick reference
-- `docs/architecture.md` - Toolkit module map
-- `docs/decisions.md` - Decision log
-- `docs/reference/` - Stable how-to guides
-- `QUICK-REFERENCE.md` - Command cheat sheet
-
----
-
-## Collaborative Development Principles
-
-**This user values learning together, not just getting code written.**
-
-### Before Implementing:
-1. **Explain the approach** - What are we changing and why?
-2. **Discuss trade-offs** - What are the pros/cons of this approach?
-3. **Get approval** - Wait for user to agree before proceeding
-4. **Teach patterns** - Help user understand the architecture, not just the code
-
-### When Writing Code:
-- **Educational comments** - Explain WHY, not just WHAT
-- **Show alternatives** - "We could also do X, but Y is better because..."
-- **Ask questions** - "Does this make sense?" "Would you prefer approach A or B?"
-- **Admit uncertainty** - "I'm not sure if this is the best way, let's test it"
-
-### After Changes:
-- **Verify it works** - Don't assume tests passing means code works on server
-- **Manual testing** - Deploy to staging, test in UI, check browser console
-- **Document lessons** - What did we learn? What would we do differently next time?
-
----
-
-## Common Commands
-
-**Testing:**
 ```powershell
-# Run unit tests (fast, no database)
-python -m unittest discover -s flat_bom_generator/tests/unit -v
-
-# Run integration tests (requires InvenTree dev setup)
-cd ..\..\inventree-dev\InvenTree
-& .venv\Scripts\Activate.ps1
-invoke dev.test -r FlatBOMGenerator.tests.integration -v
-
-# Or use toolkit script (recommended)
-cd ..\..  # Back to toolkit root
+# Tests (from toolkit root)
 .\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Unit
 .\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -Integration
 .\scripts\Test-Plugin.ps1 -Plugin "FlatBOMGenerator" -All
-```
 
-**Integration Testing Setup (one-time):**
-```powershell
-# From toolkit root
-.\scripts\Setup-InvenTreeDev.ps1
-.\scripts\Link-PluginToDev.ps1 -Plugin "FlatBOMGenerator"
-```
-
-**Build & Deploy:**
-```powershell
-# Build plugin (compiles frontend)
-cd 'C:\PythonProjects\Inventree Plugin Creator\inventree-plugin-ai-toolkit'
+# Build and deploy
 .\scripts\Build-Plugin.ps1 -Plugin "FlatBOMGenerator"
-
-# Deploy to staging
 .\scripts\Deploy-Plugin.ps1 -Plugin "FlatBOMGenerator" -Server staging
 ```
 
-**Development:**
-```powershell
-# Activate virtual environment
-& ".venv\Scripts\Activate.ps1"
+---
 
-# Run frontend dev server
-cd frontend
-npm run dev
-```
+## Documentation Principles
+
+Single source of truth -- each doc has ONE purpose. Link, don't duplicate.
+- **ARCHITECTURE.md** -- module map, tech stack, API reference
+- **ROADMAP.md** -- status, next steps, completed work archive
+- **decisions.md** -- append-only non-obvious choices
+- **README.md** -- user-facing: features, installation, usage
+
+Keep progress logs brief (3-5 lines, reference git commits).
 
 ---
 
-## Key Guidelines
-
-### User Context
-- User is a mechanical engineer with intermediate Python skills
-- Learning software development patterns (test-first, refactoring)
-- Prefers simple solutions over complex automation
-- Values clear explanations and complete examples
-
-### Communication
-- Use plain English for software concepts
-- Provide step-by-step instructions
-- **No emoji in code** (use ASCII: `[INFO]`, `[OK]`, `[ERROR]`)
-- Explain "why" not just "what"
-
-### Code Generation
-- Follow test-first workflow: write tests → implement → verify
-- Use Django REST Framework serializers for API responses
-- Add docstrings with examples
-- Type hints on all functions
-- Keep functions under 50 lines
-
-### Testing
-- Write tests for what you refactor, not just what's easy
-- Test edge cases: None values, empty strings, wrong types
-- All 106 tests should pass (1 known skip)
-- Test quality matters more than test quantity
-
----
-
-## Architecture Quick Reference
-
-**Backend (Django REST Framework):**
-- `core.py` - Main plugin class with mixins (SettingsMixin, UrlsMixin, UserInterfaceMixin)
-- `views.py` - FlatBOMView API endpoint
-- `serializers.py` - BOMWarningSerializer, FlatBOMItemSerializer
-- `bom_traversal.py` - Core BOM algorithms (get_flat_bom, deduplicate_and_sum)
-- `categorization.py` - Part type classification logic
-
-**Frontend (React 19 + TypeScript + Mantine 8):**
-- `frontend/src/Panel.tsx` - Main UI panel component
-- `frontend/src/locale.tsx` - i18n translations
-- Uses mantine-datatable for BOM display
-- Vite 6 for build tooling
-
-**Testing:**
-- 106 tests across 9 test files
-- Uses Django's unittest.TestCase
-- Some tests use CSV data files in test_data/
-
-See [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) for complete architecture details.
-
----
-
-## Critical Gaps & Priorities
-
-**From TEST-QUALITY-REVIEW.md:**
-- 🔴 **ZERO tests for views.py** (API endpoint completely untested)
-- 🔴 **ZERO tests for core BOM traversal** (get_flat_bom, deduplicate_and_sum)
-- ⚠️ 1 test skipped for months (test_piece_qty_times_count_rollup)
-- ⚠️ Some tests validate stub functions, not real code
-
----
-
-## Remember
-
-This plugin is under active refactoring. Always:
-1. Check if tests exist before refactoring
-2. Evaluate test quality, not just quantity
-3. Write/improve tests BEFORE refactoring
-4. Keep documentation focused (single source of truth)
-5. Update progress logs briefly (git has full details)
-
-**Your goal:** Help make this plugin maintainable, well-tested, and production-ready while teaching software engineering best practices.
-
----
-
-**Last Updated:** December 15, 2025  
-**Plugin Version:** 0.9.2  
-**InvenTree Compatibility:** 1.1.6+
+**Plugin Version:** 0.11.51 | **InvenTree Compatibility:** 1.1.6+

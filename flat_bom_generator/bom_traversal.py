@@ -33,6 +33,7 @@ def get_bom_items(part) -> List[Dict]:
             items.append({
                 "sub_part": bom_item.sub_part,
                 "sub_part_id": bom_item.sub_part.pk,
+                "bom_item_pk": bom_item.pk,
                 "quantity": float(bom_item.quantity),
                 "reference": bom_item.reference or "",
                 "note": bom_item.note or "",
@@ -217,6 +218,7 @@ def traverse_bom(
                 child_node["note"] = child_note
                 child_node["optional"] = bom_item.get("optional", False)
                 child_node["consumable"] = bom_item.get("consumable", False)
+                child_node["bom_item_pk"] = bom_item.get("bom_item_pk")
 
                 # If parent is Internal Fab and child is a leaf part (Fab/Coml), mark for cut row logic
                 # Don't mark assemblies - their descendants should be treated as regular parts
@@ -327,6 +329,7 @@ def get_leaf_parts_only(
             "reference": tree.get("reference", ""),
             "note": tree.get("note", ""),
             "level": tree["level"],
+            "bom_item_pk": tree.get("bom_item_pk"),
             "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
             "parent_ipn": tree.get("parent_ipn"),
             "parent_part_id": tree.get("parent_part_id"),
@@ -350,6 +353,7 @@ def get_leaf_parts_only(
             "reference": tree.get("reference", ""),
             "note": tree.get("note", ""),
             "level": tree["level"],
+            "bom_item_pk": tree.get("bom_item_pk"),
             "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
             "parent_ipn": tree.get("parent_ipn"),
             "parent_part_id": tree.get("parent_part_id"),
@@ -395,6 +399,7 @@ def get_leaf_parts_only(
             "reference": tree.get("reference", ""),
             "note": tree.get("note", ""),
             "level": tree["level"],
+            "bom_item_pk": tree.get("bom_item_pk"),
             "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
             "parent_ipn": tree.get("parent_ipn"),
             "parent_part_id": tree.get("parent_part_id"),
@@ -438,6 +443,11 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
         list
     )  # Store cut list details for Internal Fab children
     ctl_warnings = []  # Store warnings for CtL and Internal Fab issues
+    # Track which BomItems contributed what qty to each deduplicated part
+    # Used by views.py to aggregate substitute qtys per substitute part
+    bom_item_contributions = defaultdict(
+        dict
+    )  # {part_key: {bom_item_pk: cumulative_qty}}
 
     # Retrieve allowed units for Internal Fab cut breakdown from attached attribute (set by get_flat_bom)
     if hasattr(deduplicate_and_sum, "ifab_units"):
@@ -467,6 +477,14 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
 
         # Always use part_id as key (single row per part)
         key = part_id
+
+        # Track BomItem contribution for substitute qty aggregation
+        bom_item_pk = leaf.get("bom_item_pk")
+        if bom_item_pk is not None:
+            bom_item_contributions[key][bom_item_pk] = (
+                bom_item_contributions[key].get(bom_item_pk, 0.0)
+                + leaf["cumulative_qty"]
+            )
 
         # For CtL parts, accumulate total length (qty * length)
         if part_type == "CtL" and cut_length is not None:
@@ -685,6 +703,7 @@ def deduplicate_and_sum(leaf_parts: List[Dict]) -> List[Dict]:
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
             "optional": is_optional,
             "consumable": is_consumable,
+            "bom_item_contributions": dict(bom_item_contributions.get(key, {})),
         }
         if enable_ifab_cuts:
             row["internal_fab_cut_list"] = (

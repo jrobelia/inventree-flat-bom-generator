@@ -6,11 +6,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { BomItem } from '../types/BomTypes';
+import type { BomItem, SubstitutePart } from '../types/BomTypes';
 import {
   filterBomData,
   flattenBomData,
-  groupChildrenWithParents,
+  groupChildRowsWithParents,
   sortBomData
 } from './bomDataProcessing';
 
@@ -36,9 +36,33 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     link: '/part/1/',
     default_supplier_id: undefined,
     default_supplier_name: '',
-    is_cut_list_child: false,
+    is_child_row: false,
     ...overrides
   } as BomItem;
+}
+
+// Helper to create a minimal SubstitutePart for testing
+function createSubstitutePart(
+  overrides: Partial<SubstitutePart>
+): SubstitutePart {
+  return {
+    substitute_id: 1,
+    part_id: 99,
+    ipn: 'SUB-001',
+    part_name: 'Substitute Part',
+    full_name: 'SUB-001 | Substitute Part',
+    description: '',
+    unit: 'pcs',
+    parent_total_qty: 5,
+    in_stock: 0,
+    on_order: 0,
+    allocated: 0,
+    available: 0,
+    image: null,
+    thumbnail: null,
+    link: '',
+    ...overrides
+  };
 }
 
 describe('flattenBomData', () => {
@@ -72,9 +96,9 @@ describe('flattenBomData', () => {
     const result = flattenBomData(items);
 
     expect(result).toHaveLength(3); // 1 parent + 2 children
-    expect(result[0].is_cut_list_child).toBe(false);
-    expect(result[1].is_cut_list_child).toBe(true);
-    expect(result[2].is_cut_list_child).toBe(true);
+    expect(result[0].is_child_row).toBe(false);
+    expect(result[1].is_child_row).toBe(true);
+    expect(result[2].is_child_row).toBe(true);
 
     // Verify child quantities and lengths
     expect(result[1].total_qty).toBe(2);
@@ -175,6 +199,130 @@ describe('flattenBomData', () => {
   });
 });
 
+describe('flattenBomData -- substitute parts', () => {
+  it('should not add child rows when has_substitutes is false', () => {
+    const items = [createBomItem({ has_substitutes: false })];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(1);
+  });
+
+  it('should insert substitute as child row after parent', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ part_id: 99 })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(2);
+    expect(result[1].is_child_row).toBe(true);
+    expect(result[1].child_row_type).toBe('substitute');
+  });
+
+  it('should use parent_total_qty from substitute when available', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        total_qty: 3,
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ parent_total_qty: 7 })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].total_qty).toBe(7);
+  });
+
+  it('should fall back to parent total_qty when parent_total_qty is undefined', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        total_qty: 3,
+        has_substitutes: true,
+        substitute_parts: [
+          createSubstitutePart({ parent_total_qty: undefined })
+        ]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].total_qty).toBe(3);
+  });
+
+  it('should set unit_mismatch false when units match', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: 'pcs',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: 'pcs' })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(false);
+  });
+
+  it('should set unit_mismatch true when units differ', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: 'pcs',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: 'm' })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(true);
+  });
+
+  it('should set unit_mismatch false when both units are empty (unitless parts)', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        unit: '',
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({ unit: null })]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result[1].unit_mismatch).toBe(false);
+  });
+
+  it('should insert multiple substitutes as separate child rows', () => {
+    const items = [
+      createBomItem({
+        part_id: 1,
+        has_substitutes: true,
+        substitute_parts: [
+          createSubstitutePart({ part_id: 99, ipn: 'SUB-001' }),
+          createSubstitutePart({
+            part_id: 100,
+            ipn: 'SUB-002',
+            substitute_id: 2
+          })
+        ]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    expect(result).toHaveLength(3);
+  });
+});
+
 describe('filterBomData', () => {
   const items = [
     createBomItem({ ipn: 'FAB-001', part_name: 'Bracket' }),
@@ -228,16 +376,16 @@ describe('filterBomData', () => {
   });
 });
 
-describe('groupChildrenWithParents', () => {
+describe('groupChildRowsWithParents', () => {
   it('should keep children attached to parent when parent is first', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'A-child1', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A-child2', is_cut_list_child: true }),
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false })
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'A-child1', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A-child2', is_child_row: true }),
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(4);
     expect(result[0].ipn).toBe('A');
@@ -249,13 +397,13 @@ describe('groupChildrenWithParents', () => {
   it('should group children with parent after sorting separates them', () => {
     // Simulate sort by IPN descending: B, B-child, A-child, A
     const items = [
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false }),
-      createBomItem({ part_id: 2, ipn: 'B-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false })
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false }),
+      createBomItem({ part_id: 2, ipn: 'B-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     // Should regroup to: B, B-child, A, A-child
     expect(result).toHaveLength(4);
@@ -267,13 +415,13 @@ describe('groupChildrenWithParents', () => {
 
   it('should handle multiple children per parent', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'Parent', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'Child1', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'Child2', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'Child3', is_cut_list_child: true })
+      createBomItem({ part_id: 1, ipn: 'Parent', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'Child1', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'Child2', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'Child3', is_child_row: true })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(4);
     expect(result[0].ipn).toBe('Parent');
@@ -284,12 +432,12 @@ describe('groupChildrenWithParents', () => {
 
   it('should handle parents without children', () => {
     const items = [
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 2, ipn: 'B', is_cut_list_child: false }),
-      createBomItem({ part_id: 3, ipn: 'C', is_cut_list_child: false })
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 2, ipn: 'B', is_child_row: false }),
+      createBomItem({ part_id: 3, ipn: 'C', is_child_row: false })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     expect(result).toHaveLength(3);
     expect(result[0].ipn).toBe('A');
@@ -300,19 +448,39 @@ describe('groupChildrenWithParents', () => {
   it('should preserve parent sort order', () => {
     // Parents sorted Z -> A
     const items = [
-      createBomItem({ part_id: 3, ipn: 'Z', is_cut_list_child: false }),
-      createBomItem({ part_id: 3, ipn: 'Z-child', is_cut_list_child: true }),
-      createBomItem({ part_id: 1, ipn: 'A', is_cut_list_child: false }),
-      createBomItem({ part_id: 1, ipn: 'A-child', is_cut_list_child: true })
+      createBomItem({ part_id: 3, ipn: 'Z', is_child_row: false }),
+      createBomItem({ part_id: 3, ipn: 'Z-child', is_child_row: true }),
+      createBomItem({ part_id: 1, ipn: 'A', is_child_row: false }),
+      createBomItem({ part_id: 1, ipn: 'A-child', is_child_row: true })
     ];
 
-    const result = groupChildrenWithParents(items);
+    const result = groupChildRowsWithParents(items);
 
     // Should maintain parent order: Z, A
     expect(result[0].ipn).toBe('Z');
     expect(result[1].ipn).toBe('Z-child');
     expect(result[2].ipn).toBe('A');
     expect(result[3].ipn).toBe('A-child');
+  });
+
+  it('should group substitute child correctly when child part_id differs from parent part_id', () => {
+    const parent = createBomItem({
+      part_id: 1,
+      ipn: 'PARENT-001',
+      is_child_row: false
+    });
+    const subChild = createBomItem({
+      part_id: 99,
+      ipn: 'SUB-001',
+      is_child_row: true,
+      parent_row_part_id: 1
+    });
+
+    const result = groupChildRowsWithParents([parent, subChild]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].part_id).toBe(1);
+    expect(result[1].part_id).toBe(99);
   });
 });
 

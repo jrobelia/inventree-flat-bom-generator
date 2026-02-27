@@ -33,7 +33,33 @@ export function createBomTableColumns({
       sortable: true,
       switchable: false,
       render: (record) => {
-        if (record.is_cut_list_child) {
+        if (record.is_child_row) {
+          // Substitute parts: Show indented with arrow
+          if (record.child_row_type === 'substitute') {
+            return (
+              <Group gap='xs' wrap='nowrap' style={{ paddingLeft: '2rem' }}>
+                <Text c='blue' fw={700} size='lg'>
+                  ↳
+                </Text>
+                {record.thumbnail && (
+                  <img
+                    src={record.thumbnail}
+                    alt={record.full_name}
+                    style={{ width: 30, height: 30, objectFit: 'contain' }}
+                  />
+                )}
+                <Anchor
+                  href={record.link}
+                  target='_blank'
+                  size='sm'
+                  style={{ textDecoration: 'none' }}
+                >
+                  {record.full_name}
+                </Anchor>
+              </Group>
+            );
+          }
+          // Cutlist rows: Show icon only
           return (
             <Group gap='xs' wrap='nowrap' justify='flex-end'>
               <IconCornerDownRight
@@ -98,7 +124,7 @@ export function createBomTableColumns({
 
         // Internal Fab and CtL child rows get the CUT suffix
         const display =
-          record.is_cut_list_child &&
+          record.is_child_row &&
           (baseType === 'Internal Fab' || baseType === 'CtL')
             ? `${baseType} - CUT`
             : baseType;
@@ -134,8 +160,22 @@ export function createBomTableColumns({
       switchable: true,
       defaultVisible: false,
       render: (record) => {
+        // Substitute parts: Show substitute badge
+        if (record.is_child_row && record.child_row_type === 'substitute') {
+          return (
+            <Tooltip
+              label='Alternative part that can substitute the main component'
+              withArrow
+            >
+              <Badge color='blue' variant='filled' size='sm'>
+                Substitute
+              </Badge>
+            </Tooltip>
+          );
+        }
+
         // Cutlist children don't have their own flags
-        if (record.is_cut_list_child) {
+        if (record.is_child_row) {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -191,7 +231,47 @@ export function createBomTableColumns({
       switchable: true,
       render: (record) => {
         const totalRequired = record.total_qty * buildQuantity;
-        if (record.is_cut_list_child) {
+        if (record.is_child_row && record.child_row_type === 'substitute') {
+          // Unit mismatch: qty is meaningless, show indicator instead
+          if (record.unit_mismatch) {
+            return (
+              <Group
+                gap='xs'
+                justify='space-between'
+                wrap='nowrap'
+                style={{ maxWidth: '100%' }}
+              >
+                <Text size='sm' c='dimmed'>
+                  —
+                </Text>
+                <Text size='xs' c='orange'>
+                  unit mismatch
+                </Text>
+              </Group>
+            );
+          }
+          // Units match: render like a standard row
+          const totalQty = record.total_qty * buildQuantity;
+          return (
+            <Group
+              gap='xs'
+              justify='space-between'
+              wrap='nowrap'
+              style={{ maxWidth: '100%' }}
+            >
+              <Text size='sm' fw={700}>
+                {totalQty.toFixed(2)}
+              </Text>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
+        if (record.is_child_row) {
+          // Cutlist child rows — count-based, always pieces
           const totalPieces = record.total_qty * buildQuantity;
           return (
             <Group
@@ -266,7 +346,7 @@ export function createBomTableColumns({
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
-        if (record.is_cut_list_child) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -335,7 +415,7 @@ export function createBomTableColumns({
       render: (record) => {
         const isDimmed = !includeAllocations;
         const opacity = getDimmedOpacity(isDimmed);
-        if (record.is_cut_list_child) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -389,7 +469,7 @@ export function createBomTableColumns({
       render: (record) => {
         const isDimmed = !includeOnOrder;
         const opacity = getDimmedOpacity(isDimmed);
-        if (record.is_cut_list_child) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -
@@ -436,7 +516,7 @@ export function createBomTableColumns({
       cellsStyle: () => ({ minWidth: 125 }),
       titleStyle: () => ({ minWidth: 125 }),
       render: (record) => {
-        if (record.is_cut_list_child) {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
           return (
             <Text size='sm' c='dimmed'>
               -

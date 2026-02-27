@@ -607,5 +607,143 @@ class FlatBOMResponseSerializerTests(unittest.TestCase):
         self.assertEqual(serializer.validated_data["total_unique_parts"], 0)
 
 
+class SubstitutePartSerializerTests(unittest.TestCase):
+    """Test SubstitutePartSerializer validation and field handling."""
+
+    def get_valid_substitute_data(self):
+        """Return minimal valid substitute part data for testing."""
+        return {
+            # Core identifiers (required)
+            "substitute_id": 1,
+            "part_id": 456,
+            "ipn": "SUB-001",
+            "part_name": "Substitute Part",
+            "full_name": "SUB-001 | Substitute Part",
+            "description": "Alternative component",
+            # Stock data (required)
+            "in_stock": 100.0,
+            "on_order": 50.0,
+            "allocated": 10.0,
+            "available": 90.0,
+            # Display metadata (optional)
+            "image": None,
+            "thumbnail": None,
+            "link": "/part/456/",
+        }
+
+    def test_all_fields_valid(self):
+        """Valid substitute with all fields should serialize successfully."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["substitute_id"], 1)
+        self.assertEqual(serializer.validated_data["part_id"], 456)
+        self.assertEqual(serializer.validated_data["part_name"], "Substitute Part")
+        self.assertEqual(serializer.validated_data["in_stock"], 100.0)
+        self.assertEqual(serializer.validated_data["available"], 90.0)
+
+    def test_missing_required_substitute_id(self):
+        """Missing 'substitute_id' field should fail validation."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        del data["substitute_id"]
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("substitute_id", serializer.errors)
+
+    def test_missing_required_part_id(self):
+        """Missing 'part_id' field should fail validation."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        del data["part_id"]
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("part_id", serializer.errors)
+
+    def test_missing_required_stock_fields(self):
+        """Missing stock fields should fail validation."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        del data["in_stock"]
+        del data["allocated"]
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("in_stock", serializer.errors)
+        self.assertIn("allocated", serializer.errors)
+
+    def test_optional_fields_can_be_none(self):
+        """Optional fields (image, thumbnail, description) can be None."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        data["image"] = None
+        data["thumbnail"] = None
+        data["description"] = None
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+        self.assertIsNone(serializer.validated_data.get("image"))
+        self.assertIsNone(serializer.validated_data.get("thumbnail"))
+
+    def test_optional_fields_can_be_omitted(self):
+        """Optional fields can be completely omitted from data."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = {
+            "substitute_id": 2,
+            "part_id": 789,
+            "part_name": "Minimal Sub",
+            "full_name": "Minimal Sub",
+            "in_stock": 5.0,
+            "on_order": 0.0,
+            "allocated": 0.0,
+            "available": 5.0,
+            "link": "/part/789/",
+        }
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+
+    def test_with_image_urls(self):
+        """Substitute with image and thumbnail URLs should serialize."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        data["image"] = "/media/part_images/sub.jpg"
+        data["thumbnail"] = "/media/part_images/sub_thumb.jpg"
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["image"], "/media/part_images/sub.jpg")
+        self.assertEqual(serializer.validated_data["thumbnail"], "/media/part_images/sub_thumb.jpg")
+
+    def test_zero_stock_valid(self):
+        """Substitute with zero stock should be valid."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        data["in_stock"] = 0.0
+        data["allocated"] = 0.0
+        data["available"] = 0.0
+        data["on_order"] = 0.0
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["in_stock"], 0.0)
+
+    def test_negative_stock_valid(self):
+        """Negative available stock (over-allocated) should be valid."""
+        from flat_bom_generator.serializers import SubstitutePartSerializer
+        
+        data = self.get_valid_substitute_data()
+        data["in_stock"] = 10.0
+        data["allocated"] = 15.0
+        data["available"] = -5.0  # Over-allocated scenario
+        serializer = SubstitutePartSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["available"], -5.0)
+
+
 if __name__ == "__main__":
     unittest.main()

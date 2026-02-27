@@ -17,6 +17,9 @@ export interface PluginSettings {
 
   /** Include Internal Fab parts in cutlist processing */
   includeInternalFabInCutlist: boolean;
+
+  /** Include substitute parts in BOM (triggers backend DB queries) */
+  includeSubstitutes: boolean;
 }
 
 /**
@@ -30,7 +33,8 @@ export interface PluginSettings {
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   maxDepth: 0,
   expandPurchasedAssemblies: false,
-  includeInternalFabInCutlist: false
+  includeInternalFabInCutlist: false,
+  includeSubstitutes: false
 };
 
 /**

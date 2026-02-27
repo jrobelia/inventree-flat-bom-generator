@@ -67,6 +67,12 @@ export function useFlatBom(
         queryParams.append('include_internal_fab_in_cutlist', 'true');
       }
 
+      // include_substitutes: Always send to override plugin default
+      queryParams.append(
+        'include_substitutes',
+        settings.includeSubstitutes ? 'true' : 'false'
+      );
+
       const queryString = queryParams.toString();
       const url = `/plugin/flat-bom-generator/flat-bom/${partId}/${
         queryString ? `?${queryString}` : ''

@@ -12,6 +12,7 @@ from .serializers import (
     BOMWarningSerializer,
     FlatBOMItemSerializer,
     FlatBOMResponseSerializer,
+    SubstitutePartSerializer,
 )
 
 logger = logging.getLogger("inventree")
@@ -241,6 +242,9 @@ class FlatBOMView(APIView):
         include_ifab_cuts_param = request.query_params.get(
             "include_internal_fab_in_cutlist", None
         )
+        include_substitutes_param = request.query_params.get(
+            "include_substitutes", None
+        )
 
         # Parse max_depth
         max_depth = None
@@ -265,6 +269,7 @@ class FlatBOMView(APIView):
         # Load plugin settings as defaults for boolean parameters
         expand_purchased_default = False
         enable_ifab_cuts_default = False
+        include_substitutes_default = False
 
         if plugin:
             internal_supplier_ids = get_internal_supplier_ids(plugin)
@@ -300,6 +305,19 @@ class FlatBOMView(APIView):
                     else False
                 )
             )
+
+            include_substitutes_setting = plugin.get_setting(
+                "SHOW_SUBSTITUTE_PARTS", False
+            )
+            include_substitutes_default = (
+                bool(include_substitutes_setting)
+                if isinstance(include_substitutes_setting, bool)
+                else (
+                    str(include_substitutes_setting).lower() == "true"
+                    if include_substitutes_setting
+                    else False
+                )
+            )
         else:
             logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
@@ -316,6 +334,11 @@ class FlatBOMView(APIView):
         else:
             enable_ifab_cuts = enable_ifab_cuts_default
 
+        if include_substitutes_param is not None:
+            include_substitutes = include_substitutes_param.lower() == "true"
+        else:
+            include_substitutes = include_substitutes_default
+
         if plugin:
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
@@ -323,6 +346,9 @@ class FlatBOMView(APIView):
             )
             logger.info(
                 f"  - enable_ifab_cuts: {enable_ifab_cuts} (from {'query param' if include_ifab_cuts_param else 'plugin default'})"
+            )
+            logger.info(
+                f"  - include_substitutes: {include_substitutes} (from {'query param' if include_substitutes_param else 'plugin default'})"
             )
             logger.info(f"  - max_depth: {max_depth} (from query param)")
             logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
@@ -502,6 +528,117 @@ class FlatBOMView(APIView):
                         if hasattr(part_obj, "get_absolute_url")
                         else f"/part/{part_obj.pk}/",
                     }
+
+                    # Enrich with substitute parts if setting enabled
+                    if include_substitutes:
+                        from part.models import BomItemSubstitute
+
+                        # bom_item_contributions tracks which BomItems contributed
+                        # what quantity to this deduplicated part row.
+                        # {bom_item_pk: cumulative_qty_contributed}
+                        bom_item_contributions = item.get("bom_item_contributions", {})
+
+                        substitute_data = []
+
+                        if bom_item_contributions:
+                            # Fetch all BomItemSubstitutes for the contributing BomItems
+                            # in one query, grouped by substitute part
+                            substitutes = BomItemSubstitute.objects.filter(
+                                bom_item__pk__in=bom_item_contributions.keys()
+                            ).select_related("part", "bom_item")
+
+                            # Group by substitute part_id so we can aggregate qty
+                            sub_groups = {}  # {sub_part_id: {info, total_qty, substitute_id}}
+                            for sub in substitutes:
+                                sub_part = sub.part
+                                sub_part_id = sub_part.pk
+                                contrib_qty = bom_item_contributions.get(
+                                    sub.bom_item.pk, 0.0
+                                )
+
+                                if sub_part_id not in sub_groups:
+                                    sub_groups[sub_part_id] = {
+                                        "substitute_id": sub.pk,
+                                        "part": sub_part,
+                                        "total_qty": 0.0,
+                                    }
+                                sub_groups[sub_part_id]["total_qty"] += contrib_qty
+
+                            parent_unit = (part_obj.units or "").strip().lower()
+
+                            for sub_part_id, group in sub_groups.items():
+                                sub_part = group["part"]
+                                sub_unit_raw = sub_part.units or ""
+                                sub_unit = sub_unit_raw.strip().lower()
+                                unit_mismatch = sub_unit != parent_unit
+
+                                # Generate warning for unit mismatch
+                                if unit_mismatch:
+                                    sub_label = sub_part.IPN or sub_part.name
+                                    parent_label = part_obj.IPN or part_obj.name
+                                    mismatch_msg = (
+                                        f"Substitute '{sub_label}' "
+                                        f"has unit '{sub_unit_raw or 'none'}' but parent part "
+                                        f"'{parent_label}' "
+                                        f"has unit '{part_obj.units or 'none'}'. "
+                                        f"Quantities cannot be directly compared."
+                                    )
+                                    mismatch_serializer = BOMWarningSerializer(
+                                        data={
+                                            "type": "substitute_unit_mismatch",
+                                            "part_id": item["part_id"],
+                                            "part_name": item.get("part_name", ""),
+                                            "message": mismatch_msg,
+                                        }
+                                    )
+                                    mismatch_serializer.is_valid(raise_exception=True)
+                                    warnings.append(mismatch_serializer.validated_data)
+
+                                sub_raw = {
+                                    "substitute_id": group["substitute_id"],
+                                    "part_id": sub_part.pk,
+                                    "ipn": sub_part.IPN or "",
+                                    "part_name": sub_part.name,
+                                    "full_name": sub_part.full_name
+                                    if hasattr(sub_part, "full_name")
+                                    else sub_part.name,
+                                    "description": sub_part.description or "",
+                                    "unit": sub_unit_raw,
+                                    # Aggregated qty: sum of contributions from BomItems that list this sub
+                                    "parent_total_qty": group["total_qty"],
+                                    "parent_unit": part_obj.units or "",
+                                    "in_stock": float(sub_part.total_stock or 0),
+                                    "on_order": float(sub_part.on_order or 0),
+                                    "allocated": float(sub_part.allocation_count()),
+                                    "available": float(sub_part.available_stock or 0),
+                                    "image": sub_part.image.url
+                                    if sub_part.image
+                                    else None,
+                                    "thumbnail": sub_part.image.thumbnail.url
+                                    if sub_part.image
+                                    else None,
+                                    "link": sub_part.get_absolute_url()
+                                    if hasattr(sub_part, "get_absolute_url")
+                                    else f"/part/{sub_part.pk}/",
+                                }
+                                substitute_data.append(sub_raw)
+
+                        if substitute_data:
+                            enriched_data["has_substitutes"] = True
+                            sub_serializer = SubstitutePartSerializer(
+                                data=substitute_data, many=True
+                            )
+                            if sub_serializer.is_valid(raise_exception=True):
+                                enriched_data["substitute_parts"] = (
+                                    sub_serializer.validated_data
+                                )
+                        else:
+                            enriched_data["has_substitutes"] = False
+                            enriched_data["substitute_parts"] = None
+                    else:
+                        enriched_data["has_substitutes"] = False
+                        enriched_data["substitute_parts"] = None
+
                     serializer = FlatBOMItemSerializer(data=enriched_data)
                     serializer.is_valid(raise_exception=True)
                     enriched_bom.append(serializer.validated_data)

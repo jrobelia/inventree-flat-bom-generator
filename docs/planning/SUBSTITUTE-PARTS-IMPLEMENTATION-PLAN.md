@@ -1,10 +1,14 @@
 # Substitute Parts Support - Implementation Plan
 
-**Status:** Planning Phase  
+**Status:** Phases 0-4 COMPLETE, Phase 5 PARTIAL -- deployed, pending staging verification  
 **Created:** January 22, 2026  
+**Last Updated:** February 26, 2026  
 **Estimated Time:** 3.75-4.25 hours (ADJUSTED - comprehensive file updates)  
+**Actual Time:** ~3 hours (Phases 0-4)  
+**Remaining:** ~1-2 hours (CSV export, frontend tests, UX polish)  
 **Priority:** HIGH  
 **Pattern:** Extend cutlist infrastructure with generic child row system
+**Branch:** `feature/substitute-parts` (3 commits: v0.11.39 -> v0.11.44 -> v0.11.47)
 
 ---
 
@@ -156,9 +160,14 @@ flattenedData.push({
 
 ## Implementation Phases
 
-### Phase 0: Backend Serializer (Test-First) (0.5 hours)
+### Phase 0: Backend Serializer (Test-First) (0.5 hours) -- COMPLETE
 
 **Goal:** Create proper DRF serializer for substitute parts (follows FlatBOMItemSerializer pattern).
+
+**Delivered:**
+- `SubstitutePartSerializer` with 16 fields (substitute_id, part_id, ipn, part_name, full_name, description, unit, parent_total_qty, parent_unit, in_stock, on_order, allocated, available, image, thumbnail, link)
+- `FlatBOMItemSerializer` extended with `has_substitutes` boolean and `substitute_parts` nested serializer
+- 9 unit tests in `SubstitutePartSerializerTests`
 
 **Files:**
 - `flat_bom_generator/serializers.py`
@@ -300,9 +309,20 @@ flattenedData.push({
 
 ---
 
-### Phase 1: Backend Data Enrichment (Test-First) (1-1.5 hours)
+### Phase 1: Backend Data Enrichment (Test-First) (1-1.5 hours) -- COMPLETE
 
 **Goal:** Query substitute parts and enrich with stock data using serializer.
+
+**Delivered:**
+- `views.py` lines 529-630: substitute enrichment logic
+- Queries `BomItemSubstitute.objects.filter(bom_item__pk__in=...)` with `select_related('part')`
+- Groups substitutes by substitute `part_id` to avoid duplicates when part appears on multiple BomItems
+- Generates unit-mismatch warnings when parent and substitute have different units
+- `include_substitutes` query parameter override (`?include_substitutes=true/false`)
+- `SHOW_SUBSTITUTE_PARTS` plugin setting (default: False)
+- `bom_item_pk` tracked through `traverse_bom()` and `deduplicate_and_sum()` for correct lookup
+- `bom_item_contributions` dict in deduplication tracks qty per BomItem
+- 4 integration tests in `test_substitute_enrichment.py`
 
 **File:** `flat_bom_generator/views.py`
 
@@ -891,9 +911,18 @@ export function SubstituteRow({ record }: SubstituteRowProps) {
 
 ---
 
-### Phase 5: CSV Export & Final Polish (0.5 hours)
+### Phase 5: CSV Export & Final Polish (0.5 hours) -- PARTIAL
 
 **Goal:** Update CSV export to handle child rows cleanly.
+
+**Current state:** `csvExport.ts` has a comment mentioning substitutes (line 72) and checks
+`is_child_row && child_row_type?.startsWith('cutlist')` but does NOT handle substitute rows
+specifically. Substitute rows are effectively skipped in CSV output.
+
+**Remaining work:**
+- Add substitute-specific row handling in CSV export
+- Decide: include substitute rows as separate CSV lines, or add a "Substitutes" column to parent rows
+- Update or add frontend tests for CSV export with substitutes
 
 **File:** `frontend/src/utils/csvExport.ts`
 
@@ -1043,37 +1072,38 @@ class SubstitutePartsIntegrationTests(InvenTreeTestCase):
 ## Definition of Done
 
 **Architecture:**
-- [ ] `SubstitutePartSerializer` created (follows DRF pattern)
-- [ ] Backend uses serializer (no manual dict building)
-- [ ] Generic child row system implemented (`is_child_row`, `child_row_type`, `parent_row_part_id`)
-- [ ] `is_cut_list_child` flag REMOVED (clean break, no dead code)
-- [ ] `flattenBomData()` extended with options (reuses existing infrastructure)
-- [ ] `groupChildRowsWithParents()` works for all child row types
-- [ ] Panel.tsx stays small (<350 lines)
-- [ ] ControlBar.tsx updated with checkbox
-- [ ] Column rendering uses `is_child_row` check
-- [ ] SubstituteRow component extracted (if rendering >30 lines)
+- [x] `SubstitutePartSerializer` created (follows DRF pattern)
+- [x] Backend uses serializer (no manual dict building)
+- [x] Generic child row system implemented (`is_child_row`, `child_row_type`, `parent_row_part_id`)
+- [x] `is_cut_list_child` flag REMOVED (clean break, no dead code)
+- [x] `flattenBomData()` extended with options (reuses existing infrastructure)
+- [x] `groupChildRowsWithParents()` works for all child row types
+- [x] Panel.tsx stays small (<350 lines)
+- [x] ControlBar.tsx updated with checkbox
+- [x] Column rendering uses `is_child_row` check
+- [ ] SubstituteRow component extracted (if rendering >30 lines) -- not needed, rendering is compact
 
 **Functionality:**
-- [ ] Backend queries substitutes and enriches with stock data
-- [ ] Plugin setting `SHOW_SUBSTITUTE_PARTS` controls feature
-- [ ] Frontend displays substitutes as child rows with indentation
-- [ ] "Substitute" badge shows clearly
-- [ ] Checkbox controls substitute visibility
-- [ ] Substitutes stay grouped with parent during sort/filter
-- [ ] CSV export includes substitutes
+- [x] Backend queries substitutes and enriches with stock data
+- [x] Plugin setting `SHOW_SUBSTITUTE_PARTS` controls feature
+- [x] Frontend displays substitutes as child rows with indentation
+- [x] "Substitute" badge shows clearly
+- [x] Checkbox controls substitute visibility
+- [x] Substitutes stay grouped with parent during sort/filter
+- [ ] CSV export includes substitutes (PARTIAL -- comment exists, logic not implemented)
 
 **Testing (Test-First):**
-- [ ] 4+ serializer unit tests pass (Phase 0)
-- [ ] 3+ enrichment integration tests pass (Phase 1)
-- [ ] TypeScript compilation passes (Phase 3)
-- [ ] Manual UI checklist complete (10 items)
-- [ ] No console errors
+- [x] 9 serializer unit tests pass (Phase 0)
+- [x] 4 enrichment integration tests pass (Phase 1)
+- [x] TypeScript compilation passes (Phase 3)
+- [ ] Manual UI checklist complete (10 items) -- PENDING staging verification
+- [ ] No console errors -- PENDING staging verification
+- [ ] Frontend tests for substitute data processing
 
 **Documentation:**
 - [ ] ARCHITECTURE.md updated (serializer, hook, API response)
-- [ ] ROADMAP.md updated (move to completed)
-- [ ] Inline code comments explain WHY, not WHAT
+- [x] ROADMAP.md updated (reflects current state)
+- [x] Inline code comments explain WHY, not WHAT
 
 ---
 
@@ -1095,55 +1125,61 @@ class SubstitutePartsIntegrationTests(InvenTreeTestCase):
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
 1. **Should substitutes inherit parent's optional/consumable flags?**
-   - Leaning: No, substitutes are independent parts with own properties
-   - Decision: Show substitute's actual flags, not inherited
+   - **Resolved:** Substitutes inherit parent's flags (they're alternatives for the same BOM requirement)
 
 2. **Should we show substitute availability in parent row?**
-   - InvenTree API provides `available_substitute_stock` field
-   - Could add "(+5000 in substitutes)" to parent row stock display
-   - Decision: Defer to Phase 6 (out of scope for MVP)
+   - **Deferred.** Not in current implementation. Could add later.
 
 3. **Should Build Margin column account for substitute stock?**
-   - Currently: `shortfall = required - (in_stock + on_order)`
-   - With substitutes: Should we add substitute stock to calculation?
-   - Decision: No for MVP (user can see substitute stock separately)
+   - **Resolved:** No. User can see substitute stock separately in child rows.
 
 4. **What if substitute is also in the flat BOM as a regular item?**
-   - Part "Resistor" is in BOM at top level AND as substitute for "Capacitor"
-   - Do we show it twice?
-   - Decision: Yes, show in both contexts (different roles in BOM)
+   - **Resolved:** Yes, show in both contexts (different roles in BOM).
+
+## Open Questions (New)
+
+5. **CSV export: separate rows or summary column?**
+   - Option A: Substitute rows as separate CSV lines with a "Type" column (consistent with cutlist approach)
+   - Option B: Comma-separated substitute names in a "Substitutes" column on the parent row
+   - Decision: TBD during Phase 5 completion
+
+6. **Variant support removed from roadmap (Feb 2026)**
+   - Too complex for this plugin's scope (see ROADMAP.md)
+   - Users should use InvenTree's built-in BOM view for variant-aware analysis
 
 ---
 
 ## Next Steps
 
-1. **Review this plan with user** - Get approval on approach
-2. **Create feature branch** - `git checkout -b feature/substitute-parts`
-3. **Phase 0: Serializer** - Test-first serializer implementation
-4. **Phase 1: Backend** - Query + enrichment with serializer validation
-5. **Test Phase 1** - Verify API returns correct data
-6. **Phase 2-3: Frontend** - Types + generic child row migration + display
-7. **Test Phase 2-3** - Manual UI testing (cutlists + substitutes)
-8. **Phase 4-5: Polish** - Column rendering + CSV export
-9. **Write additional tests** - Unit + integration (beyond test-first)
-10. **Deploy to staging** - Manual verification
-11. **Documentation updates** - ARCHITECTURE, ROADMAP, README
-12. **Merge to main** - Deploy to production
+1. **Staging verification** -- deploy and test substitute feature on staging server
+2. **CSV export** -- implement substitute row handling in csvExport.ts
+3. **UX polish** -- disable "Show Substitutes" checkbox when no substitutes exist
+4. **Frontend tests** -- add substitute test cases to bomDataProcessing.test.ts
+5. **ARCHITECTURE.md** -- document substitute serializer, API response shape, child row system
+6. **Merge to main** -- after staging verification passes
 
 ---
 
 ## Summary
 
-**Estimated Total Time:** 3.75-4.25 hours (ADJUSTED - comprehensive file updates)  
-- Phase 0 (Serializer): 0.5 hrs
-- Phase 1 (Enrichment): 1-1.5 hrs  
-- Phase 2 (Types): 0.5 hrs
-- Phase 3 (Clean Migration): 1.25 hrs (0.75 cutlist refactor + 0.5 substitute addition)
-- Phase 4 (Polish): 0.5 hrs
-- Phase 5 (CSV): 0.5 hrs
+**Estimated Total Time:** 3.75-4.25 hours  
+**Actual Time (Phases 0-4):** ~3 hours  
+**Remaining (Phase 5 + polish):** ~1-2 hours  
+
+| Phase | Status | Time |
+|---|---|---|
+| Phase 0 (Serializer) | COMPLETE | 0.5 hrs |
+| Phase 1 (Enrichment) | COMPLETE | 1-1.5 hrs |
+| Phase 2 (Types) | COMPLETE | 0.5 hrs |
+| Phase 3 (Clean Migration) | COMPLETE | 1.25 hrs |
+| Phase 4 (Polish) | COMPLETE | 0.5 hrs |
+| Phase 5 (CSV) | PARTIAL | ~0.5 hrs remaining |
+
+**Tests:** 13 total (9 unit serializer + 4 integration enrichment)  
+**Branch:** `feature/substitute-parts` -- 3 commits ahead of main (v0.11.47)
 
 **Architecture Principles Followed:**
 ✅ DRF serializers for API responses (not manual dicts)  
@@ -1164,5 +1200,5 @@ class SubstitutePartsIntegrationTests(InvenTreeTestCase):
 
 ---
 
-_Last Updated: January 23, 2026 (revised for row-focused naming clarity)_
+_Last Updated: February 26, 2026 (updated to reflect Phases 0-4 complete, Phase 5 partial)_
 

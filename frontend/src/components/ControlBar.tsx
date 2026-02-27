@@ -16,6 +16,7 @@ import {
   IconSettings
 } from '@tabler/icons-react';
 import type { DataTableColumn } from 'mantine-datatable';
+import { getSubstitutesCheckboxState } from '../utils/substituteCheckboxState';
 
 interface ControlBarProps {
   buildQuantity: number;
@@ -26,6 +27,10 @@ interface ControlBarProps {
   onIncludeOnOrderChange: (checked: boolean) => void;
   showCutlistRows: boolean;
   onShowCutlistRowsChange: (checked: boolean) => void;
+  showSubstitutes: boolean;
+  onShowSubstitutesChange: (checked: boolean) => void;
+  substituteSettingOn: boolean;
+  hasSubstitutes: boolean;
   onRefresh: () => void;
   loading: boolean;
   onExport: () => void;
@@ -47,6 +52,10 @@ export function ControlBar({
   onIncludeOnOrderChange,
   showCutlistRows,
   onShowCutlistRowsChange,
+  showSubstitutes,
+  onShowSubstitutesChange,
+  substituteSettingOn,
+  hasSubstitutes,
   onRefresh,
   loading,
   onExport,
@@ -74,6 +83,30 @@ export function ControlBar({
             checked={showCutlistRows}
             onChange={(e) => onShowCutlistRowsChange(e.currentTarget.checked)}
           />
+          {(() => {
+            const { visible, disabled, tooltip } = getSubstitutesCheckboxState({
+              substituteSettingOn,
+              hasSubstitutes
+            });
+            if (!visible) return null;
+            const checkbox = (
+              <Checkbox
+                label='Show Substitutes'
+                checked={showSubstitutes}
+                disabled={disabled}
+                onChange={(e) =>
+                  onShowSubstitutesChange(e.currentTarget.checked)
+                }
+              />
+            );
+            return tooltip ? (
+              <Tooltip label={tooltip} position='right'>
+                <span>{checkbox}</span>
+              </Tooltip>
+            ) : (
+              checkbox
+            );
+          })()}
           <Checkbox
             label='Include Allocations in Build Margin (-)'
             checked={includeAllocations}

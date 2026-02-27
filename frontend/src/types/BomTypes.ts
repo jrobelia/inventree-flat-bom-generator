@@ -41,9 +41,13 @@ export interface BomItem {
     piece_qty: number;
     unit: string;
   }> | null;
-  is_cut_list_child?: boolean;
   cut_length?: number | null;
   cut_unit?: string;
+
+  // Generic child row system (v0.11.24+)
+  is_child_row?: boolean; // True if cutlist/substitute/variant child
+  child_row_type?: 'cutlist_ctl' | 'cutlist_ifab' | 'substitute' | 'variant';
+  parent_row_part_id?: number; // Parent row's part_id
 
   // Stock and order information
   in_stock: number;
@@ -59,6 +63,45 @@ export interface BomItem {
   image?: string;
   thumbnail?: string;
   link: string;
+
+  // Substitute parts support (added in v0.11.39)
+  has_substitutes?: boolean;
+  substitute_parts?: SubstitutePart[] | null;
+
+  // Set on substitute child rows when parent and sub units differ
+  unit_mismatch?: boolean;
+}
+
+/**
+ * Substitute part data with individual stock information
+ * Added in v0.11.39 for substitute parts feature
+ *
+ * Each substitute is an alternative part that can fulfill the same BOM requirement.
+ * Includes its own stock, allocation, and availability data to help users
+ * identify which alternative has the best availability.
+ */
+export interface SubstitutePart {
+  // Core identifiers
+  substitute_id: number; // BomItemSubstitute primary key
+  part_id: number; // Substitute Part primary key
+  ipn: string; // Internal Part Number
+  part_name: string; // Part name
+  full_name: string; // Full display name with variant info
+  description: string; // Part description
+  unit: string | null; // Unit of measurement
+  parent_total_qty?: number; // Parent BOM item quantity (for unit matching)
+  parent_unit?: string | null; // Parent BOM item unit (for unit matching)
+
+  // Stock data
+  in_stock: number; // Total inventory
+  on_order: number; // On incomplete purchase orders
+  allocated: number; // Reserved for builds/sales
+  available: number; // in_stock - allocated
+
+  // Display metadata
+  image: string | null; // Full-size image URL
+  thumbnail: string | null; // Thumbnail URL
+  link: string; // Part detail page URL
 }
 
 /**

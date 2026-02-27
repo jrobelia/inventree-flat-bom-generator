@@ -78,6 +78,15 @@ export function SettingsPanel({
           }
         />
 
+        <Switch
+          label='Include Substitute Parts'
+          description='Fetch and display substitute part options with individual stock data'
+          checked={settings.includeSubstitutes}
+          onChange={(event) =>
+            onUpdateSetting('includeSubstitutes', event.currentTarget.checked)
+          }
+        />
+
         <Group justify='flex-end'>
           <Button variant='subtle' onClick={onResetToDefaults}>
             Reset to Defaults

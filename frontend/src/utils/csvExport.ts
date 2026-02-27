@@ -69,8 +69,8 @@ export function generateCsvContent(
   ];
 
   const rows = data.map((item) => {
-    // Handle cut list children differently
-    if (item.is_cut_list_child) {
+    // Handle child rows (cutlists, substitutes) differently
+    if (item.is_child_row && item.child_row_type?.startsWith('cutlist')) {
       return [
         item.ipn,
         item.part_name,

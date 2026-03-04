@@ -16,7 +16,6 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
 - **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag)
 - **Cut-to-Length Part Support**: Custom handling for cut-to-length raw materials (wire, tubing, bar stock) with per-cut quantity breakdown
-- **In-Panel Settings**: Configure plugin settings directly in the panel UI without leaving the page (progressive disclosure pattern)
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
 
@@ -46,12 +45,17 @@ Warnings appear in a summary panel and help identify data quality issues before 
 
 ### Why This Matters
 
-When planning a build, you typically need to answer: "What parts do I need to order?" InvenTree's hierarchical BOM view requires manual traversal and calculation. This plugin automates that process by:
+When planning a build, you typically need to answer: "How many of X Y or Z parts to we need to build 50 of this assembly?" InvenTree's hierarchical BOM view requires manual traversal and calculation. This plugin automates that process by:
 
 1. Traversing multi-level BOMs automatically
 2. Aggregating duplicate parts across branches
 3. Calculating cumulative quantities through the hierarchy
 4. Presenting a single, actionable purchasing list
+
+### Limitations
+
+- This plugin generates a temporarily list to use as reference.
+- It doesn't take into account in-stock assemblies in it's build margin calculations. 
 
 ### Performance Note
 

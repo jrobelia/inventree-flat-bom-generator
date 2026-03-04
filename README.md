@@ -8,7 +8,7 @@ InvenTree plugin that flattens nested bill of materials into a temporary single-
 
 ## What This Plugin Adds
 
-InvenTree's built-in BOM view shows the first layer only if a BOMs hierarchical structure. This plugin **flattens** that hierarchy into a purchasing-focused view by:
+InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical structure. This plugin **flattens** that hierarchy into a purchasing-focused view by:
 
 ### Core Functionality
 

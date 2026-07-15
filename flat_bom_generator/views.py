@@ -431,7 +431,7 @@ class FlatBOMView(APIView):
             for item in flat_bom:
                 try:
                     # Fetch full part details
-                    part_obj = Part.objects.select_related("default_supplier").get(
+                    part_obj = Part.objects.get(
                         pk=item["part_id"]
                     )
 

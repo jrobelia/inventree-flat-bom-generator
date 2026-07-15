@@ -20,15 +20,20 @@ def get_bom_items(part) -> List[Dict]:
     from part.models import BomItem
 
     try:
-        # Prefetch sub_part and its default_supplier for categorization
+        # Prefetch sub_part for categorization
         bom_items = BomItem.objects.filter(part=part).select_related(
-            "sub_part", "sub_part__default_supplier"
+            "sub_part"
         )
 
         items = []
         for bom_item in bom_items:
             if not bom_item.sub_part:
                 continue
+
+            from company.models import SupplierPart
+            has_primary = SupplierPart.objects.filter(
+                part=bom_item.sub_part, primary=True
+            ).exists()
 
             items.append({
                 "sub_part": bom_item.sub_part,
@@ -41,7 +46,7 @@ def get_bom_items(part) -> List[Dict]:
                 "optional": bom_item.optional,
                 "consumable": bom_item.consumable,
                 "inherited": bom_item.inherited,
-                "has_default_supplier": bool(bom_item.sub_part.default_supplier),
+                "has_default_supplier": has_primary,
             })
 
         return items
@@ -121,15 +126,13 @@ def traverse_bom(
     is_assembly = part.assembly
     purchaseable = part.purchaseable
     description = part.description or ""
-    default_supplier_id = part.default_supplier.pk if part.default_supplier else None
+    from company.models import SupplierPart
+    primary_supplier = SupplierPart.objects.filter(part=part, primary=True).first()
+    default_supplier_id = primary_supplier.supplier.pk if primary_supplier else None
     # Get the supplier company ID from the SupplierPart, if available
     default_supplier_company_id = None
-    if (
-        part.default_supplier
-        and hasattr(part.default_supplier, "supplier")
-        and part.default_supplier.supplier
-    ):
-        default_supplier_company_id = part.default_supplier.supplier.pk
+    if primary_supplier and primary_supplier.supplier:
+        default_supplier_company_id = primary_supplier.supplier.pk
 
     # Categorize part
     is_top_level = level == 0
@@ -755,8 +758,8 @@ def get_flat_bom(
     from part.models import Part
 
     try:
-        # Fetch part with default_supplier and category prefetched
-        part = Part.objects.select_related("default_supplier", "category").get(
+        # Fetch part with category prefetched
+        part = Part.objects.select_related("category").get(
             pk=part_id
         )
 

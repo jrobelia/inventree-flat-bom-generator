@@ -53,7 +53,6 @@
     purchaseable: true
     component: true
     is_template: false
-    default_supplier: 8001  # Links to SupplierPart pk 8001
     tree_id: 8002
     level: 0
     lft: 1
@@ -135,6 +134,7 @@
     supplier: 8001
     SKU: 'R-10K'
     active: true
+    primary: true  # NEW: Mark this as the primary supplier
 
 # BOM Items for Main Assembly (pk 8001)
 # Test 1-3: Basic structure (3 items: resistor, capacitor, connector)

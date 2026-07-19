@@ -6,6 +6,9 @@ from .categorization import categorize_part, _extract_length_from_notes
 
 logger = logging.getLogger("inventree")
 
+# Sentinel distinguishing "primary supplier not provided" from "provided as None".
+_UNSET = object()
+
 
 def get_bom_items(part) -> List[Dict]:
     """
@@ -18,22 +21,28 @@ def get_bom_items(part) -> List[Dict]:
         List of BOM item dictionaries with: sub_part, quantity, reference, etc.
     """
     from part.models import BomItem
+    from company.models import SupplierPart
 
     try:
         # Prefetch sub_part for categorization
-        bom_items = BomItem.objects.filter(part=part).select_related(
-            "sub_part"
-        )
+        bom_items = list(BomItem.objects.filter(part=part).select_related("sub_part"))
+
+        # Batch-fetch the primary SupplierPart for every sub_part in a single
+        # query (keyed by part id) to avoid an N+1 lookup per BOM line.
+        sub_part_ids = [bi.sub_part.pk for bi in bom_items if bi.sub_part]
+        primary_suppliers = {
+            sp.part_id: sp
+            for sp in SupplierPart.objects.filter(
+                part_id__in=sub_part_ids, primary=True
+            ).select_related("supplier")
+        }
 
         items = []
         for bom_item in bom_items:
             if not bom_item.sub_part:
                 continue
 
-            from company.models import SupplierPart
-            has_primary = SupplierPart.objects.filter(
-                part=bom_item.sub_part, primary=True
-            ).exists()
+            primary_supplier = primary_suppliers.get(bom_item.sub_part.pk)
 
             items.append({
                 "sub_part": bom_item.sub_part,
@@ -46,7 +55,8 @@ def get_bom_items(part) -> List[Dict]:
                 "optional": bom_item.optional,
                 "consumable": bom_item.consumable,
                 "inherited": bom_item.inherited,
-                "has_default_supplier": has_primary,
+                "has_default_supplier": primary_supplier is not None,
+                "primary_supplier": primary_supplier,
             })
 
         return items
@@ -68,6 +78,7 @@ def traverse_bom(
     bom_item_notes: Optional[str] = None,
     imp_counter: Optional[Dict[str, int]] = None,
     depth_tracker: Optional[Dict[str, int]] = None,
+    primary_supplier=_UNSET,
 ) -> Dict:
     """
     Recursively traverse BOM structure and build tree.
@@ -126,9 +137,18 @@ def traverse_bom(
     is_assembly = part.assembly
     purchaseable = part.purchaseable
     description = part.description or ""
-    from company.models import SupplierPart
-    primary_supplier = SupplierPart.objects.filter(part=part, primary=True).first()
-    default_supplier_id = primary_supplier.supplier.pk if primary_supplier else None
+    # The caller (get_bom_items) batches primary-supplier lookups and passes
+    # the result in (possibly None); only query here when nothing was supplied
+    # (e.g. the root part).
+    if primary_supplier is _UNSET:
+        from company.models import SupplierPart
+
+        primary_supplier = (
+            SupplierPart.objects.filter(part=part, primary=True)
+            .select_related("supplier")
+            .first()
+        )
+    default_supplier_id = primary_supplier.pk if primary_supplier else None
     # Get the supplier company ID from the SupplierPart, if available
     default_supplier_company_id = None
     if primary_supplier and primary_supplier.supplier:
@@ -211,6 +231,7 @@ def traverse_bom(
                     internal_supplier_ids=internal_supplier_ids,
                     category_mappings=category_mappings,
                     bom_item_notes=child_notes,  # Pass BOM notes for CtL
+                    primary_supplier=bom_item.get("primary_supplier", _UNSET),
                     imp_counter=imp_counter,
                     depth_tracker=depth_tracker,
                 )
@@ -759,9 +780,7 @@ def get_flat_bom(
 
     try:
         # Fetch part with category prefetched
-        part = Part.objects.select_related("category").get(
-            pk=part_id
-        )
+        part = Part.objects.select_related("category").get(pk=part_id)
 
         # Step 1: Traverse BOM to build tree and count Internal Fab parts
         logger.info(f"Traversing BOM for part {part_id} ({part.IPN})")

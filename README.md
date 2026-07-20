@@ -1,6 +1,6 @@
 # Flat BOM Generator for InvenTree
 
-**Version:** 0.11.53 | **InvenTree:** 1.1.6+
+**Version:** 0.11.53 | **InvenTree:** 1.1.6
 
 > Personal project to create a flattened BOM viewer for large assemblies in InvenTree. Currently stable after a refactor to improve code quality. Feedback and bug reports welcome!
 

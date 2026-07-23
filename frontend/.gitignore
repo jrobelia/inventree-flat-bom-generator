@@ -4,3 +4,7 @@ node_modules
 
 # Compiled static code
 static
+
+# Playwright test artifacts
+playwright-report/
+test-results/

@@ -2,9 +2,13 @@
 
 This directory contains end-to-end tests for the FlatBOMGenerator plugin using Playwright.
 
+## Approach
+
+Playwright tests run **locally on your host machine** and access the InvenTree dev server running in the devcontainer via forwarded ports. This follows the official InvenTree testing approach.
+
 ## Setup
 
-### Install Playwright
+### Install Playwright (on host machine)
 
 ```bash
 cd frontend
@@ -12,10 +16,16 @@ npm install
 npx playwright install
 ```
 
-### Install Browsers
+### Install Browser Dependencies (on host machine)
 
+**Linux:**
 ```bash
-npx playwright install --with-deps
+sudo npx playwright install-deps
+```
+
+**Windows/macOS:**
+```bash
+npx playwright install
 ```
 
 ## Running Tests
@@ -40,7 +50,7 @@ npm run test:e2e:debug
 
 ## Prerequisites
 
-- InvenTree dev server must be running on http://localhost:8001
+- Devcontainer must be running with InvenTree server accessible at http://localhost:8001
 - Admin user must exist with credentials `admin/admin`
 - Plugin must be installed and enabled in InvenTree
 

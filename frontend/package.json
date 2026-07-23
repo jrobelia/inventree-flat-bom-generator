@@ -8,6 +8,9 @@
     "lint:fix": "npx @biomejs/biome check ./src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
     "build": "tsc -b && vite build --emptyOutDir",
     "dev": "vite --config vite.dev.config.ts"
   },
@@ -24,6 +27,7 @@
   "peerDependencies": {},
   "devDependencies": {
     "@biomejs/biome": "2.0.0",
+    "@playwright/test": "^1.48.0",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "^4.7.0",

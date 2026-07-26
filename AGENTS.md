@@ -12,5 +12,5 @@
 - Backend package: `flat_bom_generator/`.
 - Frontend: `frontend/src/` (React/TypeScript/Mantine).
 - Tests: `flat_bom_generator/tests/unit/`, `flat_bom_generator/tests/integration/`, `frontend/` (Vitest/Playwright).
-- Shared domain language also lives in the toolkit root `CONTEXT-MAP.md` and `docs/reference/inventree-plugin-trilogy/`.
+- Shared domain language also lives in the toolkit root `CONTEXT-MAP.md` and `C:\Software Projects\inventree-plugin-ai-toolkit\docs\reference\inventree-bom-build-buy-suite\`.
 - When this plugin is opened inside the toolkit, the toolkit root `AGENTS.md` is also active for cross-plugin discipline.

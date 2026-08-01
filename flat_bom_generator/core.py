@@ -117,17 +117,15 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
                     # Only show panel if this part is an assembly (has a BOM)
                     if part.assembly:
-                        panels.append(
-                            {
-                                "key": "flat-bom-viewer-panel",
-                                "title": "Flat BOM Viewer",
-                                "description": "View flattened bill of materials with all sub-assemblies",
-                                "icon": "ti:list-tree:outline",
-                                "source": self.plugin_static_file(
-                                    f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
-                                ),
-                            }
-                        )
+                        panels.append({
+                            "key": "flat-bom-viewer-panel",
+                            "title": "Flat BOM Viewer",
+                            "description": "View flattened bill of materials with all sub-assemblies",
+                            "icon": "ti:list-tree:outline",
+                            "source": self.plugin_static_file(
+                                f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
+                            ),
+                        })
                 except Part.DoesNotExist:
                     pass
 

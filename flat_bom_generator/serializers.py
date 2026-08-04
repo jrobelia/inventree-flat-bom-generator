@@ -43,7 +43,7 @@ class BOMWarningSerializer(serializers.Serializer):
     class Meta:
         """Meta options for this serializer."""
 
-        fields = ["type", "part_id", "part_name", "message"]
+        fields = ["type", "part_id", "part_name", "message"]  # noqa: RUF012
 
 
 class SubstitutePartSerializer(serializers.Serializer):
@@ -146,7 +146,7 @@ class SubstitutePartSerializer(serializers.Serializer):
     class Meta:
         """Meta options for this serializer."""
 
-        fields = [
+        fields = [  # noqa: RUF012
             "substitute_id",
             "part_id",
             "ipn",
@@ -328,7 +328,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
     class Meta:
         """Meta options for this serializer."""
 
-        fields = [
+        fields = [  # noqa: RUF012
             # Core identifiers
             "part_id",
             "ipn",
@@ -471,7 +471,7 @@ class FlatBOMResponseSerializer(serializers.Serializer):
     class Meta:
         """Meta options for this serializer."""
 
-        fields = [
+        fields = [  # noqa: RUF012
             "part_id",
             "part_name",
             "ipn",

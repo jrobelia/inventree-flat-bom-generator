@@ -77,7 +77,7 @@ def get_internal_supplier_ids(plugin):
         )
         if supplier_id is not None:
             internal_ids.append(supplier_id)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Error retrieving PRIMARY_INTERNAL_SUPPLIER: {e}")
 
     # Get additional internal suppliers (comma-separated string)
@@ -94,7 +94,7 @@ def get_internal_supplier_ids(plugin):
                     logger.warning(
                         f"Invalid supplier ID in ADDITIONAL_INTERNAL_SUPPLIERS: '{id_str}'"
                     )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Error parsing ADDITIONAL_INTERNAL_SUPPLIERS: {e}")
 
     # Deduplicate
@@ -110,7 +110,7 @@ def get_internal_supplier_ids(plugin):
                 logger.warning(
                     f"Internal supplier ID {supplier_id} does not exist in database. Ignoring."
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"Error validating supplier ID {supplier_id}: {e}")
 
     return sorted(validated_ids)
@@ -200,8 +200,8 @@ def get_category_mappings(plugin):
                     )
             else:
                 logger.info(f"{setting_name}: No category configured")
-        except Exception as e:
-            logger.error(f"Error retrieving {setting_name}: {e}", exc_info=True)
+        except Exception:
+            logger.exception(f"Error retrieving {setting_name}")
 
     return category_mappings
 
@@ -213,7 +213,7 @@ class FlatBOMView(APIView):
     calculated through the entire assembly hierarchy.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, part_id, *args, **kwargs):
         """
@@ -276,7 +276,7 @@ class FlatBOMView(APIView):
             category_mappings = get_category_mappings(plugin)
             units_csv = plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
             if units_csv:
-                ifab_units = set(u.strip() for u in units_csv.split(",") if u.strip())
+                ifab_units = {u.strip() for u in units_csv.split(",") if u.strip()}
 
             # Load plugin settings as defaults (overridden by query params if provided)
             # Convert to bool in case plugin returns string "True"/"False"
@@ -431,9 +431,7 @@ class FlatBOMView(APIView):
             for item in flat_bom:
                 try:
                     # Fetch full part details
-                    part_obj = Part.objects.select_related("default_supplier").get(
-                        pk=item["part_id"]
-                    )
+                    part_obj = Part.objects.get(pk=item["part_id"])
 
                     # Calculate stock and order quantities
                     total_stock = part_obj.total_stock or 0
@@ -701,10 +699,8 @@ class FlatBOMView(APIView):
             )
 
         except Exception as e:
-            logger.error(
-                f"Error generating flat BOM for part {part_id}: {e}", exc_info=True
-            )
+            logger.exception(f"Error generating flat BOM for part {part_id}")
             return Response(
-                {"error": f"Failed to generate flat BOM: {str(e)}"},
+                {"error": f"Failed to generate flat BOM: {e!s}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

@@ -1,7 +1,6 @@
 """Displays flattened bill of materials for assemblies with recursive traversal and export capabilities"""
 
 from plugin import InvenTreePlugin
-
 from plugin.mixins import SettingsMixin, UrlsMixin, UserInterfaceMixin
 
 from . import PLUGIN_VERSION
@@ -31,7 +30,7 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
     # Note: MAX_DEPTH, SHOW_PURCHASED_ASSEMBLIES, and INCLUDE_INTERNAL_FAB_IN_CUTLIST
     # have been moved to frontend UI (v0.11.0+). They are now managed via query
     # parameters with hardcoded defaults and localStorage persistence.
-    SETTINGS = {
+    SETTINGS = {  # noqa: RUF012
         "PRIMARY_INTERNAL_SUPPLIER": {
             "name": "Primary Internal Supplier",
             "description": "Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab.",
@@ -87,6 +86,7 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
         the endpoint is still accessible to the plugin's own frontend code.
         """
         from django.urls import path
+
         from .views import FlatBOMView
 
         return [
@@ -117,15 +117,17 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
                     # Only show panel if this part is an assembly (has a BOM)
                     if part.assembly:
-                        panels.append({
-                            "key": "flat-bom-viewer-panel",
-                            "title": "Flat BOM Viewer",
-                            "description": "View flattened bill of materials with all sub-assemblies",
-                            "icon": "ti:list-tree:outline",
-                            "source": self.plugin_static_file(
-                                f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
-                            ),
-                        })
+                        panels.append(
+                            {
+                                "key": "flat-bom-viewer-panel",
+                                "title": "Flat BOM Viewer",
+                                "description": "View flattened bill of materials with all sub-assemblies",
+                                "icon": "ti:list-tree:outline",
+                                "source": self.plugin_static_file(
+                                    f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
+                                ),
+                            }
+                        )
                 except Part.DoesNotExist:
                     pass
 

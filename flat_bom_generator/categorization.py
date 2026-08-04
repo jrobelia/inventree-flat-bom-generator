@@ -4,6 +4,8 @@ Part Categorization
 Functions for categorizing parts based on InvenTree categories and supplier relationships.
 """
 
+from __future__ import annotations
+
 import re
 
 
@@ -11,14 +13,14 @@ def categorize_part(
     part_name: str,
     is_assembly: bool,
     is_top_level: bool = False,
-    default_supplier_id: int = None,
-    internal_supplier_ids: list = None,
-    part_category_id: int = None,
-    category_mappings: dict = None,
-    bom_item_notes: str = None,
+    default_supplier_id: int | None = None,
+    internal_supplier_ids: list | None = None,
+    part_category_id: int | None = None,
+    category_mappings: dict | None = None,
+    bom_item_notes: str | None = None,
     # Unused legacy parameters (kept for API compatibility during transition)
-    fab_prefix: str = None,
-    coml_prefix: str = None,
+    fab_prefix: str | None = None,
+    coml_prefix: str | None = None,
 ) -> str:
     """
     Categorize part using InvenTree categories and supplier relationships.

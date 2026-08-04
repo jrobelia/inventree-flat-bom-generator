@@ -21,8 +21,8 @@ def get_bom_items(part) -> list[dict]:
     Returns:
         List of BOM item dictionaries with: sub_part, quantity, reference, etc.
     """
-    from part.models import BomItem
     from company.models import SupplierPart
+    from part.models import BomItem
 
     try:
         # Prefetch sub_part for categorization
@@ -45,20 +45,22 @@ def get_bom_items(part) -> list[dict]:
 
             primary_supplier = primary_suppliers.get(bom_item.sub_part.pk)
 
-            items.append({
-                "sub_part": bom_item.sub_part,
-                "sub_part_id": bom_item.sub_part.pk,
-                "bom_item_pk": bom_item.pk,
-                "quantity": float(bom_item.quantity),
-                "reference": bom_item.reference or "",
-                "note": bom_item.note or "",
-                "notes": bom_item.note or "",  # Alias for categorization
-                "optional": bom_item.optional,
-                "consumable": bom_item.consumable,
-                "inherited": bom_item.inherited,
-                "has_default_supplier": primary_supplier is not None,
-                "primary_supplier": primary_supplier,
-            })
+            items.append(
+                {
+                    "sub_part": bom_item.sub_part,
+                    "sub_part_id": bom_item.sub_part.pk,
+                    "bom_item_pk": bom_item.pk,
+                    "quantity": float(bom_item.quantity),
+                    "reference": bom_item.reference or "",
+                    "note": bom_item.note or "",
+                    "notes": bom_item.note or "",  # Alias for categorization
+                    "optional": bom_item.optional,
+                    "consumable": bom_item.consumable,
+                    "inherited": bom_item.inherited,
+                    "has_default_supplier": primary_supplier is not None,
+                    "primary_supplier": primary_supplier,
+                }
+            )
 
         return items
 
@@ -339,53 +341,57 @@ def get_leaf_parts_only(
         elif tree.get("from_internal_fab_parent"):
             cut_length = tree.get("cut_length")
 
-        leaves.append({
-            "part_id": tree["part_id"],
-            "ipn": tree["ipn"],
-            "part_name": tree["part_name"],
-            "description": tree.get("description", ""),
-            "cumulative_qty": cumulative_qty,
-            "cut_length": cut_length,  # Length for CtL parts, None for others
-            "unit": tree.get("unit", ""),
-            "is_assembly": tree["is_assembly"],
-            "purchaseable": tree["purchaseable"],
-            "default_supplier_id": tree.get("default_supplier_id"),
-            "part_type": part_type,
-            "reference": tree.get("reference", ""),
-            "note": tree.get("note", ""),
-            "level": tree["level"],
-            "bom_item_pk": tree.get("bom_item_pk"),
-            "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
-            "parent_ipn": tree.get("parent_ipn"),
-            "parent_part_id": tree.get("parent_part_id"),
-            "max_depth_exceeded": tree.get("max_depth_exceeded", False),
-            "optional": tree.get("optional", False),
-            "consumable": tree.get("consumable", False),
-        })
+        leaves.append(
+            {
+                "part_id": tree["part_id"],
+                "ipn": tree["ipn"],
+                "part_name": tree["part_name"],
+                "description": tree.get("description", ""),
+                "cumulative_qty": cumulative_qty,
+                "cut_length": cut_length,  # Length for CtL parts, None for others
+                "unit": tree.get("unit", ""),
+                "is_assembly": tree["is_assembly"],
+                "purchaseable": tree["purchaseable"],
+                "default_supplier_id": tree.get("default_supplier_id"),
+                "part_type": part_type,
+                "reference": tree.get("reference", ""),
+                "note": tree.get("note", ""),
+                "level": tree["level"],
+                "bom_item_pk": tree.get("bom_item_pk"),
+                "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
+                "parent_ipn": tree.get("parent_ipn"),
+                "parent_part_id": tree.get("parent_part_id"),
+                "max_depth_exceeded": tree.get("max_depth_exceeded", False),
+                "optional": tree.get("optional", False),
+                "consumable": tree.get("consumable", False),
+            }
+        )
     elif is_purchaseable_assembly and not expand_purchased_assemblies:
         # Include purchased assembly as a leaf and DON'T recurse into children
-        leaves.append({
-            "part_id": tree["part_id"],
-            "ipn": tree["ipn"],
-            "part_name": tree["part_name"],
-            "description": tree.get("description", ""),
-            "cumulative_qty": tree["cumulative_qty"],
-            "unit": tree.get("unit", ""),
-            "is_assembly": tree["is_assembly"],
-            "purchaseable": tree["purchaseable"],
-            "default_supplier_id": tree.get("default_supplier_id"),
-            "part_type": part_type,
-            "reference": tree.get("reference", ""),
-            "note": tree.get("note", ""),
-            "level": tree["level"],
-            "bom_item_pk": tree.get("bom_item_pk"),
-            "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
-            "parent_ipn": tree.get("parent_ipn"),
-            "parent_part_id": tree.get("parent_part_id"),
-            "max_depth_exceeded": tree.get("max_depth_exceeded", False),
-            "optional": tree.get("optional", False),
-            "consumable": tree.get("consumable", False),
-        })
+        leaves.append(
+            {
+                "part_id": tree["part_id"],
+                "ipn": tree["ipn"],
+                "part_name": tree["part_name"],
+                "description": tree.get("description", ""),
+                "cumulative_qty": tree["cumulative_qty"],
+                "unit": tree.get("unit", ""),
+                "is_assembly": tree["is_assembly"],
+                "purchaseable": tree["purchaseable"],
+                "default_supplier_id": tree.get("default_supplier_id"),
+                "part_type": part_type,
+                "reference": tree.get("reference", ""),
+                "note": tree.get("note", ""),
+                "level": tree["level"],
+                "bom_item_pk": tree.get("bom_item_pk"),
+                "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
+                "parent_ipn": tree.get("parent_ipn"),
+                "parent_part_id": tree.get("parent_part_id"),
+                "max_depth_exceeded": tree.get("max_depth_exceeded", False),
+                "optional": tree.get("optional", False),
+                "consumable": tree.get("consumable", False),
+            }
+        )
         # Stop here - don't recurse into children
         return leaves
 
@@ -410,29 +416,31 @@ def get_leaf_parts_only(
                 f"[FlatBOM][get_leaf] Assembly with no children due to max_depth: {tree['part_id']}"
             )
         # Assembly part with no BOM items defined - include as leaf with special flag
-        leaves.append({
-            "part_id": tree["part_id"],
-            "ipn": tree["ipn"],
-            "part_name": tree["part_name"],
-            "description": tree.get("description", ""),
-            "cumulative_qty": tree["cumulative_qty"],
-            "unit": tree.get("unit", ""),
-            "is_assembly": tree["is_assembly"],
-            "purchaseable": tree["purchaseable"],
-            "default_supplier_id": tree.get("default_supplier_id"),
-            "part_type": part_type,
-            "reference": tree.get("reference", ""),
-            "note": tree.get("note", ""),
-            "level": tree["level"],
-            "bom_item_pk": tree.get("bom_item_pk"),
-            "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
-            "parent_ipn": tree.get("parent_ipn"),
-            "parent_part_id": tree.get("parent_part_id"),
-            "assembly_no_children": assembly_no_children_flag,  # Only flag if NOT due to max_depth
-            "max_depth_exceeded": max_depth_exceeded,
-            "optional": tree.get("optional", False),
-            "consumable": tree.get("consumable", False),
-        })
+        leaves.append(
+            {
+                "part_id": tree["part_id"],
+                "ipn": tree["ipn"],
+                "part_name": tree["part_name"],
+                "description": tree.get("description", ""),
+                "cumulative_qty": tree["cumulative_qty"],
+                "unit": tree.get("unit", ""),
+                "is_assembly": tree["is_assembly"],
+                "purchaseable": tree["purchaseable"],
+                "default_supplier_id": tree.get("default_supplier_id"),
+                "part_type": part_type,
+                "reference": tree.get("reference", ""),
+                "note": tree.get("note", ""),
+                "level": tree["level"],
+                "bom_item_pk": tree.get("bom_item_pk"),
+                "from_internal_fab_parent": tree.get("from_internal_fab_parent", False),
+                "parent_ipn": tree.get("parent_ipn"),
+                "parent_part_id": tree.get("parent_part_id"),
+                "assembly_no_children": assembly_no_children_flag,  # Only flag if NOT due to max_depth
+                "max_depth_exceeded": max_depth_exceeded,
+                "optional": tree.get("optional", False),
+                "consumable": tree.get("consumable", False),
+            }
+        )
         return leaves
 
     # Recurse into children for:
@@ -522,10 +530,12 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                     found = True
                     break
             if not found:
-                cut_lists[key].append({
-                    "quantity": leaf["cumulative_qty"],
-                    "length": cut_length,
-                })
+                cut_lists[key].append(
+                    {
+                        "quantity": leaf["cumulative_qty"],
+                        "length": cut_length,
+                    }
+                )
         elif from_ifab and cut_length is not None:
             # Internal fab parts should have consistent units
             # If unit doesn't match allowed set, skip cut_list logic (treat as regular part)
@@ -555,11 +565,13 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                         found = True
                         break
                 if not found:
-                    internal_fab_cut_lists[key].append({
-                        "count": piece_count_inc,
-                        "piece_qty": cut_length,
-                        "unit": unit,
-                    })
+                    internal_fab_cut_lists[key].append(
+                        {
+                            "count": piece_count_inc,
+                            "piece_qty": cut_length,
+                            "unit": unit,
+                        }
+                    )
         else:
             # Regular parts (not CtL, not internal fab)
             totals[key] += leaf["cumulative_qty"]
@@ -639,12 +651,14 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                             f"[FlatBOM][deduplicate_and_sum] Unit mismatch in CtL part {part_id_leaf} ({part_full_name}), note='{note}': {unit_warning}"
                         )
                         # Add warning with note text to distinguish multiple entries
-                        ctl_warnings.append({
-                            "type": "unit_mismatch",
-                            "part_id": part_id_leaf,
-                            "part_name": part_full_name,
-                            "message": f"{unit_warning} (in note: '{note}')",
-                        })
+                        ctl_warnings.append(
+                            {
+                                "type": "unit_mismatch",
+                                "part_id": part_id_leaf,
+                                "part_name": part_full_name,
+                                "message": f"{unit_warning} (in note: '{note}')",
+                            }
+                        )
             except Exception as e:  # noqa: BLE001
                 logger.error(
                     f"[FlatBOM][deduplicate_and_sum] Error checking CtL part {part_id_leaf}: {e}"

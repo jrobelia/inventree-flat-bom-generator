@@ -4,6 +4,28 @@ set -e
 PLUGIN_NAME="FlatBOMGenerator"
 MODULE_NAME="flat_bom_generator"
 
+# Optional control flags
+# FAST=1          - skip integration, E2E, and frontend unit tests
+#                   (lint + Python unit tests only; fastest deterministic command)
+# SKIP_LINT=1     - skip code-quality checks
+# SKIP_UNIT=1     - skip Python unit tests
+# SKIP_INTEGRATION=1 - skip Python integration tests
+# SKIP_FRONTEND=1 - skip all frontend steps (lint, unit, build, E2E)
+# SKIP_E2E=1      - skip Playwright E2E (frontend build still runs to catch TS errors)
+# CI=1            - recognised by Playwright; test-all.sh sets CI=1 for E2E automatically
+FAST="${FAST:-}"
+SKIP_LINT="${SKIP_LINT:-}"
+SKIP_UNIT="${SKIP_UNIT:-}"
+SKIP_INTEGRATION="${SKIP_INTEGRATION:-}"
+SKIP_FRONTEND="${SKIP_FRONTEND:-}"
+SKIP_E2E="${SKIP_E2E:-}"
+
+# FAST mode skips the slowest / most environment-dependent layers
+if [ -n "$FAST" ]; then
+  SKIP_INTEGRATION=1
+  SKIP_E2E=1
+fi
+
 preflight() {
   echo ""
   echo "=========================================="
@@ -35,6 +57,13 @@ preflight() {
     echo "ERROR: Plugin package directory '$MODULE_NAME' not found in $PWD." >&2
     echo "The plugin does not appear to be linked/scaffolded correctly." >&2
     exit 1
+  fi
+
+  # Only check server and dataset if a test layer actually needs them.
+  if [ -n "$SKIP_INTEGRATION" ] && [ -n "$SKIP_E2E" ]; then
+    echo "Skipping server/dataset checks (integration and E2E are both skipped)."
+    echo "Preflight checks passed"
+    return 0
   fi
 
   SERVER_URL="${INVENTREE_SERVER_URL:-http://localhost:8001}"
@@ -84,6 +113,40 @@ PY
   echo "Preflight checks passed"
 }
 
+has_frontend_dir() {
+  [ -d "frontend" ] && [ -f "frontend/package.json" ]
+}
+
+has_user_interface_mixin() {
+  local core_file="$MODULE_NAME/core.py"
+  [ -f "$core_file" ] && grep -q "UserInterfaceMixin" "$core_file"
+}
+
+should_run_frontend() {
+  if [ -n "$SKIP_FRONTEND" ]; then
+    return 1
+  fi
+  if ! has_frontend_dir; then
+    return 1
+  fi
+  # If the plugin claims to have a UI but the frontend directory is missing, warn but do not fail.
+  if has_user_interface_mixin; then
+    return 0
+  fi
+  # Some plugins may have a frontend directory without UserInterfaceMixin (e.g. shared assets).
+  # Run frontend checks only if the package has test/build scripts.
+  if grep -qE '"test"|"build"|"lint"' frontend/package.json 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+if has_user_interface_mixin && ! has_frontend_dir; then
+  echo ""
+  echo "WARNING: $MODULE_NAME/core.py imports UserInterfaceMixin but no frontend/ directory was found." >&2
+  echo "Skipping frontend steps. If this plugin should have a UI, scaffold the frontend package." >&2
+fi
+
 echo "=========================================="
 echo "Running All Tests for $PLUGIN_NAME"
 echo "=========================================="
@@ -91,58 +154,81 @@ echo "=========================================="
 preflight
 
 # Code quality checks
-echo ""
-echo "Step 1: Running code quality checks..."
-echo "----------------------------------------"
+if [ -z "$SKIP_LINT" ]; then
+  echo ""
+  echo "Step 1: Running code quality checks..."
+  echo "----------------------------------------"
 
-# Python linting and formatting
-echo "Checking Python code with ruff..."
-ruff check flat_bom_generator
-ruff format --check flat_bom_generator
+  echo "Checking Python code with ruff..."
+  # EXE002 is ignored because plugin code lives on the Windows /workspace bind
+  # mount, which reports all .py files as executable and cannot be chmod'd.
+  ruff check --ignore EXE002 "$MODULE_NAME"
+  ruff format --check "$MODULE_NAME"
 
-# Frontend linting
-echo "Checking frontend code with biome..."
-cd frontend
-npm run lint
-cd ..
+  if should_run_frontend; then
+    echo "Checking frontend code..."
+    cd frontend
+    npm run lint
+    cd ..
+  fi
 
-echo "✓ Code quality checks passed"
+  echo "✓ Code quality checks passed"
+fi
 
 # Unit tests
-echo ""
-echo "Step 2: Running Python unit tests..."
-echo "----------------------------------------"
-python -m pytest flat_bom_generator/tests/unit -v
-echo "✓ Unit tests passed"
+if [ -z "$SKIP_UNIT" ]; then
+  echo ""
+  echo "Step 2: Running Python unit tests..."
+  echo "----------------------------------------"
+  python -m pytest "$MODULE_NAME/tests/unit" -v
+  echo "✓ Unit tests passed"
+
+  if should_run_frontend && [ -z "$FAST" ]; then
+    echo ""
+    echo "Step 3: Running frontend unit tests..."
+    echo "----------------------------------------"
+    cd frontend
+    npm run test
+    cd ..
+    echo "✓ Frontend unit tests passed"
+  fi
+fi
 
 # Integration tests
-echo ""
-echo "Step 3: Running Python integration tests..."
-echo "----------------------------------------"
-PYTHONPATH="$INVENTREE_HOME/src/backend/InvenTree:$PYTHONPATH" \
-DJANGO_SETTINGS_MODULE=InvenTree.settings \
-python -m pytest flat_bom_generator/tests/integration -v
-echo "✓ Integration tests passed"
+if [ -z "$SKIP_INTEGRATION" ]; then
+  echo ""
+  echo "Step 4: Running Python integration tests..."
+  echo "----------------------------------------"
+  PYTHONPATH="$INVENTREE_HOME/src/backend/InvenTree:$PYTHONPATH" \
+  DJANGO_SETTINGS_MODULE=InvenTree.settings \
+  python -m pytest "$MODULE_NAME/tests/integration" -v
+  echo "✓ Integration tests passed"
+fi
 
-# Frontend unit tests
-echo ""
-echo "Step 4: Running frontend unit tests..."
-echo "----------------------------------------"
-cd frontend
-npm run test
-cd ..
-echo "✓ Frontend unit tests passed"
+# Frontend build and E2E tests
+if should_run_frontend; then
+  if [ -z "$FAST" ]; then
+    echo ""
+    echo "Step 5: Building frontend..."
+    echo "----------------------------------------"
+    cd frontend
+    npm run build
+    cd ..
+    echo "✓ Frontend build passed"
+  fi
 
-# E2E tests
-echo ""
-echo "Step 5: Running E2E tests with Playwright..."
-echo "----------------------------------------"
-echo "Note: Server and dataset were verified by preflight checks."
-cd frontend
-npm run build
-npm run test:e2e
-cd ..
-echo "✓ E2E tests passed"
+  if [ -z "$SKIP_E2E" ] && [ -z "$FAST" ]; then
+    echo ""
+    echo "Step 6: Running E2E tests with Playwright..."
+    echo "----------------------------------------"
+    echo "Note: Server and dataset were verified by preflight checks."
+    echo "Reports and artifacts will be written to frontend/playwright-report/ and frontend/test-results/."
+    cd frontend
+    CI=1 npm run test:e2e
+    cd ..
+    echo "✓ E2E tests passed"
+  fi
+fi
 
 echo ""
 echo "=========================================="

@@ -5,8 +5,8 @@ PLUGIN_NAME="FlatBOMGenerator"
 MODULE_NAME="flat_bom_generator"
 
 # Optional control flags
-# FAST=1          - skip integration, E2E, and frontend unit tests
-#                   (lint + Python unit tests only; fastest deterministic command)
+# FAST=1          - skip integration, E2E, and frontend build
+#                   (lint + unit tests only; fastest deterministic command)
 # SKIP_LINT=1     - skip code-quality checks
 # SKIP_UNIT=1     - skip Python unit tests
 # SKIP_INTEGRATION=1 - skip Python integration tests
@@ -183,7 +183,7 @@ if [ -z "$SKIP_UNIT" ]; then
   python -m pytest "$MODULE_NAME/tests/unit" -v
   echo "✓ Unit tests passed"
 
-  if should_run_frontend && [ -z "$FAST" ]; then
+  if should_run_frontend; then
     echo ""
     echo "Step 3: Running frontend unit tests..."
     echo "----------------------------------------"

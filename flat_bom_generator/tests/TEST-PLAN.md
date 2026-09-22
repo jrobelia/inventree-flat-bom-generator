@@ -116,13 +116,20 @@ $env:INVENTREE_PLUGIN_TESTING_SETUP = "True"
 
 ### The Problem
 
-**InvenTree does NOT support plugin URL testing via Django test client.**
+~~**InvenTree does NOT support plugin URL testing via Django test client.**~~
 
-Plugin URLs return 404 in tests because plugin endpoints aren't registered in test environment.
+**Corrected September 2026:** plugin URL testing IS possible on InvenTree 1.5.x —
+enable `ENABLE_PLUGINS_URL`, call `registry.reload_plugins()`, then
+`self.client.get('/plugin/<slug>/<path>/')` (upstream precedent:
+`plugin/samples/integration/test_sample.py::test_view`). The 404s seen
+historically were because plugin endpoints weren't registered under the test
+registry. See `docs/reference/PLUGIN-TESTING.md` in the toolkit repo.
 
 ### The Solution
 
-**Test business logic directly, not via HTTP.**
+**Test business logic directly, not via HTTP** — still the approach this suite
+uses; the HTTP-level route above is available if endpoint/middleware coverage
+is ever needed.
 
 #### What We CAN Test (Integration Tests)
 
@@ -158,12 +165,13 @@ def test_serializer_validates_real_part(self):
     self.assertTrue(serializer.is_valid())
 ```
 
-#### What We CANNOT Test (Requires Manual Testing)
+#### What We Do Not Currently Test via HTTP
 
-- ❌ HTTP requests to `/api/plugin/flat-bom-generator/flat-bom/{id}/`
-- ❌ URL routing and middleware
-- ❌ Authentication/permissions on plugin endpoints
-- ✅ **Manual Test Instead:** Use InvenTree UI or API client (Postman/curl) on running server
+- HTTP requests to `/api/plugin/flat-bom-generator/flat-bom/{id}/` — possible
+  since InvenTree 1.5.x via `ENABLE_PLUGINS_URL` + `registry.reload_plugins()`
+  + `self.client.get('/plugin/<slug>/<path>/')`; not currently exercised.
+- Authentication/permissions on plugin endpoints — verify manually on a
+  running server (InvenTree UI or an API client like Postman/curl).
 
 **Reference:** See [docs/reference/INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) for integration testing setup.
 

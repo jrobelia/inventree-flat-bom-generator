@@ -38,16 +38,16 @@ preflight() {
     exit 1
   fi
 
-  if [ -z "${INVENTREE_PLUGIN_DIR:-}" ] || [ ! -d "$INVENTREE_PLUGIN_DIR" ]; then
-    echo "ERROR: INVENTREE_PLUGIN_DIR is not set or does not exist." >&2
+  if [ -z "${TOOLKIT_PLUGINS_DIR:-}" ] || [ ! -d "$TOOLKIT_PLUGINS_DIR" ]; then
+    echo "ERROR: TOOLKIT_PLUGINS_DIR is not set or does not exist." >&2
     echo "Plugins should be mounted under /workspace/plugins in the devcontainer." >&2
     exit 1
   fi
 
   case "$PWD" in
-    "$INVENTREE_PLUGIN_DIR"/*) ;;
+    "$TOOLKIT_PLUGINS_DIR"/*) ;;
     *)
-      echo "ERROR: Current directory ($PWD) is not under INVENTREE_PLUGIN_DIR ($INVENTREE_PLUGIN_DIR)." >&2
+      echo "ERROR: Current directory ($PWD) is not under TOOLKIT_PLUGINS_DIR ($TOOLKIT_PLUGINS_DIR)." >&2
       echo "Run this script from a plugin directory inside the devcontainer." >&2
       exit 1
       ;;

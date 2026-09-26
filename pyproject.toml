@@ -50,3 +50,11 @@ exclude = [
 ]
 
 src=["flat_bom_generator"]
+
+[tool.ruff.lint.per-file-ignores]
+# The repo-root __init__.py (required for plugin-dir discovery in the
+# devcontainer) makes the checkout directory part of the package chain.
+# In a standalone checkout the outermost dir is the hyphenated repo name,
+# which trips N999 on every __init__.py below it. N999 on __init__.py only
+# ever checks the containing directory name, so this suppression is narrow.
+"**/__init__.py" = ["N999"]

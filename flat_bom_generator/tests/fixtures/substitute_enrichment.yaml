@@ -201,10 +201,6 @@
     link: ''
     notes: ''
     purchase_price: null
-    tree_id: 8001
-    level: 0
-    lft: 1
-    rght: 2
 
 # StockItem for Substitute 1 (100 qty)
 - model: stock.StockItem
@@ -223,10 +219,6 @@
     link: ''
     notes: ''
     purchase_price: null
-    tree_id: 8002
-    level: 0
-    lft: 1
-    rght: 2
 
 # StockItem for Substitute 2 (25 qty)
 - model: stock.StockItem
@@ -245,7 +237,3 @@
     link: ''
     notes: ''
     purchase_price: null
-    tree_id: 8003
-    level: 0
-    lft: 1
-    rght: 2

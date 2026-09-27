@@ -199,8 +199,20 @@ if [ -z "$SKIP_INTEGRATION" ]; then
   echo ""
   echo "Step 4: Running Python integration tests..."
   echo "----------------------------------------"
-  PYTHONPATH="$INVENTREE_HOME/src/backend/InvenTree:$PYTHONPATH" \
-  DJANGO_SETTINGS_MODULE=InvenTree.settings \
+  # Per-run-target scratch database: the toolkit_test_settings shim points
+  # Django's test database at INVENTREE_TEST_DB_NAME, derived deterministically
+  # from the resolved plugin path, so concurrent runs on different checkouts
+  # never share test_<name>. Only this pytest process sees the override —
+  # preflight, the dev server, and E2E keep using the configured database.
+  # Direct pytest invocations need the same env vars to get the same isolation.
+  TOOLKIT_ROOT="$(dirname "$TOOLKIT_PLUGINS_DIR")"
+  TEST_DB_SLUG="$(basename "$(pwd -P)" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | cut -c1-24)"
+  TEST_DB_HASH="$(pwd -P | sha256sum | cut -c1-8)"
+  TEST_DB_NAME="test_inventree_${TEST_DB_SLUG}_${TEST_DB_HASH}"
+  echo "Test database: $TEST_DB_NAME"
+  PYTHONPATH="$TOOLKIT_ROOT/scripts:$INVENTREE_HOME/src/backend/InvenTree:$PYTHONPATH" \
+  DJANGO_SETTINGS_MODULE=toolkit_test_settings \
+  INVENTREE_TEST_DB_NAME="$TEST_DB_NAME" \
   python -m pytest "$MODULE_NAME/tests/integration" -v
   echo "✓ Integration tests passed"
 fi

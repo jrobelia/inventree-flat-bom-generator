@@ -17,6 +17,10 @@
     description: 'Category for internal-supplier expansion tests'
     default_location: null
     parent: null
+    tree_id: 8001
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: company.company
   pk: 8001
@@ -27,6 +31,7 @@
     is_manufacturer: false
     is_customer: false
     is_internal: false
+    active: true
 
 - model: company.company
   pk: 8002
@@ -37,6 +42,7 @@
     is_manufacturer: false
     is_customer: false
     is_internal: true
+    active: true
 
 - model: part.part
   pk: 8001
@@ -51,6 +57,10 @@
     salable: false
     is_template: false
     units: ''
+    tree_id: 8001
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8002
@@ -65,6 +75,10 @@
     salable: false
     is_template: false
     units: 'pcs'
+    tree_id: 8002
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8003
@@ -79,6 +93,10 @@
     salable: false
     is_template: false
     units: 'mm'
+    tree_id: 8003
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8004
@@ -93,6 +111,10 @@
     salable: false
     is_template: false
     units: 'pcs'
+    tree_id: 8004
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8005
@@ -107,6 +129,10 @@
     salable: false
     is_template: false
     units: 'pcs'
+    tree_id: 8005
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8006
@@ -121,6 +147,10 @@
     salable: false
     is_template: false
     units: 'pcs'
+    tree_id: 8006
+    level: 0
+    lft: 1
+    rght: 2
 
 - model: part.part
   pk: 8007
@@ -135,6 +165,10 @@
     salable: false
     is_template: false
     units: 'pcs'
+    tree_id: 8007
+    level: 0
+    lft: 1
+    rght: 2
 
 # SupplierParts - primary suppliers drive internal/external detection
 - model: company.supplierpart
@@ -144,6 +178,7 @@
     supplier: 8002  # In-House Fab Shop (is_internal=true)
     primary: true
     SKU: 'IFAB-001'
+    active: true
 
 - model: company.supplierpart
   pk: 8002
@@ -152,6 +187,7 @@
     supplier: 8001  # External Supplier Co (is_internal=false)
     primary: true
     SKU: 'PASSY-001'
+    active: true
 
 # BOM items on the TLA
 - model: part.bomitem
@@ -160,9 +196,11 @@
     part: 8001
     sub_part: 8002
     quantity: 2.0
+    raw_amount: '2'
     reference: 'A1'
     optional: false
     inherited: false
+    validated: true
 
 - model: part.bomitem
   pk: 80002
@@ -170,9 +208,11 @@
     part: 8001
     sub_part: 8004
     quantity: 1.0
+    raw_amount: '1'
     reference: 'A2'
     optional: false
     inherited: false
+    validated: true
 
 - model: part.bomitem
   pk: 80003
@@ -180,9 +220,11 @@
     part: 8001
     sub_part: 8006
     quantity: 1.0
+    raw_amount: '1'
     reference: 'A3'
     optional: false
     inherited: false
+    validated: true
 
 # BOM items on the internal-fab assembly
 - model: part.bomitem
@@ -191,10 +233,12 @@
     part: 8002
     sub_part: 8003
     quantity: 3.0
+    raw_amount: '3'
     reference: 'B1'
     note: 'cut as needed'  # free text - must not influence output
     optional: false
     inherited: false
+    validated: true
 
 # BOM items on the purchased assembly
 - model: part.bomitem
@@ -203,9 +247,11 @@
     part: 8004
     sub_part: 8005
     quantity: 1.0
+    raw_amount: '1'
     reference: 'B2'
     optional: false
     inherited: false
+    validated: true
 
 # BOM items on the unsourced assembly
 - model: part.bomitem
@@ -214,6 +260,8 @@
     part: 8006
     sub_part: 8007
     quantity: 4.0
+    raw_amount: '4'
     reference: 'B3'
     optional: false
     inherited: false
+    validated: true

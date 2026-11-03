@@ -33,6 +33,25 @@ if not settings.configured:
     )
     django.setup()
 
+# views.py binds InvenTree.permissions.RolePermission at class level. The unit
+# env deliberately has no InvenTree packages, so stub the module — the real
+# package takes precedence wherever it is importable (integration runs).
+try:
+    import InvenTree.permissions  # noqa: F401
+except ImportError:
+    import sys
+    import types
+
+    _pkg = sys.modules.setdefault("InvenTree", types.ModuleType("InvenTree"))
+    _perms = types.ModuleType("InvenTree.permissions")
+
+    class _RolePermissionStub:
+        pass
+
+    _perms.RolePermission = _RolePermissionStub
+    _pkg.permissions = _perms
+    sys.modules["InvenTree.permissions"] = _perms
+
 
 
 class ViewsCodeStructureTests(unittest.TestCase):

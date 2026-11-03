@@ -50,6 +50,10 @@ class MaxDepthQueryParameterTests(InvenTreeTestCase):
         fixture_path = os.path.join(fixtures_dir, 'fixtures', 'complex_bom.yaml')
         call_command('loaddata', fixture_path, verbosity=0)
 
+        # Grant the 'bom' view permission FlatBOMView requires (role_required='bom')
+        cls.user.groups.add(cls.group)
+        cls.assignRole('bom.view')
+
         # Get the deep BOM part for testing (pk 9050)
         cls.deep_part = Part.objects.get(pk=9050)
 
@@ -154,6 +158,10 @@ class QueryParameterIntegrationTests(InvenTreeTestCase):
         fixtures_dir = os.path.dirname(test_dir)
         fixture_path = os.path.join(fixtures_dir, 'fixtures', 'complex_bom.yaml')
         call_command('loaddata', fixture_path, verbosity=0)
+
+        # Grant the 'bom' view permission FlatBOMView requires (role_required='bom')
+        cls.user.groups.add(cls.group)
+        cls.assignRole('bom.view')
 
         cls.deep_part = Part.objects.get(pk=9050)  # System (6 levels deep)
 

@@ -2,7 +2,8 @@
 
 import logging
 
-from rest_framework import permissions, status
+import InvenTree.permissions
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -82,7 +83,9 @@ def get_internal_supplier_ids(plugin):
 
     # Get additional internal suppliers (comma-separated string)
     try:
-        additional = plugin.get_setting("ADDITIONAL_INTERNAL_SUPPLIERS", "")
+        additional = plugin.get_setting(
+            "ADDITIONAL_INTERNAL_SUPPLIERS", backup_value=""
+        )
         if additional and additional.strip():
             # Parse comma-separated IDs
             for id_str in additional.split(","):
@@ -213,7 +216,8 @@ class FlatBOMView(APIView):
     calculated through the entire assembly hierarchy.
     """
 
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (InvenTree.permissions.RolePermission,)
+    role_required = "bom"
 
     def get(self, request, part_id, *args, **kwargs):
         """
@@ -274,14 +278,16 @@ class FlatBOMView(APIView):
         if plugin:
             internal_supplier_ids = get_internal_supplier_ids(plugin)
             category_mappings = get_category_mappings(plugin)
-            units_csv = plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
+            units_csv = plugin.get_setting(
+                "CUTLIST_UNITS_FOR_INTERNAL_FAB", backup_value="mm,in,cm"
+            )
             if units_csv:
                 ifab_units = {u.strip() for u in units_csv.split(",") if u.strip()}
 
             # Load plugin settings as defaults (overridden by query params if provided)
             # Convert to bool in case plugin returns string "True"/"False"
             expand_purchased_setting = plugin.get_setting(
-                "SHOW_PURCHASED_ASSEMBLIES", False
+                "SHOW_PURCHASED_ASSEMBLIES", backup_value=False
             )
             expand_purchased_default = (
                 bool(expand_purchased_setting)
@@ -294,7 +300,7 @@ class FlatBOMView(APIView):
             )
 
             enable_ifab_cuts_setting = plugin.get_setting(
-                "ENABLE_INTERNAL_FAB_CUT_BREAKDOWN", False
+                "ENABLE_INTERNAL_FAB_CUT_BREAKDOWN", backup_value=False
             )
             enable_ifab_cuts_default = (
                 bool(enable_ifab_cuts_setting)
@@ -307,7 +313,7 @@ class FlatBOMView(APIView):
             )
 
             include_substitutes_setting = plugin.get_setting(
-                "SHOW_SUBSTITUTE_PARTS", False
+                "SHOW_SUBSTITUTE_PARTS", backup_value=False
             )
             include_substitutes_default = (
                 bool(include_substitutes_setting)
@@ -668,7 +674,9 @@ class FlatBOMView(APIView):
 
             # Get units list for frontend label (serializer requires list, not string)
             cutlist_units_str = (
-                plugin.get_setting("CUTLIST_UNITS_FOR_INTERNAL_FAB", "mm,in,cm")
+                plugin.get_setting(
+                    "CUTLIST_UNITS_FOR_INTERNAL_FAB", backup_value="mm,in,cm"
+                )
                 if plugin
                 else "mm,in,cm"
             )

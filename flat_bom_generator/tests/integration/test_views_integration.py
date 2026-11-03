@@ -128,25 +128,25 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         BomItem.objects.create(
             part=cls.tla,
             sub_part=cls.ifp,
-            quantity=2,
+            raw_amount='2',
             reference='U1, U2'
         )
         BomItem.objects.create(
             part=cls.tla,
             sub_part=cls.coml2,
-            quantity=10,
+            raw_amount='10',
             reference='C1-C10'
         )
         BomItem.objects.create(
             part=cls.ifp,
             sub_part=cls.fab,
-            quantity=4,
+            raw_amount='4',
             reference='BRK1-BRK4'
         )
         BomItem.objects.create(
             part=cls.ifp,
             sub_part=cls.coml1,
-            quantity=2,
+            raw_amount='2',
             reference='R1, R2'
         )
         

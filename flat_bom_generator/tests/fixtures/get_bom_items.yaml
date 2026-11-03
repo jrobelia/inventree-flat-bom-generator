@@ -144,6 +144,7 @@
     part: 8001  # Main Assembly
     sub_part: 8002  # Resistor
     quantity: 10.0
+    raw_amount: '10.0'
     reference: 'R1-R10'
     note: 'Standard resistor'
     optional: false
@@ -156,6 +157,7 @@
     part: 8001  # Main Assembly
     sub_part: 8003  # Capacitor
     quantity: 5.0
+    raw_amount: '5.0'
     reference: 'C1-C5'
     note: ''  # Empty note (test 9)
     optional: false
@@ -168,6 +170,7 @@
     part: 8001  # Main Assembly
     sub_part: 8004  # Connector
     quantity: 1.0
+    raw_amount: '1.0'
     reference: 'J1'
     note: 'Optional USB connector'
     optional: true  # Test 11: optional flag
@@ -181,6 +184,7 @@
     part: 8001  # Main Assembly
     sub_part: 8005  # No Ref Part
     quantity: 1.0
+    raw_amount: '1.0'
     reference: ''  # Empty reference
     note: 'Part without reference'
     optional: false

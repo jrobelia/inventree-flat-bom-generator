@@ -230,7 +230,7 @@ jobs:
           node-version: '20'
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       
       - name: Build frontend
         run: |

@@ -80,6 +80,7 @@
     part: 9101
     sub_part: 9102
     quantity: 1
+    raw_amount: '1'
     reference: U1
     note: ""
     validated: true
@@ -137,6 +138,7 @@
     part: 9103
     sub_part: 9104
     quantity: 1
+    raw_amount: '1'
     reference: A1
     note: ""
     validated: true
@@ -194,6 +196,7 @@
     part: 9105
     sub_part: 9106
     quantity: 1500  # ← Quantity suggests mm
+    raw_amount: '1500'
     reference: R1
     note: "1500mm"  # ← Notes specify mm, part uses m
     validated: true
@@ -300,6 +303,7 @@
     part: 9107
     sub_part: 9108
     quantity: 10
+    raw_amount: '10'
     reference: C1
     note: ""
     validated: true
@@ -310,6 +314,7 @@
     part: 9107
     sub_part: 9109
     quantity: 1
+    raw_amount: '1'
     reference: A1
     note: ""
     validated: true
@@ -320,6 +325,7 @@
     part: 9107
     sub_part: 9110
     quantity: 200  # ← Quantity suggests mm
+    raw_amount: '200'
     reference: B1
     note: "200 in"  # ← Notes specify inches, part uses mm
     validated: true
@@ -377,6 +383,7 @@
     part: 9111
     sub_part: 9112
     quantity: 5
+    raw_amount: '5'
     reference: R1-R5
     note: ""
     validated: true

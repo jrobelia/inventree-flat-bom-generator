@@ -95,6 +95,7 @@
     part: 9001
     sub_part: 9002
     quantity: 2
+    raw_amount: '2'
     note: U1, U2
     validated: true
 - model: part.bomitem
@@ -103,6 +104,7 @@
     part: 9001
     sub_part: 9003
     quantity: 3
+    raw_amount: '3'
     note: U3, U4, U5
     validated: true
 - model: part.bomitem
@@ -111,6 +113,7 @@
     part: 9002
     sub_part: 9004
     quantity: 4
+    raw_amount: '4'
     note: J1, J2, J3, J4
     validated: true
 - model: part.bomitem
@@ -119,6 +122,7 @@
     part: 9003
     sub_part: 9004
     quantity: 2
+    raw_amount: '2'
     note: J5, J6
     validated: true
 - model: part.part
@@ -207,6 +211,7 @@
     part: 9010
     sub_part: 9011
     quantity: 1
+    raw_amount: '1'
     note: MOD1
     validated: true
 - model: part.bomitem
@@ -215,6 +220,7 @@
     part: 9010
     sub_part: 9012
     quantity: 1
+    raw_amount: '1'
     note: MOD2
     validated: true
 - model: part.bomitem
@@ -223,6 +229,7 @@
     part: 9010
     sub_part: 9013
     quantity: 1
+    raw_amount: '1'
     note: MOD3
     validated: true
 - model: part.bomitem
@@ -231,6 +238,7 @@
     part: 9011
     sub_part: 9014
     quantity: 10
+    raw_amount: '10'
     note: R1-R10
     validated: true
 - model: part.bomitem
@@ -239,6 +247,7 @@
     part: 9012
     sub_part: 9014
     quantity: 5
+    raw_amount: '5'
     note: R11-R15
     validated: true
 - model: part.bomitem
@@ -247,6 +256,7 @@
     part: 9013
     sub_part: 9014
     quantity: 3
+    raw_amount: '3'
     note: R16-R18
     validated: true
 - model: part.partcategory
@@ -558,6 +568,7 @@
     part: 9020
     sub_part: 9021
     quantity: 2.0
+    raw_amount: '2.0'
     note: C1, C2
     validated: true
 - model: part.bomitem
@@ -566,6 +577,7 @@
     part: 9020
     sub_part: 9022
     quantity: 2.0
+    raw_amount: '2.0'
     note: C3, C4
     validated: true
 - model: part.bomitem
@@ -574,6 +586,7 @@
     part: 9020
     sub_part: 9023
     quantity: 2.0
+    raw_amount: '2.0'
     note: C5, C6
     validated: true
 - model: part.bomitem
@@ -582,6 +595,7 @@
     part: 9020
     sub_part: 9024
     quantity: 2.0
+    raw_amount: '2.0'
     note: C7, C8
     validated: true
 - model: part.bomitem
@@ -590,6 +604,7 @@
     part: 9020
     sub_part: 9025
     quantity: 2.0
+    raw_amount: '2.0'
     note: C9, C10
     validated: true
 - model: part.bomitem
@@ -598,6 +613,7 @@
     part: 9020
     sub_part: 9026
     quantity: 2.0
+    raw_amount: '2.0'
     note: C11, C12
     validated: true
 - model: part.bomitem
@@ -606,6 +622,7 @@
     part: 9020
     sub_part: 9027
     quantity: 2.0
+    raw_amount: '2.0'
     note: C13, C14
     validated: true
 - model: part.bomitem
@@ -614,6 +631,7 @@
     part: 9020
     sub_part: 9028
     quantity: 2.0
+    raw_amount: '2.0'
     note: C15, C16
     validated: true
 - model: part.bomitem
@@ -622,6 +640,7 @@
     part: 9020
     sub_part: 9029
     quantity: 2.0
+    raw_amount: '2.0'
     note: C17, C18
     validated: true
 - model: part.bomitem
@@ -630,6 +649,7 @@
     part: 9020
     sub_part: 9030
     quantity: 2.0
+    raw_amount: '2.0'
     note: C19, C20
     validated: true
 - model: part.bomitem
@@ -638,6 +658,7 @@
     part: 9020
     sub_part: 9031
     quantity: 2.0
+    raw_amount: '2.0'
     note: C21, C22
     validated: true
 - model: part.bomitem
@@ -646,6 +667,7 @@
     part: 9020
     sub_part: 9032
     quantity: 2.0
+    raw_amount: '2.0'
     note: C23, C24
     validated: true
 - model: part.bomitem
@@ -654,6 +676,7 @@
     part: 9020
     sub_part: 9033
     quantity: 2.0
+    raw_amount: '2.0'
     note: C25, C26
     validated: true
 - model: part.bomitem
@@ -662,6 +685,7 @@
     part: 9020
     sub_part: 9034
     quantity: 2.0
+    raw_amount: '2.0'
     note: C27, C28
     validated: true
 - model: part.bomitem
@@ -670,6 +694,7 @@
     part: 9020
     sub_part: 9035
     quantity: 2.0
+    raw_amount: '2.0'
     note: C29, C30
     validated: true
 - model: part.bomitem
@@ -678,6 +703,7 @@
     part: 9020
     sub_part: 9036
     quantity: 2.0
+    raw_amount: '2.0'
     note: C31, C32
     validated: true
 - model: part.bomitem
@@ -686,6 +712,7 @@
     part: 9020
     sub_part: 9037
     quantity: 2.0
+    raw_amount: '2.0'
     note: C33, C34
     validated: true
 - model: part.bomitem
@@ -694,6 +721,7 @@
     part: 9020
     sub_part: 9038
     quantity: 2.0
+    raw_amount: '2.0'
     note: C35, C36
     validated: true
 - model: part.bomitem
@@ -702,6 +730,7 @@
     part: 9020
     sub_part: 9039
     quantity: 2.0
+    raw_amount: '2.0'
     note: C37, C38
     validated: true
 - model: part.bomitem
@@ -710,6 +739,7 @@
     part: 9020
     sub_part: 9040
     quantity: 2.0
+    raw_amount: '2.0'
     note: C39, C40
     validated: true
 - model: part.partcategory
@@ -825,6 +855,7 @@
     part: 9050
     sub_part: 9051
     quantity: 1.0
+    raw_amount: '1.0'
     note: S1
     validated: true
 - model: part.bomitem
@@ -833,6 +864,7 @@
     part: 9051
     sub_part: 9052
     quantity: 1.0
+    raw_amount: '1.0'
     note: M1
     validated: true
 - model: part.bomitem
@@ -841,6 +873,7 @@
     part: 9052
     sub_part: 9053
     quantity: 1.0
+    raw_amount: '1.0'
     note: B1
     validated: true
 - model: part.bomitem
@@ -849,6 +882,7 @@
     part: 9053
     sub_part: 9054
     quantity: 1.0
+    raw_amount: '1.0'
     note: SEC1
     validated: true
 - model: part.bomitem
@@ -857,6 +891,7 @@
     part: 9054
     sub_part: 9055
     quantity: 1.0
+    raw_amount: '1.0'
     note: COMP1
     validated: true
 - model: part.bomitem
@@ -865,5 +900,6 @@
     part: 9055
     sub_part: 9056
     quantity: 1.0
+    raw_amount: '1.0'
     note: R1
     validated: true

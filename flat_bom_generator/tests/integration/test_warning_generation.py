@@ -49,6 +49,10 @@ class WarningGenerationTests(InvenTreeTestCase):
             is_staff=True
         )
 
+        # Grant the 'bom' view permission FlatBOMView requires (role_required='bom')
+        cls.user.groups.add(cls.group)
+        cls.assignRole('bom.view')
+
         # Load fixtures programmatically (standard fixtures = ['name'] doesn't work for plugins)
         # Calculate absolute path: 2 levels up from test file to tests folder
         test_file_path = Path(__file__)  # .../tests/integration/test_warning_generation.py

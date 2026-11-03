@@ -22,7 +22,7 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
     LICENSE = "MIT"
 
     # Optionally specify supported InvenTree versions
-    # MIN_VERSION = '0.18.0'
+    MIN_VERSION = "1.6.0"
     # MAX_VERSION = '2.0.0'
 
     # Plugin settings (from SettingsMixin)
@@ -82,8 +82,8 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
         """Configure custom URL endpoints for this plugin.
 
         Note: This endpoint is used by the plugin's frontend UI panel to fetch data.
-        Even though InvenTree 1.1.6 doesn't expose /api/plugin/ as a public REST API,
-        the endpoint is still accessible to the plugin's own frontend code.
+        It isn't a public REST API, but remains accessible to the plugin's own
+        frontend code.
         """
         from django.urls import path
 
@@ -117,17 +117,15 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
                     # Only show panel if this part is an assembly (has a BOM)
                     if part.assembly:
-                        panels.append(
-                            {
-                                "key": "flat-bom-viewer-panel",
-                                "title": "Flat BOM Viewer",
-                                "description": "View flattened bill of materials with all sub-assemblies",
-                                "icon": "ti:list-tree:outline",
-                                "source": self.plugin_static_file(
-                                    f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
-                                ),
-                            }
-                        )
+                        panels.append({
+                            "key": "flat-bom-viewer-panel",
+                            "title": "Flat BOM Viewer",
+                            "description": "View flattened bill of materials with all sub-assemblies",
+                            "icon": "ti:list-tree:outline",
+                            "source": self.plugin_static_file(
+                                f"Panel.js:renderFlatBOMGeneratorPanel?v={PLUGIN_VERSION}"
+                            ),
+                        })
                 except Part.DoesNotExist:
                     pass
 

@@ -17,7 +17,7 @@ authors = [
 readme = "README.md"
 license = "MIT"
 keywords = ["inventree", "plugin"]
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
     # Enter your plugin library dependencies here
 ]

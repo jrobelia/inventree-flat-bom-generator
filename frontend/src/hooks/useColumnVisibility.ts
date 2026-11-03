@@ -15,10 +15,10 @@ export interface UseColumnVisibilityResult {
  *
  * Features:
  * - Persists hidden columns in localStorage
- * - Auto-manages cut_length column based on BOM data (shows only if CtL parts present)
+ * - Auto-manages cut_length column based on BOM data (shows only if internal-fab cut lists present)
  * - Provides toggle function for column visibility
  *
- * @param bomData - Current BOM data (used to detect cut-to-length parts)
+ * @param bomData - Current BOM data (used to detect internal-fab cut lists)
  * @returns Hidden columns set and toggle function
  */
 export function useColumnVisibility(
@@ -33,14 +33,15 @@ export function useColumnVisibility(
   // Auto-manage cut_length column visibility based on BOM data
   useEffect(() => {
     if (bomData) {
-      const hasCtLParts = bomData.bom_items.some(
-        (item) => item.cut_list && item.cut_list.length > 0
+      const hasCutListRows = bomData.bom_items.some(
+        (item) =>
+          item.internal_fab_cut_list && item.internal_fab_cut_list.length > 0
       );
 
       setHiddenColumns((prev) => {
         const newSet = new Set(prev);
 
-        if (hasCtLParts) {
+        if (hasCutListRows) {
           newSet.delete('cut_length');
         } else {
           newSet.add('cut_length');

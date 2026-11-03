@@ -27,23 +27,12 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
     # Plugin settings (from SettingsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/settings/
-    # Note: MAX_DEPTH, SHOW_PURCHASED_ASSEMBLIES, and INCLUDE_INTERNAL_FAB_IN_CUTLIST
-    # have been moved to frontend UI (v0.11.0+). They are now managed via query
-    # parameters with hardcoded defaults and localStorage persistence.
+    # Note: MAX_DEPTH, expand-purchased-assemblies, and
+    # include-internal-fab-in-cutlist toggles live in the frontend UI and are
+    # passed as query parameters. Internal suppliers are detected via the
+    # supplier company's native is_internal flag, not plugin settings.
     SETTINGS = {  # noqa: RUF012
-        "PRIMARY_INTERNAL_SUPPLIER": {
-            "name": "Primary Internal Supplier",
-            "description": "Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab.",
-            "model": "company.company",
-            "default": None,
-        },
-        "ADDITIONAL_INTERNAL_SUPPLIERS": {
-            "name": "Additional Internal Suppliers",
-            "description": 'Additional internal supplier IDs (comma-separated, e.g., "5,12"). Leave empty if you only have one internal supplier.',
-            "validator": str,
-            "default": "",
-        },
-        # Category-based classification settings
+        # Category-based display-label settings (labels only - no behavior)
         "FABRICATION_CATEGORY": {
             "name": "Fabrication Category",
             "description": "InvenTree category for fabricated parts (internal or external manufacturing, e.g., machine shop, PCB fab)",
@@ -55,18 +44,6 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "description": "InvenTree category for commercial/COTS purchased parts",
             "model": "part.partcategory",
             "default": None,
-        },
-        "CUT_TO_LENGTH_CATEGORY": {
-            "name": "Cut-to-Length Category",
-            "description": "InvenTree category for raw material parts with length requirements (wire, tubing, bar stock). Length must be specified in BOM line item notes field.",
-            "model": "part.partcategory",
-            "default": None,
-        },
-        "CUTLIST_UNITS_FOR_INTERNAL_FAB": {
-            "name": "Cutlist Units for Internal Fab",
-            "description": "Comma-separated list of units (e.g., mm,in,cm) to apply cutlist processing to Internal Fab parts.",
-            "validator": str,
-            "default": "mm,in,cm",
         },
         "SHOW_SUBSTITUTE_PARTS": {
             "name": "Show Substitute Parts",

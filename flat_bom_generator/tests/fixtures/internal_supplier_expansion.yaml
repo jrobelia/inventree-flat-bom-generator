@@ -1,0 +1,219 @@
+# Fixture for internal-supplier expansion tests (ticket #6).
+#
+# Structure:
+#   TLA (8001)
+#   +- Fab Assembly (8002)  x2  - primary supplier = internal company
+#   |   +- Steel Plate (8003) x3
+#   +- Purchased Assembly (8004) x1 - primary supplier = external company
+#   |   +- Hidden Child (8005) x1
+#   +- Unsourced Assembly (8006) x1 - purchaseable but NO supplier
+#       +- Loose Screw (8007) x4
+#
+# Primary suppliers are SupplierPart rows flagged primary: true.
+- model: part.partcategory
+  pk: 8001
+  fields:
+    name: 'Expansion Test'
+    description: 'Category for internal-supplier expansion tests'
+    default_location: null
+    parent: null
+
+- model: company.company
+  pk: 8001
+  fields:
+    name: 'External Supplier Co'
+    description: 'Ordinary external supplier'
+    is_supplier: true
+    is_manufacturer: false
+    is_customer: false
+    is_internal: false
+
+- model: company.company
+  pk: 8002
+  fields:
+    name: 'In-House Fab Shop'
+    description: 'Internal fabrication supplier'
+    is_supplier: true
+    is_manufacturer: false
+    is_customer: false
+    is_internal: true
+
+- model: part.part
+  pk: 8001
+  fields:
+    name: 'Expansion TLA'
+    IPN: 'EXPL-TLA'
+    description: 'Top-level assembly'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: false
+    units: ''
+
+- model: part.part
+  pk: 8002
+  fields:
+    name: 'In-House Fab Assembly'
+    IPN: 'EXPL-IFAB'
+    description: 'Assembly made by the internal shop'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'pcs'
+
+- model: part.part
+  pk: 8003
+  fields:
+    name: 'Steel Plate'
+    IPN: 'EXPL-STL'
+    description: 'Cut stock for the fab assembly'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'mm'
+
+- model: part.part
+  pk: 8004
+  fields:
+    name: 'Purchased Assembly'
+    IPN: 'EXPL-PASSY'
+    description: 'Assembly bought complete from external supplier'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'pcs'
+
+- model: part.part
+  pk: 8005
+  fields:
+    name: 'Hidden Child'
+    IPN: 'EXPL-HID'
+    description: 'Child of the purchased assembly - not expected in flat BOM'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'pcs'
+
+- model: part.part
+  pk: 8006
+  fields:
+    name: 'Unsourced Assembly'
+    IPN: 'EXPL-UNSRC'
+    description: 'Assembly with children but no primary supplier'
+    category: 8001
+    active: true
+    assembly: true
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'pcs'
+
+- model: part.part
+  pk: 8007
+  fields:
+    name: 'Loose Screw'
+    IPN: 'EXPL-SCRW'
+    description: 'Child of the unsourced assembly'
+    category: 8001
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    units: 'pcs'
+
+# SupplierParts - primary suppliers drive internal/external detection
+- model: company.supplierpart
+  pk: 8001
+  fields:
+    part: 8002
+    supplier: 8002  # In-House Fab Shop (is_internal=true)
+    primary: true
+    SKU: 'IFAB-001'
+
+- model: company.supplierpart
+  pk: 8002
+  fields:
+    part: 8004
+    supplier: 8001  # External Supplier Co (is_internal=false)
+    primary: true
+    SKU: 'PASSY-001'
+
+# BOM items on the TLA
+- model: part.bomitem
+  pk: 80001
+  fields:
+    part: 8001
+    sub_part: 8002
+    quantity: 2.0
+    reference: 'A1'
+    optional: false
+    inherited: false
+
+- model: part.bomitem
+  pk: 80002
+  fields:
+    part: 8001
+    sub_part: 8004
+    quantity: 1.0
+    reference: 'A2'
+    optional: false
+    inherited: false
+
+- model: part.bomitem
+  pk: 80003
+  fields:
+    part: 8001
+    sub_part: 8006
+    quantity: 1.0
+    reference: 'A3'
+    optional: false
+    inherited: false
+
+# BOM items on the internal-fab assembly
+- model: part.bomitem
+  pk: 80004
+  fields:
+    part: 8002
+    sub_part: 8003
+    quantity: 3.0
+    reference: 'B1'
+    note: 'cut as needed'  # free text - must not influence output
+    optional: false
+    inherited: false
+
+# BOM items on the purchased assembly
+- model: part.bomitem
+  pk: 80005
+  fields:
+    part: 8004
+    sub_part: 8005
+    quantity: 1.0
+    reference: 'B2'
+    optional: false
+    inherited: false
+
+# BOM items on the unsourced assembly
+- model: part.bomitem
+  pk: 80006
+  fields:
+    part: 8006
+    sub_part: 8007
+    quantity: 4.0
+    reference: 'B3'
+    optional: false
+    inherited: false

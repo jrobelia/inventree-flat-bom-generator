@@ -57,7 +57,11 @@ export function generateCsvContent(
     'IPN',
     'Part Name',
     'Description',
+    'Category',
     'Part Type',
+    'Assembly',
+    'Purchaseable',
+    'Internal Supplier',
     'Total Qty',
     'Unit',
     'Cut Length',
@@ -68,6 +72,8 @@ export function generateCsvContent(
     'Build Margin'
   ];
 
+  const boolCell = (value: boolean | undefined) => (value ? 'Yes' : 'No');
+
   const rows = data.map((item) => {
     // Handle child rows (cutlists, substitutes) differently
     if (item.is_child_row && item.child_row_type?.startsWith('cutlist')) {
@@ -75,7 +81,11 @@ export function generateCsvContent(
         item.ipn,
         item.part_name,
         item.description,
+        item.category || '',
         item.part_type,
+        boolCell(item.is_assembly),
+        boolCell(item.purchaseable),
+        boolCell(item.internal_supplier),
         item.total_qty, // Do not multiply by buildQuantity for child rows
         '',
         item.cut_length || '-',
@@ -102,7 +112,11 @@ export function generateCsvContent(
       item.ipn,
       item.part_name,
       item.description,
+      item.category || '',
       item.part_type,
+      boolCell(item.is_assembly),
+      boolCell(item.purchaseable),
+      boolCell(item.internal_supplier),
       totalRequired,
       item.unit,
       '-',

@@ -122,10 +122,9 @@ export function createBomTableColumns({
         const baseType = record.part_type;
         const color = getPartTypeColor(baseType);
 
-        // Internal Fab and CtL child rows get the CUT suffix
+        // Internal Fab child rows get the CUT suffix
         const display =
-          record.is_child_row &&
-          (baseType === 'Internal Fab' || baseType === 'CtL')
+          record.is_child_row && baseType === 'Internal Fab'
             ? `${baseType} - CUT`
             : baseType;
 
@@ -154,11 +153,30 @@ export function createBomTableColumns({
       }
     },
     {
+      accessor: 'category',
+      title: 'Category',
+      sortable: true,
+      switchable: true,
+      render: (record) => {
+        if (record.is_child_row) {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+        return (
+          <Text size='sm' c={record.category ? undefined : 'dimmed'}>
+            {record.category || '-'}
+          </Text>
+        );
+      }
+    },
+    {
       accessor: 'flags',
       title: 'Flags',
       sortable: true,
       switchable: true,
-      defaultVisible: false,
       render: (record) => {
         // Substitute parts: Show substitute badge
         if (record.is_child_row && record.child_row_type === 'substitute') {
@@ -184,6 +202,48 @@ export function createBomTableColumns({
         }
 
         const flags = [];
+
+        if (record.is_assembly) {
+          flags.push(
+            <Tooltip
+              key='assembly'
+              label='Assembly part (build or buy decision from supplier)'
+              withArrow
+            >
+              <Badge color='violet' variant='light' size='sm'>
+                Assembly
+              </Badge>
+            </Tooltip>
+          );
+        }
+
+        if (record.purchaseable) {
+          flags.push(
+            <Tooltip
+              key='purchaseable'
+              label='Part is marked purchaseable'
+              withArrow
+            >
+              <Badge color='green' variant='light' size='sm'>
+                Purchaseable
+              </Badge>
+            </Tooltip>
+          );
+        }
+
+        if (record.internal_supplier) {
+          flags.push(
+            <Tooltip
+              key='internal_supplier'
+              label='Primary supplier is flagged internal (is_internal)'
+              withArrow
+            >
+              <Badge color='cyan' variant='light' size='sm'>
+                Internal Supplier
+              </Badge>
+            </Tooltip>
+          );
+        }
 
         if (record.optional) {
           flags.push(

@@ -81,7 +81,6 @@ class GetBomItemsTests(InvenTreeTestCase):
             'quantity',
             'reference',
             'note',
-            'notes',  # Alias for categorization
             'optional',
             'inherited',
             'has_default_supplier'
@@ -128,15 +127,6 @@ class GetBomItemsTests(InvenTreeTestCase):
         resistor_item = next(item for item in result if item['sub_part_id'] == self.resistor.pk)
         
         self.assertEqual(resistor_item['note'], 'Standard resistor')
-
-    def test_get_bom_items_notes_alias(self):
-        """'notes' should be an alias of 'note' for categorization compatibility."""
-        from flat_bom_generator.bom_traversal import get_bom_items
-
-        result = get_bom_items(self.parent)
-        resistor_item = next(item for item in result if item['sub_part_id'] == self.resistor.pk)
-        
-        self.assertEqual(resistor_item['notes'], resistor_item['note'])
 
     def test_get_bom_items_empty_note_becomes_empty_string(self):
         """Empty note should be empty string, not None."""

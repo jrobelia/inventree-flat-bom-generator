@@ -89,14 +89,8 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         mock_plugin = type('MockPlugin', (), {
             'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
-                'SHOW_PURCHASED_ASSEMBLIES': False,
-                'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
-                'PRIMARY_INTERNAL_SUPPLIER': None,
-                'ADDITIONAL_INTERNAL_SUPPLIERS': '',
                 'FABRICATION_CATEGORY': None,
                 'COMMERCIAL_CATEGORY': None,
-                'CUT_TO_LENGTH_CATEGORY': None,
-                'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
             }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
@@ -156,14 +150,8 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         mock_plugin = type('MockPlugin', (), {
             'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': False,  # Setting disabled
-                'SHOW_PURCHASED_ASSEMBLIES': False,
-                'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
-                'PRIMARY_INTERNAL_SUPPLIER': None,
-                'ADDITIONAL_INTERNAL_SUPPLIERS': '',
                 'FABRICATION_CATEGORY': None,
                 'COMMERCIAL_CATEGORY': None,
-                'CUT_TO_LENGTH_CATEGORY': None,
-                'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
             }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
@@ -198,14 +186,8 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         mock_plugin = type('MockPlugin', (), {
             'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
-                'SHOW_PURCHASED_ASSEMBLIES': False,
-                'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
-                'PRIMARY_INTERNAL_SUPPLIER': None,
-                'ADDITIONAL_INTERNAL_SUPPLIERS': '',
                 'FABRICATION_CATEGORY': None,
                 'COMMERCIAL_CATEGORY': None,
-                'CUT_TO_LENGTH_CATEGORY': None,
-                'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
             }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
@@ -267,14 +249,8 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         mock_plugin = type('MockPlugin', (), {
             'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
-                'SHOW_PURCHASED_ASSEMBLIES': False,
-                'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
-                'PRIMARY_INTERNAL_SUPPLIER': None,
-                'ADDITIONAL_INTERNAL_SUPPLIERS': '',
                 'FABRICATION_CATEGORY': None,
                 'COMMERCIAL_CATEGORY': None,
-                'CUT_TO_LENGTH_CATEGORY': None,
-                'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
             }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin

@@ -7,15 +7,16 @@ import type { BomItem } from '../types/BomTypes';
 
 /**
  * Flatten BOM data by inserting cut list child rows after parents
- * Handles both CtL (Cut-to-Length) and Internal Fab cut lists
+ * Internal Fab assembly children carry one cut-list entry per BOM item
+ * occurrence (count = ancestor multiplier, piece_qty = BOM item quantity).
  *
  * @param items - Array of BOM items from API
  * @returns Flattened array with child rows inserted after parents
  *
  * @example
- * const items = [{ part_id: 1, cut_list: [{ quantity: 2, length: 100 }] }];
+ * const items = [{ part_id: 1, internal_fab_cut_list: [{ count: 2, piece_qty: 100, unit: 'mm' }] }];
  * const flattened = flattenBomData(items);
- * // Returns: [parent, child_with_quantity_2_length_100]
+ * // Returns: [parent, child_with_count_2_piece_qty_100]
  */
 export function flattenBomData(items: BomItem[]): BomItem[] {
   const flattenedData: BomItem[] = [];
@@ -23,29 +24,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
   for (const item of items) {
     // Add parent row
     flattenedData.push(item);
-
-    // Add CtL cut list children
-    if (item.cut_list && item.cut_list.length > 0) {
-      for (const cut of item.cut_list) {
-        flattenedData.push({
-          ...item,
-          total_qty: cut.quantity,
-          part_type: 'CtL' as any,
-          in_stock: null as any,
-          on_order: null as any,
-          allocated: null as any,
-          building: null as any,
-          available: null as any,
-          default_supplier_name: '',
-          cut_length: cut.length,
-          // Generic child row fields
-          is_child_row: true,
-          child_row_type: 'cutlist_ctl',
-          parent_row_part_id: item.part_id,
-          cut_list: null
-        });
-      }
-    }
 
     // Add Internal Fab cut breakdown children
     if (item.internal_fab_cut_list && item.internal_fab_cut_list.length > 0) {
@@ -66,7 +44,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           is_child_row: true,
           child_row_type: 'cutlist_ifab',
           parent_row_part_id: item.part_id,
-          cut_list: null,
           internal_fab_cut_list: null
         });
       }
@@ -105,7 +82,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           purchaseable: true,
           has_default_supplier: false,
           // Clear fields that don't apply to substitutes
-          cut_list: null,
           internal_fab_cut_list: null,
           has_substitutes: false,
           substitute_parts: null

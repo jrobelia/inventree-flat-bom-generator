@@ -10,7 +10,6 @@ Code-first validated: January 10, 2026
 import logging
 from unittest.mock import Mock
 
-from company.models import Company
 from InvenTree.unit_test import InvenTreeTestCase
 from part.models import Part, PartCategory
 from rest_framework import status
@@ -20,7 +19,6 @@ from rest_framework.test import APIRequestFactory
 from flat_bom_generator.views import (
     FlatBOMView,
     get_category_mappings,
-    get_internal_supplier_ids,
 )
 
 
@@ -73,7 +71,6 @@ class DatabaseExceptionTests(InvenTreeTestCase):
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": 999999,  # Non-existent category
             "COMMERCIAL_CATEGORY": None,
-            "CUT_TO_LENGTH_CATEGORY": None,
         }.get(key, backup_value)
 
         # Should not raise exception, should log warning and skip
@@ -94,7 +91,6 @@ class DatabaseExceptionTests(InvenTreeTestCase):
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category_id,
             "COMMERCIAL_CATEGORY": None,
-            "CUT_TO_LENGTH_CATEGORY": None,
         }.get(key, backup_value)
 
         # Should not raise exception
@@ -170,63 +166,6 @@ class InvalidQueryParameterTests(InvenTreeTestCase):
 class EmptyPluginSettingsTests(InvenTreeTestCase):
     """Test graceful degradation when plugin settings are empty or None."""
 
-    def test_get_internal_supplier_ids_with_none_plugin(self):
-        """Test that None plugin returns empty list."""
-        result = get_internal_supplier_ids(None)
-
-        self.assertEqual(result, [])
-        self.assertIsInstance(result, list)
-
-    def test_get_internal_supplier_ids_with_no_settings(self):
-        """Test that empty settings return empty list."""
-        mock_plugin = Mock()
-        mock_plugin.get_setting.return_value = None
-
-        result = get_internal_supplier_ids(mock_plugin)
-
-        self.assertEqual(result, [])
-
-    def test_get_internal_supplier_ids_with_empty_string(self):
-        """Test that empty string settings return empty list."""
-        mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
-            "PRIMARY_INTERNAL_SUPPLIER": "",
-            "ADDITIONAL_INTERNAL_SUPPLIERS": "",
-        }.get(key, backup_value)
-
-        result = get_internal_supplier_ids(mock_plugin)
-
-        self.assertEqual(result, [])
-
-    def test_get_internal_supplier_ids_with_invalid_company_ids(self):
-        """Test that invalid company IDs are filtered out."""
-        mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
-            "PRIMARY_INTERNAL_SUPPLIER": 999999,  # Non-existent
-            "ADDITIONAL_INTERNAL_SUPPLIERS": "999998,999997",  # Also non-existent
-        }.get(key, backup_value)
-
-        result = get_internal_supplier_ids(mock_plugin)
-
-        # Should validate against database and return empty list
-        self.assertEqual(result, [])
-
-    def test_get_internal_supplier_ids_mixed_valid_invalid(self):
-        """Test that only valid IDs are returned when mixed with invalid."""
-        # Create one valid company
-        company = Company.objects.create(name="Test Company", is_supplier=True)
-
-        mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
-            "PRIMARY_INTERNAL_SUPPLIER": company.pk,  # Valid
-            "ADDITIONAL_INTERNAL_SUPPLIERS": f"{company.pk},999999",  # Valid + Invalid
-        }.get(key, backup_value)
-
-        result = get_internal_supplier_ids(mock_plugin)
-
-        # Should return only the valid company ID (deduplicated)
-        self.assertEqual(result, [company.pk])
-
     def test_get_category_mappings_with_none_plugin(self):
         """Test that None plugin returns empty dict."""
         result = get_category_mappings(None)
@@ -249,7 +188,6 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": "",
             "COMMERCIAL_CATEGORY": "",
-            "CUT_TO_LENGTH_CATEGORY": "",
         }.get(key, backup_value)
 
         result = get_category_mappings(mock_plugin)
@@ -265,7 +203,6 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category.pk,  # Configured
             "COMMERCIAL_CATEGORY": None,  # Not configured
-            "CUT_TO_LENGTH_CATEGORY": "",  # Empty string
         }.get(key, backup_value)
 
         result = get_category_mappings(mock_plugin)
@@ -273,7 +210,6 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
         # Should return only fabrication mapping
         self.assertIn("fabrication", result)
         self.assertNotIn("commercial", result)
-        self.assertNotIn("cut_to_length", result)
         self.assertEqual(result["fabrication"], [category.pk])
 
 
@@ -286,36 +222,12 @@ class LoggingAndExceptionHandlingTests(InvenTreeTestCase):
         # Capture log output
         self.logger = logging.getLogger("inventree")
 
-    def test_invalid_string_supplier_id_logs_warning(self):
-        """Test that invalid string supplier ID logs warning."""
-        mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
-            "PRIMARY_INTERNAL_SUPPLIER": "not_a_number",
-            "ADDITIONAL_INTERNAL_SUPPLIERS": "",
-        }.get(key, backup_value)
-
-        with self.assertLogs("inventree", level="WARNING") as cm:
-            result = get_internal_supplier_ids(mock_plugin)
-
-        # Should return empty list
-        self.assertEqual(result, [])
-
-        # Should have logged warning
-        self.assertTrue(
-            any(
-                "has invalid string value" in message and "not_a_number" in message
-                for message in cm.output
-            ),
-            f"Expected warning about 'not_a_number' not found in logs: {cm.output}",
-        )
-
     def test_invalid_string_category_id_logs_warning(self):
         """Test that invalid string category ID logs warning and continues."""
         mock_plugin = Mock()
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": "invalid_id",
             "COMMERCIAL_CATEGORY": None,
-            "CUT_TO_LENGTH_CATEGORY": None,
         }.get(key, backup_value)
 
         with self.assertLogs("inventree", level="WARNING") as cm:
@@ -344,7 +256,6 @@ class LoggingAndExceptionHandlingTests(InvenTreeTestCase):
         mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category_id,
             "COMMERCIAL_CATEGORY": None,
-            "CUT_TO_LENGTH_CATEGORY": None,
         }.get(key, backup_value)
 
         with self.assertLogs("inventree", level="WARNING") as cm:

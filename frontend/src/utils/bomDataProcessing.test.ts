@@ -79,16 +79,19 @@ describe('flattenBomData', () => {
     expect(result[1].ipn).toBe('COML-002');
   });
 
-  it('should insert CtL cut list children after parent', () => {
+  it('should insert per-occurrence cut list children after parent', () => {
+    // One entry per BOM item occurrence: count is the ancestor multiplier,
+    // cut_length is the BOM item quantity (piece_qty). Entries are never
+    // merged - two occurrences at the same piece length stay two rows.
     const items = [
       createBomItem({
         part_id: 1,
-        ipn: 'CtL-100',
-        part_type: 'CtL',
+        ipn: 'IFAB-100',
+        part_type: 'Internal Fab',
         total_qty: 50,
-        cut_list: [
-          { quantity: 2, length: 100 },
-          { quantity: 3, length: 150 }
+        internal_fab_cut_list: [
+          { count: 2, piece_qty: 100, unit: 'mm' },
+          { count: 3, piece_qty: 100, unit: 'mm' }
         ]
       })
     ];
@@ -100,11 +103,12 @@ describe('flattenBomData', () => {
     expect(result[1].is_child_row).toBe(true);
     expect(result[2].is_child_row).toBe(true);
 
-    // Verify child quantities and lengths
+    // Child rows: total_qty = count (ancestor multiplier), cut_length = piece_qty
     expect(result[1].total_qty).toBe(2);
     expect(result[1].cut_length).toBe(100);
+    expect(result[1].child_row_type).toBe('cutlist_ifab');
     expect(result[2].total_qty).toBe(3);
-    expect(result[2].cut_length).toBe(150);
+    expect(result[2].cut_length).toBe(100);
   });
 
   it('should insert Internal Fab cut list children after parent', () => {
@@ -134,13 +138,13 @@ describe('flattenBomData', () => {
     const items = [
       createBomItem({
         part_id: 1,
-        ipn: 'CtL-100',
+        ipn: 'IFAB-100',
         in_stock: 50,
         allocated: 10,
         on_order: 20,
         building: 5,
         available: 40,
-        cut_list: [{ quantity: 2, length: 100 }]
+        internal_fab_cut_list: [{ count: 2, piece_qty: 100, unit: 'mm' }]
       })
     ];
 
@@ -154,27 +158,10 @@ describe('flattenBomData', () => {
     expect(child.available).toBeNull();
   });
 
-  it('should handle item with both CtL and Internal Fab cut lists', () => {
-    const items = [
-      createBomItem({
-        part_id: 1,
-        cut_list: [{ quantity: 1, length: 100 }],
-        internal_fab_cut_list: [{ count: 1, piece_qty: 50, unit: 'mm' }]
-      })
-    ];
-
-    const result = flattenBomData(items);
-
-    expect(result).toHaveLength(3); // 1 parent + 1 CtL child + 1 IFab child
-    expect(result[1].part_type).toBe('CtL');
-    expect(result[2].part_type).toBe('Internal Fab');
-  });
-
   it('should handle empty cut list arrays', () => {
     const items = [
       createBomItem({
         part_id: 1,
-        cut_list: [],
         internal_fab_cut_list: []
       })
     ];
@@ -188,8 +175,8 @@ describe('flattenBomData', () => {
     const items = [
       createBomItem({
         part_id: 123,
-        ipn: 'CtL-100',
-        cut_list: [{ quantity: 2, length: 100 }]
+        ipn: 'IFAB-100',
+        internal_fab_cut_list: [{ count: 2, piece_qty: 100, unit: 'mm' }]
       })
     ];
 

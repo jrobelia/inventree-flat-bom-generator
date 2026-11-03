@@ -119,11 +119,6 @@ function FlatBOMGeneratorPanel({
     includeOnOrder
   );
 
-  // Extract cutlist units from BOM metadata
-  const cutlistUnits = useMemo(() => {
-    return bomData?.metadata?.cutlist_units_for_ifab || 'units';
-  }, [bomData?.metadata?.cutlist_units_for_ifab]);
-
   // True when at least one item in the BOM has substitute parts available
   const hasSubstitutes = useMemo(() => {
     return bomData?.bom_items?.some((item) => item.has_substitutes) ?? false;
@@ -248,7 +243,6 @@ function FlatBOMGeneratorPanel({
         opened={settingsDrawerOpen}
         onClose={() => setSettingsDrawerOpen(false)}
         settings={settings}
-        cutlistUnits={cutlistUnits}
         onUpdateSetting={updateSetting}
         onResetToDefaults={resetToDefaults}
         onApply={handleApplySettings}
@@ -279,7 +273,6 @@ function FlatBOMGeneratorPanel({
           <SettingsPanel
             title='Generation Settings'
             settings={settings}
-            cutlistUnits={cutlistUnits}
             onUpdateSetting={updateSetting}
             onResetToDefaults={resetToDefaults}
           />

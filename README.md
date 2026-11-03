@@ -12,10 +12,10 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 
 ### Core Functionality
 
-- **Automatic Leaf-Part Extraction**: Traverses the entire BOM tree and extracts only the purchaseable leaf components (Fab Parts, Commercial Parts, Purchaseable Assemblies), filtering out intermediate assemblies
+- **Automatic Line-Item Extraction**: Traverses the entire BOM tree and emits line items driven by assembly status and each part's primary supplier — external-supplier assemblies appear as purchased units, internal-supplier assemblies appear and are expanded, unsourced assemblies expand as build candidates
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
 - **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag)
-- **Cut-to-Length Part Support**: Custom handling for cut-to-length raw materials (wire, tubing, bar stock) with per-cut quantity breakdown
+- **Internal Fabrication Cut Lists**: Children of internal-supplier assemblies get a per-occurrence cut breakdown showing piece quantity and how many times each occurrence fires
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
 
@@ -92,65 +92,45 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | Setting | Description | Default |
 |---------|-------------|---------|
 | **Maximum Traversal Depth** | Maximum depth to traverse BOM hierarchy. Set to 0 for unlimited depth. Use positive values (e.g., 5) to limit traversal for very deep BOMs and improve performance. | `0` (unlimited) |
-| **Expand Purchased Assemblies** | When enabled, expands the BOM for assemblies that have a default supplier (normally treated as purchaseable units). Useful to see internal components of purchased sub-assemblies. | `False` |
-| **Primary Internal Supplier** | Your primary internal manufacturing company/supplier. Parts with this supplier will be categorized as Internal Fab and automatically expanded during traversal. | None |
-| **Additional Internal Suppliers** | Comma-separated list of additional internal supplier IDs (e.g., "5,12"). Parts with these suppliers are also treated as internal. Leave empty if you only have one internal supplier. | Empty |
-| **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) will be classified as Fab or Internal Fab. Required for proper categorization. | None |
-| **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) will be classified as Coml. Required for proper categorization. | None |
-| **Cut-to-Length Category** | InvenTree category for cut-to-length raw materials (wire, bar stock, etc.). Parts in this category with length in BOM notes will be classified as CtL. Optional but recommended if you use cut-to-length parts. | None |
-| **Include Internal Fab Parts in Cutlist** | Process Internal Fab parts as cutlist items (similar to Native CtL category) for specified units. | `False` |
-| **Cutlist Units for Internal Fab** | Comma-separated list of units (e.g., "mm", "in", "cm") to apply cutlist processing to Internal Fab parts. | `mm,in,cm` |
+| **Expand Purchased Assemblies** | When enabled, expands the BOM for assemblies that have an external primary supplier (normally treated as purchaseable units). Useful to see internal components of purchased sub-assemblies. | `False` |
+| **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) get the Fab display label. Affects labels only, not expansion. | None |
+| **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) get the Coml display label. Affects labels only, not expansion. | None |
+| **Include Internal Fab Parts in Cutlist** | Show cut-list rows for children of internal-supplier assemblies. | `False` |
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 
-### Cut-to-Length Part Support
+### Internal Fabrication Cut Lists
 
-**Feature Overview**: The plugin provides custom support for cut-to-length (CtL) raw materials like wire, tubing, and bar stock.
-
-**Important Limitation**: This is a **workaround** to InvenTree's standard part system and does not integrate with InvenTree's built-in inventory or stocking features. CtL parts will not act correctly inside of InvenTree's stock levels, allocations, or purchasing workflows in terms of qty at cut length.  They can still be used to order in bulk.
-
-**Intended Use Case**:
-Assemblies with cut lists that specify raw material quantities by cut length:
-- Example: "Qty 5 @ 30 inches" means 5 pieces, each 30 inches long
-- Example: "Qty 8 @ 21.20 mm" means 8 pieces, each 21.20 mm long
+**Feature Overview**: When an assembly's primary supplier is a company flagged **internal** (`Company.is_internal`), the plugin shows the assembly as a line item *and* expands its children, attaching a cut breakdown to each child material.
 
 **How It Works**:
-1. Create a part in the Cut-to-Length category (configured in plugin settings)
-2. Add the part to your assembly BOM
-3. In the BOM line item **note field**, specify cut lengths in the format: `length: XX [unit]`
+1. Flag your internal manufacturing company as internal in InvenTree (`Company → is internal`)
+2. Set that company as the part's **primary supplier** on the fabricated assembly
+3. Add the assembly to a parent BOM
 4. The plugin will:
-   - Display the parent material with total quantity needed
-   - Show child rows for each cut length with piece counts
-   - Scale piece counts automatically with build quantity
+   - Display the assembly itself as a line item (the internal work/PO line)
+   - Expand its children into the flat BOM as raw-material pulls
+   - Attach one cut-list entry per BOM item occurrence on each child
+   - Scale counts automatically with build quantity
 
-**Example BOM Structure**:
-```
-Parent: OA-00409 | CTL Tubing, Silicone, Blue, 1/4" OD x 1/8" ID
-  Total Qty: 11180.00 [mm]
-  
-  Child: CTL - CUT
-    8 pieces × 21.20 [mm] (for 1 unit) → 400 pieces (for 50 units)
-  
-  Child: CTL - CUT  
-    4 pieces × 12.00 [mm] (for 1 unit) → 200 pieces (for 50 units)
-```
+**Cut-List Entry Semantics**:
+- **Piece qty** = the BOM item quantity on the child line (in the child's native unit)
+- **Count** = how many times that occurrence fires (the ancestor quantity multiplier)
+- Entries are per occurrence — two BOM lines of the same piece size stay two rows
+- BOM item notes are free text — the plugin never parses them for lengths or units, and no unit filtering is applied
 
-**Limitations**:
-- CtL parts do not show up as cut pieces in InvenTree stock levels
-- Cannot create purchase orders directly from CtL cut requirements
-- No integration with InvenTree's allocation system
-- Manual tracking required for raw material inventory
-
-**When to Use**: Use CtL support when you need to track cut piece requirements for manufacturing planning, but manage raw material purchasing and inventory outside the plugin.
+**Example**: `TLA x1 → Welded Frame (internal supplier) x2 → Steel Bar 350mm x1` produces:
+- `Welded Frame` — line item, qty 2, type "Internal Fab"
+- `Steel Bar` — line item, total qty 700mm, with a cut-list child row: `count 2 × piece_qty 350mm` (two frames, one 350mm piece each)
 
 ### Understanding Default Suppliers
 
 **Critical Concept:** Default suppliers determine how assemblies are treated during BOM traversal.
 
 **Why This Matters:**
-- **External Default Supplier** → Assembly appears in flat BOM as a purchaseable unit (Purchased Assy)
-- **Internal Default Supplier** → Assembly is expanded, showing its component parts (Internal Fab)
-- **No Default Supplier** → Assembly is expanded, showing its component parts (Standard Assy)
+- **External Primary Supplier** → Assembly appears in flat BOM as a purchaseable unit (Purchased Assy), not expanded
+- **Internal Primary Supplier** (`Company.is_internal`) → Assembly appears in flat BOM AND is expanded, showing its component parts (Internal Fab)
+- **No Primary Supplier** → Assembly is expanded as a build candidate, showing its component parts (Standard Assy)
 
 **Example Scenarios:**
 
@@ -162,15 +142,15 @@ Parent: OA-00409 | CTL Tubing, Silicone, Blue, 1/4" OD x 1/8" ID
 
 2. **Internal Fabrication Assembly**: A CNC machined part made in-house
    - `is_assembly` = TRUE  
-   - `default_supplier` = Your internal supplier company
-   - **Result**: Does NOT appear in flat BOM, BOM IS expanded
-   - **Why**: Plugin shows raw materials needed (bar stock, etc.), not the fabricated part itself
+   - `primary supplier` = Your internal supplier company (`is_internal` flag set)
+   - **Result**: Appears in flat BOM as "Internal Fab" AND its BOM IS expanded
+   - **Why**: The row covers the internal work order; the expanded children are the raw materials needed (bar stock, etc.)
 
 3. **Standard Assembly**: A sub-assembly built in-house
    - `is_assembly` = TRUE
-   - `default_supplier` = None
+   - `primary supplier` = None
    - **Result**: Does NOT appear in flat BOM, BOM IS expanded
-   - **Why**: Plugin shows component parts you need to order, not the sub-assembly
+   - **Why**: Plugin shows component parts you need to order or build, not the sub-assembly — it is a build-order candidate, not a purchase line
 
 **Configuration Tip:** Set default suppliers correctly to control BOM traversal behavior. This is more important than category configuration for assemblies.
 
@@ -178,17 +158,23 @@ Parent: OA-00409 | CTL Tubing, Silicone, Blue, 1/4" OD x 1/8" ID
 
 **Part Categorization Logic:**
 
-The plugin categorizes parts based on category settings, assembly status, and default supplier:
+Display labels (`part_type`) answer "what should this line item show?" — they do not drive expansion. Expansion is decided by `is_assembly`, the primary supplier, and the supplier company's `is_internal` flag:
 
-| Part Type | Category | is_assembly | default_supplier | Appears in Flat BOM | Badge Color | Description |
-|-----------|----------|-------------|------------------|---------------------|-------------|-------------|
-| **Coml** | Commercial | FALSE | any/none | ✅ YES | Green | Off-the-shelf commercial parts |
-| **Fab** | Fabricated | FALSE | any/none | ✅ YES | Blue | Machining, PCB fabrication |
-| **CtL** | Cut-to-Length | FALSE | any/none | ✅ YES | Teal | Wire, bar stock (length in BOM notes) |
-| **Purchased Assy** | any | TRUE | external | ✅ YES | Orange | PCBA, purchased complete with external supplier |
-| **Internal Fab** | Fabricated | TRUE | internal | ❌ NO (expands) | Cyan | CNC, 3D print - BOM shows raw materials |
-| **Assy** | any | TRUE | none/internal | ❌ NO (expands) | Violet | Standard assembly built in-house |
-| **Other** | unconfigured | FALSE | any/none | ✅ YES | Gray | Parts not matching configured categories |
+| Part Type | is_assembly | Primary Supplier | Appears in Flat BOM | Expanded | Badge Color | Description |
+|-----------|-------------|------------------|---------------------|----------|-------------|-------------|
+| **TLA** | TRUE | any | ✅ YES | n/a | Grape | The top-level part being flattened |
+| **Purchased Assy** | TRUE | external | ✅ YES | ❌ NO | Orange | PCBA, purchased complete from external supplier |
+| **Internal Fab** | TRUE | internal (`is_internal`) | ✅ YES | ✅ YES | Cyan | CNC, 3D print - row covers the internal PO, children show raw materials |
+| **Assy** | TRUE | none | ❌ NO | ✅ YES | Violet | Unsourced assembly - expanded as a build-order candidate |
+| **Coml** | FALSE | any/none | ✅ YES | n/a | Green | Off-the-shelf commercial parts (Commercial category) |
+| **Fab** | FALSE | any/none | ✅ YES | n/a | Blue | Fabricated parts (Fabrication category) |
+| **Other** | FALSE | any/none | ✅ YES | n/a | Gray | Parts not matching configured categories |
+
+**Expansion rules (independent of labels):**
+- Non-assembly parts are always line items
+- External-supplier assemblies are line items, expanded only via the "Expand Purchased Assemblies" toggle
+- Internal-supplier assemblies are line items AND always expanded
+- Unsourced assemblies are always expanded (regardless of `purchaseable`), and only appear themselves when they have no children (flagged as a warning)
 
 **Configuration Impact:**
 
@@ -198,19 +184,19 @@ The plugin categorizes parts based on category settings, assembly status, and de
 - All part types correctly identified
 
 **When categories are NOT configured:**
-- **Assemblies still work**: Classification relies on `is_assembly` flag and default supplier
-- **Non-assemblies become "Other"**: No category mappings means Coml, Fab, CtL cannot be identified
-- **Recommendation**: Configure at minimum Fabricated and Commercial categories
+- **Assemblies still work**: Assembly labels rely on `is_assembly` and the primary supplier's `is_internal` flag, not categories
+- **Non-assemblies become "Other"**: No category mappings means Coml and Fab cannot be identified
+- **Recommendation**: Configure both Fabricated and Commercial categories for accurate labels
+- **Note**: Category configuration affects display labels only — expansion behavior is unchanged either way
 
 **Partial configuration scenarios:**
 
 | Categories Configured | What Works | What Doesn't |
 |----------------------|------------|--------------|
-| None | Purchased Assy, Internal Fab identification | Coml, Fab, CtL classification (all → "Other") |
-| Fabricated only | Fab, Internal Fab, assemblies | Coml, CtL (→ "Other") |
-| Commercial only | Coml, assemblies | Fab, CtL (→ "Other") |
-| Fabricated + Commercial | Most parts classified correctly | CtL (→ treated as Fab) |
-| All four categories | ✅ Full classification | None |
+| None | Assembly labels + all expansion behavior | Coml, Fab labels (all → "Other") |
+| Fabricated only | Fab labels, assemblies | Coml (→ "Other") |
+| Commercial only | Coml labels, assemblies | Fab (→ "Other") |
+| Both categories | ✅ Full classification | None |
 
 **Note:** The "Other" category means the plugin cannot determine the part type from available data. These parts will still appear in the flat BOM if they are leaf parts (non-assemblies without child BOMs).
 
@@ -262,8 +248,9 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Component** | Full part name with IPN prefix and variant (includes thumbnail image, clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
-| **Type** | Color-coded badge: Coml (green), Fab (blue), CtL (teal), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
-| **Flags** | Optional (orange badge) and Consumable (yellow badge) indicators (hidden by default, can be shown via column menu) |
+| **Category** | InvenTree part category name (empty if uncategorized) |
+| **Type** | Color-coded badge: Coml (green), Fab (blue), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
+| **Flags** | Assembly, Purchaseable, and Internal Supplier indicators plus Optional (orange badge) and Consumable (yellow badge) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
@@ -288,11 +275,11 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
    - Detects and prevents circular references
    - Calculates cumulative quantities through multiplication
 
-2. **Filter**: Extract only leaf parts (purchaseable components)
-   - Coml: Commercial/COTS parts (non-assembly in Commercial category)
-   - Fab: Fabricated parts (non-assembly in Fabrication category)
-   - CtL: Cut-to-length materials (non-assembly in Cut-to-Length category with length in BOM notes)
-   - Purchased Assy: Assemblies with external default supplier (purchased complete)
+2. **Filter**: Apply the line-item / expansion matrix
+   - Non-assembly parts: always line items
+   - External-supplier assemblies: line items (children hidden unless expanded)
+   - Internal-supplier assemblies: line items, always expanded (children get cut lists)
+   - Unsourced assemblies: always expanded as build candidates
 
 3. **Deduplicate**: Sum quantities for parts appearing multiple times
    - Groups by part_id
@@ -347,7 +334,7 @@ Reality: 150 total across variants (any could fulfill requirement)
 **Status**: v0.11.53 -- substitute parts, checkbox UX, and test infrastructure complete. Future work focuses on UX polish and new display features.
 
 1. **Mixed Flag Handling** (HIGH) - Separate line items when the same part has different optional/consumable flags across BOM lines
-2. **Child Row Visual Consistency** (MEDIUM) - Unified styling for cut-to-length, substitute, and mixed-flag child rows that feels InvenTree-native
+2. **Child Row Visual Consistency** (MEDIUM) - Unified styling for cut-list, substitute, and mixed-flag child rows that feels InvenTree-native
 3. **UI Overhaul: Control Bar** (MEDIUM) - Replace checkbox clutter with a cleaner pattern (dropdown menu, collapsible panel, or toolbar redesign)
 4. **Pre-Generation Info Panel** (LOW) - Explain plugin-specific features before the user hits Generate
 5. **Rows-Per-Page Fix** (LOW) - Replace "All" with 500/1000 to match InvenTree's standard pagination

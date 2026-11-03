@@ -167,11 +167,19 @@ def test_serializer_validates_real_part(self):
 
 #### What We Do Not Currently Test via HTTP
 
-- HTTP requests to `/api/plugin/flat-bom-generator/flat-bom/{id}/` — possible
-  since InvenTree 1.5.x via `ENABLE_PLUGINS_URL` + `registry.reload_plugins()`
+- End-to-end HTTP requests through Django's URL resolver — possible since
+  InvenTree 1.5.x via `ENABLE_PLUGINS_URL` + `registry.reload_plugins()`
   + `self.client.get('/plugin/<slug>/<path>/')`; not currently exercised.
-- Authentication/permissions on plugin endpoints — verify manually on a
-  running server (InvenTree UI or an API client like Postman/curl).
+  View-level dispatch *is* covered: `test_view_permissions.py` drives
+  `FlatBOMView.as_view()` through DRF `dispatch()` with `APIRequestFactory`
+  + `force_authenticate`, asserting 200 (`bom.view`), 403 (no roles),
+  403 (`part.view` only), and 401 (anonymous). Endpoint permissions no
+  longer need manual verification on a running server.
+- Convention: any test mocking `flat_bom_generator.views.*` must re-import
+  `FlatBOMView` inside `setUp` — plugin registry reloads purge
+  `flat_bom_generator.*` from `sys.modules`, so a collection-time import
+  leaves the view bound to the stale module while the mock patches the
+  fresh one (see `test_stock_enrichment.py`, `test_view_settings_loading.py`).
 
 **Reference:** See [docs/reference/INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) for integration testing setup.
 

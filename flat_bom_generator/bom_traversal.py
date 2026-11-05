@@ -36,7 +36,7 @@ def _resolve_unit_registry():
 # Piece-count spellings are never cut stock, whatever the registry says.
 # pint resolves 'pc'/'pcs' to 'parsec' ([length]) via pluralization, which
 # would otherwise mark every default-unit part as a cut line.
-_COUNT_UNITS = frozenset({
+_COUNT_UNITS = {
     "pc",
     "pcs",
     "piece",
@@ -47,7 +47,7 @@ _COUNT_UNITS = frozenset({
     "dz",
     "hundred",
     "thousand",
-})
+}
 
 
 def _units_have_length_dimension(units: str, registry) -> bool:
@@ -89,11 +89,8 @@ def get_bom_items(part) -> list[dict]:
     try:
         # Join sub_part (categorization) and part (inherited_from check) -
         # prefetch_related(None) drops upstream's now-redundant prefetches
-        bom_items = list(
-            part.get_bom_items()
-            .prefetch_related(None)
-            .select_related("sub_part", "part")
-        )
+        queryset = part.get_bom_items().prefetch_related(None)
+        bom_items = list(queryset.select_related("sub_part", "part"))
 
         # Batch-fetch the primary SupplierPart for every sub_part in a single
         # query (keyed by part id) to avoid an N+1 lookup per BOM line.

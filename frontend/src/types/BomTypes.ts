@@ -63,6 +63,9 @@ export interface BomItem {
   building?: number;
   allocated: number;
   available: number;
+  // Upstream shortage signals (InvenTree Part properties, ticket #15)
+  net_stock: number; // total_stock - allocated + on_order; can go negative
+  quantity_to_order: number; // upstream suggested order quantity (floored at 0)
 
   // Procurement
   default_supplier_name?: string;
@@ -105,6 +108,8 @@ export interface SubstitutePart {
   on_order: number; // On incomplete purchase orders
   allocated: number; // Reserved for builds/sales
   available: number; // in_stock - allocated
+  net_stock: number; // in_stock - allocated + on_order (upstream; can go negative)
+  quantity_to_order: number; // upstream suggested order quantity (floored at 0)
 
   // Display metadata
   image: string | null; // Full-size image URL

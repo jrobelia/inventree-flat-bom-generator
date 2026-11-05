@@ -69,6 +69,8 @@ export function generateCsvContent(
     'In Stock',
     'Allocated',
     'On Order',
+    'Net Stock',
+    'To Order',
     'Build Margin'
   ];
 
@@ -90,6 +92,8 @@ export function generateCsvContent(
         '',
         item.cut_length || '-',
         item.cut_unit || item.unit || '',
+        '-',
+        '-',
         '-',
         '-',
         '-',
@@ -124,6 +128,8 @@ export function generateCsvContent(
       item.in_stock,
       item.allocated,
       item.on_order,
+      item.net_stock,
+      item.quantity_to_order,
       balance
     ];
   });

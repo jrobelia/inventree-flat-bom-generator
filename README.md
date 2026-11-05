@@ -18,6 +18,7 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 - **Cut Lists**: BOM lines in length units (mm, m, ft...) get a piece breakdown — each entry shows the piece size and how many pieces the BOM demands, aggregated per part and size
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
+- **Upstream Shortage Signals**: Net Stock and To Order columns surface InvenTree's own shortage math — net position can go negative
 
 ### User Interface
 
@@ -257,9 +258,11 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
+| **Net Stock** | Upstream net position: stock on hand minus allocated plus on order (red badge when negative — a shortage; green when positive) with [unit] |
+| **To Order** | Upstream suggested order quantity — demand minus stock, open orders, and in-production builds (orange badge when > 0) with [unit] |
 | **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
-All columns except **Cut Length** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
+All columns except **Category**, **Cut Length**, **Pieces**, and **Inherited From** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
 
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)
@@ -295,6 +298,11 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - Sales orders (promised to customers)
 
 **Available** = Total Stock - Allocated
+
+**Net Stock** = `Part.net_stock` (upstream) = Total Stock - Allocated + On Order
+- Can go negative; a negative value is a shortage signal the floored `available` hides
+
+**To Order** = `Part.quantity_to_order` (upstream) = open order demand minus the larger of stock-on-hand and minimum stock, minus on-order and in-production quantities (floored at 0)
 
 **Build Margin** = Stock Used + (On Order if enabled) - Total Required
 - Where Stock Used = Available (if allocations enabled) or Total Stock (if disabled)

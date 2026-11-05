@@ -59,6 +59,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "on_order": 100.0,
       "allocated": 10.0,
       "available": 40.0,
+      "net_stock": 140.0,
+      "quantity_to_order": 0.0,
       "image": "/media/part_images/fab-100.jpg",
       "thumbnail": "/media/part_images/fab-100_thumbnail.jpg",
       "link": "/part/456/"
@@ -92,6 +94,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `on_order`: Quantity on incomplete purchase orders
 - `allocated`: Stock reserved for builds/sales
 - `available`: Total stock minus allocated
+- `net_stock`: Upstream `Part.net_stock` - total stock minus allocated plus on-order; can go negative (shortage signal)
+- `quantity_to_order`: Upstream `Part.quantity_to_order` - suggested order quantity after stock, open orders, and in-production builds (floored at 0)
 - `image`: Full-size image URL (null if none)
 - `thumbnail`: Thumbnail image URL (null if none)
 - `link`: URL to part detail page
@@ -139,7 +143,8 @@ frontend/
 │   └── utils/              # Utility functions
 │       ├── colorUtils.ts
 │       ├── csvExport.ts
-│       └── filterAndSort.ts
+│       ├── bomDataProcessing.ts
+│       └── substituteCheckboxState.ts
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
@@ -190,7 +195,7 @@ tools/                       # Development utilities
 - **Endpoint**: `GET /plugin/flat-bom-generator/flat-bom/{part_id}/`
 - **Key Responsibilities**:
   - Calls `get_flat_bom()` to get deduplicated leaf parts
-  - Enriches with stock data: `total_stock`, `allocated`, `available`, `on_order`, `building`
+  - Enriches with stock data: `total_stock`, `allocated`, `available`, `on_order`, `building`, `net_stock`, `quantity_to_order`
   - Adds display metadata: `thumbnail`, `image`, `link`, `default_supplier_name`
 - **Response Structure**: See API Response Schema below
 
@@ -338,6 +343,8 @@ interface BomItem {
     allocated: number;      // Reserved for builds/sales
     available: number;      // in_stock - allocated
     on_order: number;       // Incoming from POs
+    net_stock: number;      // in_stock - allocated + on_order (upstream; can go negative)
+    quantity_to_order: number; // upstream suggested order quantity (floored at 0)
     building?: number;      // In production
     
     // Procurement
@@ -388,28 +395,31 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**13 Columns** (sortable except Cut Length, Pieces, and Inherited From; some toggleable):
+**16 Columns** (sortable except Category, Cut Length, Pieces, and Inherited From; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
-5. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
-6. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
-7. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
-8. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
-9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
-10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
-11. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
-12. **On Order** - Blue badge if > 0 with [unit] (toggleable)
-13. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+5. **Category** - InvenTree part category name (toggleable)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
+7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
+8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
+9. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
+10. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+11. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+12. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+13. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+14. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
+15. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
+16. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
 **Column Visibility:**
 - Always visible: Component
-- Default visible: IPN, Description, Type, Total Qty, In Stock, Allocated, On Order, Build Margin
-- Hidden by default: Flags, Cut Length
+- Default visible: IPN, Description, Type, Category, Flags, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
+- Auto-hidden unless data present: Cut Length, Pieces, Inherited From
 - User can toggle visibility via gear icon in ControlBar (v0.11.23+)
 
-**Sort Logic Location**: `utils/filterAndSort.ts` (extracted from Panel.tsx in v0.11.6)
+**Sort Logic Location**: `utils/bomDataProcessing.ts` (`sortBomData`, extracted from Panel.tsx in v0.11.6)
 
 ---
 
@@ -419,7 +429,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 1. Update `BomItem` interface in `types/BomTypes.ts`
 2. Add field to enrichment in `views.py` (backend)
 3. Add column definition to `columns/bomTableColumns.tsx`
-4. Add sort case in `utils/filterAndSort.ts`
+4. Add sort case in `utils/bomDataProcessing.ts` (`sortBomData`)
 5. Update CSV export in `utils/csvExport.ts`
 6. Update `FlatBOMItemSerializer` in `serializers.py`
 
@@ -429,7 +439,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 3. **Quantities**: Check `deduplicate_and_sum()` in `bom_traversal.py`
 
 ### Changing Filters
-1. Update `utils/filterAndSort.ts` (filter/sort logic)
+1. Update `utils/bomDataProcessing.ts` (filter/sort logic)
 2. Update `Panel.tsx` if new UI controls needed
 3. Update `components/ControlBar.tsx` if adding to control bar
 
@@ -473,7 +483,7 @@ python -m build
 - [ ] Stock calculations (allocated, available) accurate
 
 **Frontend:**
-- [ ] Sortable columns sort correctly (Cut Length, Pieces, and Inherited From are not sortable)
+- [ ] Sortable columns sort correctly (Category, Cut Length, Pieces, and Inherited From are not sortable)
 - [ ] Search filters IPN and Part Name
 - [ ] Checkboxes affect shortfall calculation
 - [ ] Build quantity multiplies all requirements
@@ -481,7 +491,7 @@ python -m build
 - [ ] CSV export includes all fields
 - [ ] Pagination includes "All" option and works correctly
 - [ ] Component column displays full_name instead of part_name
-- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, and On Order columns
+- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, and To Order columns
 - [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
 - [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
 - [ ] Column visibility toggles work correctly (gear icon)

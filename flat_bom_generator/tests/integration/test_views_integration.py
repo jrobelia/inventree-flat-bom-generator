@@ -396,6 +396,8 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             'allocated': float(part_obj.allocation_count()),
             'available': float(part_obj.available_stock),
             'on_order': float(part_obj.on_order),
+            'net_stock': float(part_obj.net_stock or 0),
+            'quantity_to_order': float(part_obj.quantity_to_order or 0),
             'default_supplier_id': None,
             'assembly_no_children': False,
             'max_depth_exceeded': False,

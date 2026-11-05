@@ -33,6 +33,8 @@ function createMockItem(
     allocated,
     on_order,
     available: in_stock - allocated,
+    net_stock: in_stock - allocated + on_order,
+    quantity_to_order: 0,
     image: undefined,
     thumbnail: undefined,
     link: '/part/1/'

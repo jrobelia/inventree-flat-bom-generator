@@ -59,6 +59,53 @@ describe('generateCsvContent', () => {
     expect(Number(childCells[cutCol])).toBe(500);
   });
 
+  it('exports Net Stock and To Order before Build Margin, unscaled by buildQuantity', () => {
+    // Ticket #15: both are part-level stock signals like in_stock, not
+    // requirements - buildQuantity must not scale them (R-017 covers
+    // requirement scaling only).
+    const items = [
+      createBomItem({
+        net_stock: -5,
+        quantity_to_order: 7.5,
+        in_stock: 3,
+        allocated: 8,
+        on_order: 0
+      })
+    ];
+    const csv = generateCsvContent(items, 10, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const netCol = header.indexOf('Net Stock');
+    const toOrderCol = header.indexOf('To Order');
+    const marginCol = header.indexOf('Build Margin');
+
+    expect(netCol).toBeGreaterThan(-1);
+    expect(toOrderCol).toBeGreaterThan(-1);
+    expect(netCol).toBeLessThan(marginCol);
+    expect(toOrderCol).toBeLessThan(marginCol);
+
+    const cells = lines[1].split(',');
+    expect(Number(cells[netCol])).toBe(-5);
+    expect(Number(cells[toOrderCol])).toBe(7.5);
+  });
+
+  it('emits placeholders for the shortage columns on cut-list child rows', () => {
+    const items = [
+      createBomItem({
+        cut_list: [{ size: 500, count: 2, unit: 'mm' }]
+      })
+    ];
+    const csv = generateCsvContent(flattenBomData(items), 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const childCells = lines[2].split(',');
+
+    expect(childCells[header.indexOf('Net Stock')]).toBe('-');
+    expect(childCells[header.indexOf('To Order')]).toBe('-');
+    // Row width still matches the header
+    expect(childCells.length).toBe(header.length);
+  });
+
   it('keeps unit cell on the cut row, blank on the parent', () => {
     const items = [
       createBomItem({

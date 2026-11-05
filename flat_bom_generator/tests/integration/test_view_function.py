@@ -443,6 +443,95 @@ class FlatBOMViewIntegrationTests(InvenTreeTestCase):
             # Expected - part_id is required parameter
             pass
     
+    def test_bom_items_include_net_stock_and_quantity_to_order(self):
+        """API rows carry the upstream shortage fields, equal to Part's own properties.
+
+        Ticket #15: net_stock and quantity_to_order are pass-through of the
+        upstream Part properties (part/models.py:1575 / :1546 at 1.6.3) -
+        never recomputed by the plugin.
+        """
+        request = self.factory.get(f'/api/plugin/flat-bom-generator/flat-bom/{self.tla.pk}/')
+        force_authenticate(request, user=self.user)
+        response = self.view(request, part_id=self.tla.pk)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        bom_items = response.data['bom_items']
+        self.assertGreater(len(bom_items), 0, "Should have BOM items")
+
+        for item in bom_items:
+            self.assertIn('net_stock', item)
+            self.assertIn('quantity_to_order', item)
+            part = Part.objects.get(pk=item['part_id'])
+            self.assertEqual(
+                item['net_stock'],
+                float(part.net_stock),
+                f"part {item['part_id']}: net_stock must equal Part.net_stock",
+            )
+            self.assertEqual(
+                item['quantity_to_order'],
+                float(part.quantity_to_order),
+                f"part {item['part_id']}: quantity_to_order must equal Part.quantity_to_order",
+            )
+
+    def test_shortage_fields_reflect_orders_and_demand(self):
+        """Discriminating seeds prove the fields are not echoes of existing columns.
+
+        - coml2: 5 in stock + 25 on an open PO line -> net_stock 30
+          (in_stock alone would report 5)
+        - coml1: 100 in stock + open sales-order line demanding 150 ->
+          quantity_to_order 50 (upstream formula floors at 0)
+        """
+        from company.models import Company, SupplierPart
+        from order.models import (
+            PurchaseOrder,
+            PurchaseOrderLineItem,
+            SalesOrder,
+            SalesOrderLineItem,
+        )
+
+        supplier = Company.objects.create(
+            name='Shortage Seed Supplier', is_supplier=True
+        )
+        supplier_part = SupplierPart.objects.create(
+            part=self.coml2, supplier=supplier, SKU='COML200-S'
+        )
+        po = PurchaseOrder.objects.create(
+            supplier=supplier, description='restock PO'
+        )
+        PurchaseOrderLineItem.objects.create(
+            part=supplier_part, order=po, quantity=25
+        )
+
+        self.coml1.salable = True
+        self.coml1.save()
+        customer = Company.objects.create(
+            name='Shortage Seed Customer', is_customer=True
+        )
+        so = SalesOrder.objects.create(
+            reference='SO-SHORTAGE-1', customer=customer
+        )
+        SalesOrderLineItem.objects.create(
+            order=so, part=self.coml1, quantity=150
+        )
+
+        request = self.factory.get(f'/api/plugin/flat-bom-generator/flat-bom/{self.tla.pk}/')
+        force_authenticate(request, user=self.user)
+        response = self.view(request, part_id=self.tla.pk)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        items_by_id = {item['part_id']: item for item in response.data['bom_items']}
+
+        coml2_item = items_by_id[self.coml2.pk]
+        self.assertEqual(coml2_item['on_order'], 25)
+        self.assertEqual(coml2_item['net_stock'], 30.0)  # 5 - 0 + 25
+        self.assertEqual(
+            coml2_item['net_stock'],
+            coml2_item['in_stock'] - coml2_item['allocated'] + coml2_item['on_order'],
+        )
+
+        coml1_item = items_by_id[self.coml1.pk]
+        self.assertEqual(coml1_item['quantity_to_order'], 50.0)  # 150 - max(100, 0) - 0 - 0
+
     def test_response_is_json_serializable(self):
         """Response data should be JSON serializable (no Django model objects)."""
         import json

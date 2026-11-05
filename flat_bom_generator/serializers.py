@@ -124,6 +124,16 @@ class SubstitutePartSerializer(serializers.Serializer):
         required=True, help_text="in_stock - allocated for this substitute"
     )
 
+    net_stock = serializers.FloatField(
+        required=True,
+        help_text="Upstream Part.net_stock for this substitute; can go negative as a shortage signal",
+    )
+
+    quantity_to_order = serializers.FloatField(
+        required=True,
+        help_text="Upstream Part.quantity_to_order for this substitute (floored at 0)",
+    )
+
     # Display metadata
     image = serializers.CharField(
         required=False,
@@ -157,6 +167,8 @@ class SubstitutePartSerializer(serializers.Serializer):
             "on_order",
             "allocated",
             "available",
+            "net_stock",
+            "quantity_to_order",
             "image",
             "thumbnail",
             "link",
@@ -211,6 +223,16 @@ class FlatBOMItemSerializer(serializers.Serializer):
 
     available = serializers.FloatField(
         required=True, help_text="Stock available for use (in_stock - allocated)"
+    )
+
+    net_stock = serializers.FloatField(
+        required=True,
+        help_text="Upstream Part.net_stock (in_stock - allocated + on_order); can go negative as a shortage signal",
+    )
+
+    quantity_to_order = serializers.FloatField(
+        required=True,
+        help_text="Upstream Part.quantity_to_order - suggested order quantity after stock, orders, and in-production builds (floored at 0)",
     )
 
     # Display metadata
@@ -358,6 +380,8 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "allocated",
             "on_order",
             "available",
+            "net_stock",
+            "quantity_to_order",
             # Display metadata
             "full_name",
             "description",

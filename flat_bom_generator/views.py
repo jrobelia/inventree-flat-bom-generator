@@ -365,6 +365,11 @@ class FlatBOMView(APIView):
                         "on_order": on_order,
                         "allocated": allocated,
                         "available": available,
+                        # Upstream shortage signals (Part.net_stock /
+                        # quantity_to_order, part/models.py:1575/:1546);
+                        # net_stock may go negative - do not floor it
+                        "net_stock": float(part_obj.net_stock or 0),
+                        "quantity_to_order": float(part_obj.quantity_to_order or 0),
                         "unit": part_obj.units
                         or "",  # Frontend expects 'unit' not 'units'
                         "link": part_obj.get_absolute_url()
@@ -456,6 +461,10 @@ class FlatBOMView(APIView):
                                     "on_order": float(sub_part.on_order or 0),
                                     "allocated": float(sub_part.allocation_count()),
                                     "available": float(sub_part.available_stock or 0),
+                                    "net_stock": float(sub_part.net_stock or 0),
+                                    "quantity_to_order": float(
+                                        sub_part.quantity_to_order or 0
+                                    ),
                                     "image": sub_part.image.url
                                     if sub_part.image
                                     else None,
@@ -502,6 +511,8 @@ class FlatBOMView(APIView):
                         "on_order": 0,
                         "allocated": 0,
                         "available": 0,
+                        "net_stock": 0,
+                        "quantity_to_order": 0,
                         "unit": item.get("unit", ""),
                         "link": f"/part/{item['part_id']}/",
                     }

@@ -32,6 +32,8 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     building: 0,
     allocated: 0,
     available: 0,
+    net_stock: 0,
+    quantity_to_order: 0,
     link: '/part/1/',
     default_supplier_id: undefined,
     default_supplier_name: '',
@@ -57,6 +59,8 @@ function createSubstitutePart(
     on_order: 0,
     allocated: 0,
     available: 0,
+    net_stock: 0,
+    quantity_to_order: 0,
     image: null,
     thumbnail: null,
     link: '',
@@ -554,6 +558,48 @@ describe('sortBomData', () => {
       expect(result[0].in_stock).toBe(0);
       expect(result[1].in_stock).toBe(10);
       expect(result[2].in_stock).toBe(100);
+    });
+
+    it('should sort by net_stock ascending with negatives unfloored', () => {
+      const shortageItems = [
+        createBomItem({ part_id: 1, ipn: 'A', net_stock: 15 }),
+        createBomItem({ part_id: 2, ipn: 'B', net_stock: -25 }),
+        createBomItem({ part_id: 3, ipn: 'C', net_stock: 0 })
+      ];
+
+      const result = sortBomData(
+        shortageItems,
+        'net_stock',
+        'asc',
+        1,
+        false,
+        false
+      );
+
+      expect(result[0].net_stock).toBe(-25);
+      expect(result[1].net_stock).toBe(0);
+      expect(result[2].net_stock).toBe(15);
+    });
+
+    it('should sort by quantity_to_order ascending', () => {
+      const orderItems = [
+        createBomItem({ part_id: 1, ipn: 'A', quantity_to_order: 40 }),
+        createBomItem({ part_id: 2, ipn: 'B', quantity_to_order: 0 }),
+        createBomItem({ part_id: 3, ipn: 'C', quantity_to_order: 10 })
+      ];
+
+      const result = sortBomData(
+        orderItems,
+        'quantity_to_order',
+        'asc',
+        1,
+        false,
+        false
+      );
+
+      expect(result[0].quantity_to_order).toBe(0);
+      expect(result[1].quantity_to_order).toBe(10);
+      expect(result[2].quantity_to_order).toBe(40);
     });
   });
 

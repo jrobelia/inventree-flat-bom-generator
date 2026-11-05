@@ -133,7 +133,8 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         # Verify all SubstitutePartSerializer fields present
         required_fields = [
             'substitute_id', 'part_id', 'ipn', 'part_name', 'full_name',
-            'in_stock', 'on_order', 'allocated', 'available', 'link'
+            'in_stock', 'on_order', 'allocated', 'available',
+            'net_stock', 'quantity_to_order', 'link'
         ]
         for field in required_fields:
             self.assertIn(field, sub1_data, f"Field '{field}' missing from substitute data")

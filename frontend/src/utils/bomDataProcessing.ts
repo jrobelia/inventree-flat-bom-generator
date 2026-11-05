@@ -36,6 +36,8 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           allocated: null as any,
           building: null as any,
           available: null as any,
+          net_stock: null as any,
+          quantity_to_order: null as any,
           default_supplier_name: '',
           cut_length: piece.size,
           cut_unit: piece.unit,
@@ -232,6 +234,14 @@ export function sortBomData(
       case 'allocated':
         aValue = a.allocated;
         bValue = b.allocated;
+        break;
+      case 'net_stock':
+        aValue = a.net_stock;
+        bValue = b.net_stock;
+        break;
+      case 'quantity_to_order':
+        aValue = a.quantity_to_order;
+        bValue = b.quantity_to_order;
         break;
       case 'shortfall':
         // Calculate shortfall for sorting

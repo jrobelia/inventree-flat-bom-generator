@@ -596,6 +596,103 @@ export function createBomTableColumns({
       }
     },
     {
+      accessor: 'net_stock',
+      title: 'Net Stock',
+      sortable: true,
+      switchable: true,
+      cellsStyle: () => ({ minWidth: 125 }),
+      titleStyle: () => ({ minWidth: 125 }),
+      render: (record) => {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+        const net = record.net_stock;
+        if (net == null || net === 0) {
+          return (
+            <Group gap='xs' wrap='nowrap' justify='space-between'>
+              <Text c='dimmed' size='sm'>
+                -
+              </Text>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
+        // Upstream signal: negative is a shortage (red), positive surplus (green)
+        return (
+          <Group gap='xs' wrap='nowrap' justify='space-between'>
+            <Badge
+              color={net < 0 ? 'red' : 'green'}
+              variant='filled'
+              style={{ minWidth: 'fit-content' }}
+            >
+              {net.toFixed(2)}
+            </Badge>
+            {record.unit && (
+              <Text size='xs' c='dimmed'>
+                [{record.unit}]
+              </Text>
+            )}
+          </Group>
+        );
+      }
+    },
+    {
+      accessor: 'quantity_to_order',
+      title: 'To Order',
+      sortable: true,
+      switchable: true,
+      cellsStyle: () => ({ minWidth: 125 }),
+      titleStyle: () => ({ minWidth: 125 }),
+      render: (record) => {
+        if (record.is_child_row && record.child_row_type !== 'substitute') {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+        const toOrder = record.quantity_to_order;
+        if (toOrder == null || toOrder <= 0) {
+          return (
+            <Group gap='xs' wrap='nowrap' justify='space-between'>
+              <Text c='dimmed' size='sm'>
+                -
+              </Text>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
+        return (
+          <Group gap='xs' wrap='nowrap' justify='space-between'>
+            <Badge
+              color='orange'
+              variant='light'
+              style={{ minWidth: 'fit-content' }}
+            >
+              {toOrder.toFixed(2)}
+            </Badge>
+            {record.unit && (
+              <Text size='xs' c='dimmed'>
+                [{record.unit}]
+              </Text>
+            )}
+          </Group>
+        );
+      }
+    },
+    {
       accessor: 'shortfall',
       title: 'Build Margin',
       sortable: true,

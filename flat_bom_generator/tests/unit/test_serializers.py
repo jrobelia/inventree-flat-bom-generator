@@ -150,6 +150,8 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "allocated": 2.0,
             "on_order": 3.0,
             "available": 3.0,
+            "net_stock": 6.0,
+            "quantity_to_order": 0.0,
             # Display metadata (required)
             "full_name": "Test Part Full Name",
             "description": "Test description",
@@ -261,6 +263,32 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         self.assertTrue(serializer.is_valid())
         self.assertEqual(serializer.validated_data["available"], 0.0)
 
+    def test_shortage_fields_serialize(self):
+        """Upstream shortage fields pass through - net_stock may go negative."""
+        data = self.get_valid_bom_item_data()
+        data["net_stock"] = -5.0
+        data["quantity_to_order"] = 12.5
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["net_stock"], -5.0)
+        self.assertEqual(serializer.validated_data["quantity_to_order"], 12.5)
+
+    def test_missing_net_stock_fails(self):
+        """net_stock is a required row field (part of the API row shape)."""
+        data = self.get_valid_bom_item_data()
+        del data["net_stock"]
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("net_stock", serializer.errors)
+
+    def test_missing_quantity_to_order_fails(self):
+        """quantity_to_order is a required row field (part of the API row shape)."""
+        data = self.get_valid_bom_item_data()
+        del data["quantity_to_order"]
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("quantity_to_order", serializer.errors)
+
     def test_missing_required_part_id(self):
         """Missing part_id should fail validation."""
         data = self.get_valid_bom_item_data()
@@ -361,6 +389,8 @@ class FlatBOMResponseSerializerTests(unittest.TestCase):
             "on_order": 0.0,
             "allocated": 10.0,
             "available": 40.0,
+            "net_stock": 40.0,
+            "quantity_to_order": 0.0,
             "image": None,
             "thumbnail": None,
             "link": "/part/456/",
@@ -639,6 +669,8 @@ class SubstitutePartSerializerTests(unittest.TestCase):
             "on_order": 50.0,
             "allocated": 10.0,
             "available": 90.0,
+            "net_stock": 140.0,
+            "quantity_to_order": 0.0,
             # Display metadata (optional)
             "image": None,
             "thumbnail": None,
@@ -716,6 +748,8 @@ class SubstitutePartSerializerTests(unittest.TestCase):
             "on_order": 0.0,
             "allocated": 0.0,
             "available": 5.0,
+            "net_stock": 5.0,
+            "quantity_to_order": 0.0,
             "link": "/part/789/",
         }
         serializer = SubstitutePartSerializer(data=data)

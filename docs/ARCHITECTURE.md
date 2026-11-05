@@ -8,7 +8,7 @@ InvenTree plugin providing advanced flat bill of materials analysis with intelli
 
 **Tech Stack:**
 - Backend: Django REST Framework (Python)
-- Frontend: React 19 + TypeScript + Mantine UI v8 + mantine-datatable
+- Frontend: React 19 + TypeScript + Mantine UI v9 + mantine-datatable
 - Build: Python setuptools + Vite 6
 - InvenTree: Plugin system with panel integration
 
@@ -552,8 +552,8 @@ python -m build
 
 - **InvenTree**: Requires 1.6.0+ (MIN_VERSION floor, no upper bound)
 - **React**: 19.x
-- **Mantine**: 8.x
-- **DataTable**: mantine-datatable 8.2.0
+- **Mantine**: 9.x
+- **DataTable**: mantine-datatable 9.2.2
 - **Python**: 3.12+
 - **Django**: Via InvenTree version
 

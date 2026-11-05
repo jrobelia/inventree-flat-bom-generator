@@ -401,7 +401,7 @@ export function createBomTableColumns({
     {
       accessor: 'piece_count',
       title: 'Pieces',
-      sortable: true,
+      sortable: false,
       switchable: true,
       render: (record) => {
         if (record.is_child_row || record.piece_count == null) {
@@ -417,7 +417,7 @@ export function createBomTableColumns({
     {
       accessor: 'inherited_from',
       title: 'Inherited From',
-      sortable: true,
+      sortable: false,
       switchable: true,
       render: (record) => (
         <Text size='sm' c={record.inherited_from ? undefined : 'dimmed'}>

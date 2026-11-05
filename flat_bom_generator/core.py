@@ -27,10 +27,10 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
 
     # Plugin settings (from SettingsMixin)
     # Ref: https://docs.inventree.org/en/latest/plugins/mixins/settings/
-    # Note: MAX_DEPTH, expand-purchased-assemblies, and
-    # include-internal-fab-in-cutlist toggles live in the frontend UI and are
-    # passed as query parameters. Internal suppliers are detected via the
-    # supplier company's native is_internal flag, not plugin settings.
+    # Note: MAX_DEPTH and expand-purchased-assemblies toggles live in the
+    # frontend UI and are passed as query parameters. Internal suppliers are
+    # detected via the supplier company's native is_internal flag, not plugin
+    # settings.
     SETTINGS = {  # noqa: RUF012
         # Category-based display-label settings (labels only - no behavior)
         "FABRICATION_CATEGORY": {

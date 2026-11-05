@@ -433,7 +433,7 @@ class FlatBOMResponseSerializer(serializers.Serializer):
 
     total_ifps_processed = serializers.IntegerField(
         required=True,
-        help_text="Count of Internal Fab Parts (IFP) processed for cut list generation",
+        help_text="Count of Internal Fab parts encountered during BOM traversal",
     )
 
     max_depth_reached = serializers.IntegerField(

@@ -85,7 +85,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line)
 - `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
-- `consumable`: Boolean - whether part is consumable (not tracked in build orders)
+- `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)
 - `note`: BOM item notes (free text, never parsed)
 - `level`: Depth in original BOM tree
 - `in_stock`: Total inventory

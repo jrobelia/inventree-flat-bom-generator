@@ -121,7 +121,8 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
         self.assertIsNotNone(rows[self.steel.pk]['cut_list'])
 
     def test_non_length_unit_produces_no_cut_entry(self):
-        """The screw (unit 'pcs', unparseable) is not a cut line."""
+        """The screw (unit 'pcs') is not a cut line - pint resolves 'pcs' to
+        parsec, so _COUNT_UNITS excludes it before the length check."""
         rows = self._flat_bom()
         self.assertIsNone(rows[self.screw.pk]['cut_list'])
 
@@ -154,7 +155,8 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
 
     def test_internal_sourced_tla_root_expands_without_self_row(self):
         """Internally sourced TLA (R-015): children expand, no self row -
-        and the child still carries its internal-fab cut entry."""
+        and the mm-unit child carries its cut entry (dimensionality, not
+        supplier)."""
         rows = self._flat_bom(part=self.internal_tla)
 
         self.assertNotIn(self.internal_tla.pk, rows)

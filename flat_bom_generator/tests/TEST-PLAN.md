@@ -38,11 +38,11 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (161 tests total)
+**Files:** (163 tests total)
 - `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
 - `test_serializers.py` (48 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
-- `test_cut_list.py` (19 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
+- `test_cut_list.py` (21 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
 - `test_assembly_no_children.py` (27 tests) - Expansion matrix + warning flag logic
 - `test_shortfall_calculation.py` (13 tests) - Frontend calculations
 - `test_max_depth_warnings.py` (8 tests) - Flag prioritization

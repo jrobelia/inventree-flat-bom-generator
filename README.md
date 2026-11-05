@@ -278,7 +278,7 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 2. **Filter**: Apply the line-item / expansion matrix
    - Non-assembly parts: always line items
    - External-supplier assemblies: line items (children hidden unless expanded)
-   - Internal-supplier assemblies: line items, always expanded (children get cut lists)
+   - Internal-supplier assemblies: line items, always expanded
    - Unsourced assemblies: always expanded as build candidates
 
 3. **Deduplicate**: Sum quantities for parts appearing multiple times
@@ -303,9 +303,9 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 ## Known Limitations
 
-### Variant Parts -- Not Supported
+### Variant Stock Aggregation -- Not Supported
 
-**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock. Variant parts support (template parts, `allow_variants` flag) is **out of scope** for this plugin.
+**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock. BOM lines inherited from a template part are shown, marked with their source in the `Inherited From` column. Variant stock aggregation (template parts, `allow_variants` flag) is **out of scope** for this plugin.
 
 **Impact**:
 - Template parts (with variants) show zero stock (actual stock is on the variant children)

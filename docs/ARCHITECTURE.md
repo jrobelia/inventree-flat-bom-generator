@@ -143,7 +143,8 @@ frontend/
 │   └── utils/              # Utility functions
 │       ├── colorUtils.ts
 │       ├── csvExport.ts
-│       └── bomDataProcessing.ts
+│       ├── bomDataProcessing.ts
+│       └── substituteCheckboxState.ts
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
@@ -400,7 +401,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
 5. **Category** - InvenTree part category name (toggleable)
-6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
 7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
 8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
 9. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
@@ -414,8 +415,8 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 **Column Visibility:**
 - Always visible: Component
-- Default visible: IPN, Description, Type, Category, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
-- Hidden by default: Flags, Cut Length
+- Default visible: IPN, Description, Type, Category, Flags, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
+- Auto-hidden unless data present: Cut Length, Pieces, Inherited From
 - User can toggle visibility via gear icon in ControlBar (v0.11.23+)
 
 **Sort Logic Location**: `utils/bomDataProcessing.ts` (`sortBomData`, extracted from Panel.tsx in v0.11.6)

@@ -5,7 +5,8 @@ Contract (ticket #6):
 - Children of internal-supplier assemblies get one cut-list entry per
   BOM item occurrence (per leaf), never merged.
 - piece_qty = the BOM item quantity (cut_length on the leaf).
-- count = the ancestor quantity multiplier (cumulative_qty / cut_length).
+- count = the ancestor quantity multiplier (cumulative_qty / cut_length),
+  rounded up when non-integral - a cut list never under-orders (R-016).
 - No BOM-item-note parsing: free-text notes never become lengths.
 - No unit filter: any part unit can produce a cut-list row.
 - enable_ifab_cuts is an explicit parameter, not a function attribute.
@@ -83,6 +84,22 @@ class InternalFabCutListTests(unittest.TestCase):
         self.assertEqual(len(cut_entries), 1)
         self.assertEqual(cut_entries[0]["piece_qty"], 35.0)
         self.assertEqual(cut_entries[0]["count"], 2)
+
+    def test_fractional_multiplier_rounds_up(self):
+        """Non-integral ancestor multipliers round up - never under-order.
+
+        Ruling R-016: where the piece count is not integral, use ceiling.
+        6.25 / 2.5 = 2.5 -> 3 pieces (round-half-even would emit 2).
+        """
+        leaves = [
+            create_leaf(123, "TUBE-001", "Tube", 6.25, 2.5, "mm")
+        ]
+        result = deduplicate_and_sum(leaves, enable_ifab_cuts=True)
+
+        cut_entries = result[0]["internal_fab_cut_list"]
+        self.assertEqual(len(cut_entries), 1)
+        self.assertEqual(cut_entries[0]["piece_qty"], 2.5)
+        self.assertEqual(cut_entries[0]["count"], 3)
 
     def test_occurrences_not_merged(self):
         """Two BOM item occurrences stay as two entries, even at same length."""

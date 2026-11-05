@@ -25,7 +25,6 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     part_type: 'Fab',
     is_assembly: false,
     purchaseable: true,
-    has_default_supplier: false,
     total_qty: 1,
     unit: 'pcs',
     in_stock: 0,

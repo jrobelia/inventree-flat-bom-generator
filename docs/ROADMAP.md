@@ -143,7 +143,7 @@ Then apply same hide/disable/tooltip logic as `substituteCheckboxState.ts`.
 
 ### Child Row Visual Consistency (2-4 hours, MEDIUM PRIORITY)
 **Problem:** The plugin currently has three types of child/extra rows, each styled independently:
-- **Cut-to-length child rows** -- grey/neutral theme, `↳` symbol
+- **Internal-fab cut-list child rows** (children of internal-supplier assemblies) -- grey/neutral theme, `↳` symbol
 - **Substitute child rows** -- blue theme, `↳` symbol, "Substitute" badge
 - **Mixed flag rows (planned)** -- no style decided yet
 
@@ -171,7 +171,7 @@ These have grown organically and will diverge further as Mixed Flag Handling add
 **Features that are non-obvious to new users:**
 - Recursive flattening (all levels, not just immediate children)
 - Substitute parts display and the setting required to enable it
-- Cut-to-length child rows and how length units trigger them
+- Internal-fab cut-list child rows and how the primary supplier's `is_internal` flag triggers them
 - Mixed flag handling (when implemented)
 - Stock columns: what "allocated", "on order", and "build margin" mean
 - Warning badges and what triggers them

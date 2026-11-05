@@ -86,7 +86,7 @@ export function generateCsvContent(
         boolCell(item.is_assembly),
         boolCell(item.purchaseable),
         boolCell(item.internal_supplier),
-        item.total_qty, // Do not multiply by buildQuantity for child rows
+        item.total_qty * buildQuantity,
         '',
         item.cut_length || '-',
         item.cut_unit || item.unit || '',

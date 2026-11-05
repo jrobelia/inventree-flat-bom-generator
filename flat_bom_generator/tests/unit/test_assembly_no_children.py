@@ -145,7 +145,7 @@ class TestAssemblyNoChildren(unittest.TestCase):
             "part_type": "Coml",
             "reference": "",
             "note": "",
-            "level": 0,
+            "level": 1,
             "children": [],
         }
 
@@ -173,7 +173,7 @@ class TestAssemblyNoChildren(unittest.TestCase):
             "part_type": "Purchased Assy",
             "reference": "",
             "note": "",
-            "level": 0,
+            "level": 1,
             "children": [],  # No children is expected for purchased assemblies
         }
 
@@ -333,7 +333,7 @@ class TestAssemblyNoChildren(unittest.TestCase):
             "part_type": "Purchased Assy",
             "reference": "",
             "note": "",
-            "level": 0,
+            "level": 1,
             "children": [
                 {
                     "part_id": 901,
@@ -638,6 +638,137 @@ class TestLineItemExpansionMatrix(unittest.TestCase):
             leaves = get_leaf_parts_only(tree)
             self.assertEqual(len(leaves), 1)
             self.assertEqual(leaves[0]["part_id"], 50)
+
+
+class TestTlaRootExemption(unittest.TestCase):
+    """The level-0 TLA root is exempt from the emit matrix (ruling R-015).
+
+    A flat BOM never collapses to a single row naming the part it was
+    run on - the panel is opened on that part to see inside it. An
+    assembly root always expands; a childless unsourced root still
+    emits its assembly_no_children warning.
+    """
+
+    def _root(self, **overrides):
+        """Build a minimal level-0 tree node."""
+        node = {
+            "part_id": 1,
+            "ipn": "TLA-001",
+            "part_name": "Top Assembly",
+            "description": "",
+            "cumulative_qty": 1.0,
+            "unit": "pcs",
+            "is_assembly": True,
+            "purchaseable": False,
+            "default_supplier_id": None,
+            "internal_supplier": False,
+            "part_type": "TLA",
+            "reference": "",
+            "note": "",
+            "level": 0,
+            "children": [],
+        }
+        node.update(overrides)
+        return node
+
+    def _child(self, **overrides):
+        child = {
+            "part_id": 2,
+            "ipn": "CHILD-001",
+            "part_name": "Child Part",
+            "description": "",
+            "cumulative_qty": 3.0,
+            "unit": "pcs",
+            "is_assembly": False,
+            "purchaseable": True,
+            "default_supplier_id": 9,
+            "internal_supplier": False,
+            "part_type": "Coml",
+            "reference": "",
+            "note": "",
+            "level": 1,
+            "children": [],
+        }
+        child.update(overrides)
+        return child
+
+    def test_external_supplier_root_expands_without_self_row(self):
+        """Sourced external TLA -> children appear, root never a line item."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        tree = self._root(
+            default_supplier_id=5, internal_supplier=False,
+            children=[self._child()],
+        )
+        leaves = get_leaf_parts_only(tree, expand_purchased_assemblies=False)
+
+        self.assertEqual([leaf["part_id"] for leaf in leaves], [2])
+
+    def test_root_expansion_ignores_expand_toggle(self):
+        """Root expands regardless of expand_purchased_assemblies."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        for toggle in (False, True):
+            tree = self._root(
+                default_supplier_id=5, internal_supplier=False,
+                children=[self._child()],
+            )
+            leaves = get_leaf_parts_only(
+                tree, expand_purchased_assemblies=toggle
+            )
+            self.assertEqual(
+                [leaf["part_id"] for leaf in leaves],
+                [2],
+                f"expand_purchased_assemblies={toggle} changed root expansion",
+            )
+
+    def test_internal_supplier_root_expands_without_self_row(self):
+        """Sourced internal TLA -> children expand, root never a line item."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        tree = self._root(
+            default_supplier_id=7, internal_supplier=True,
+            children=[self._child(from_internal_fab_parent=True,
+                                  cut_length=35.0, parent_part_id=1)],
+        )
+        leaves = get_leaf_parts_only(tree, expand_purchased_assemblies=False)
+
+        self.assertEqual([leaf["part_id"] for leaf in leaves], [2])
+        self.assertTrue(leaves[0]["from_internal_fab_parent"])
+
+    def test_childless_sourced_root_emits_nothing(self):
+        """Sourced TLA with no BOM children -> empty flat BOM, no self row."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        for internal in (False, True):
+            tree = self._root(
+                default_supplier_id=5, internal_supplier=internal,
+                children=[],
+            )
+            leaves = get_leaf_parts_only(tree)
+            self.assertEqual(
+                leaves, [], f"internal_supplier={internal} emitted a self row"
+            )
+
+    def test_childless_unsourced_root_still_warns(self):
+        """Unsourced TLA with no children keeps the assembly_no_children row."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        tree = self._root(children=[])
+        leaves = get_leaf_parts_only(tree)
+
+        self.assertEqual(len(leaves), 1)
+        self.assertEqual(leaves[0]["part_id"], 1)
+        self.assertTrue(leaves[0].get("assembly_no_children"))
+
+    def test_non_assembly_root_never_emits(self):
+        """A non-assembly level-0 node is still exempt - no self row."""
+        from flat_bom_generator.bom_traversal import get_leaf_parts_only
+
+        tree = self._root(is_assembly=False, part_type="Coml")
+        leaves = get_leaf_parts_only(tree)
+
+        self.assertEqual(leaves, [])
 
 
 if __name__ == "__main__":

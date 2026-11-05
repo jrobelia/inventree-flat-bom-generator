@@ -8,6 +8,8 @@ Uses internal_supplier_expansion.yaml to verify, with real InvenTree models:
   purchaseable flag, and not itself a line item
 - Internal-fab cut list: one entry per BOM item occurrence, piece_qty from
   the BOM item quantity, count from the ancestor multiplier, no note parsing
+- Sourced TLA roots (R-015): the input part is exempt from the emit matrix -
+  it always expands and never appears as a row in its own flat BOM
 """
 
 import os
@@ -40,12 +42,16 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
         cls.hidden_child = Part.objects.get(pk=8005)
         cls.unsourced_assy = Part.objects.get(pk=8006)
         cls.screw = Part.objects.get(pk=8007)
+        cls.internal_tla = Part.objects.get(pk=8010)
+        cls.bar_stock = Part.objects.get(pk=8011)
 
-    def _flat_bom(self, **kwargs):
+    def _flat_bom(self, part=None, **kwargs):
         from flat_bom_generator.bom_traversal import get_flat_bom
 
         kwargs.setdefault('enable_ifab_cuts', True)
-        flat_bom, _ifps, _warnings, _depth = get_flat_bom(self.tla.pk, **kwargs)
+        flat_bom, _ifps, _warnings, _depth = get_flat_bom(
+            (part or self.tla).pk, **kwargs
+        )
         return {row['part_id']: row for row in flat_bom}
 
     def test_internal_supplier_assembly_is_line_item_and_expanded(self):
@@ -119,6 +125,41 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
         cut_list = rows[self.steel.pk]['internal_fab_cut_list']
         self.assertEqual(len(cut_list), 1)
         self.assertEqual(cut_list[0]['piece_qty'], 3.0)
+
+    def test_sourced_tla_root_expands_without_self_row(self):
+        """Externally sourced TLA (R-015): expands, never emits a self row."""
+        rows = self._flat_bom()
+
+        # The whole flat BOM must not collapse to the input part
+        self.assertNotIn(self.tla.pk, rows)
+        self.assertGreater(len(rows), 1)
+        self.assertIn(self.ifab_assy.pk, rows)
+        self.assertIn(self.purchased_assy.pk, rows)
+        self.assertIn(self.screw.pk, rows)
+
+    def test_sourced_tla_root_expansion_ignores_toggle(self):
+        """Root always expands - expand_purchased_assemblies gates
+        descendants only."""
+        rows = self._flat_bom(expand_purchased_assemblies=True)
+
+        self.assertNotIn(self.tla.pk, rows)
+        # The external descendant now expands, but the root still does not
+        self.assertIn(self.hidden_child.pk, rows)
+
+    def test_internal_sourced_tla_root_expands_without_self_row(self):
+        """Internally sourced TLA (R-015): children expand, no self row -
+        and the child still carries its internal-fab cut entry."""
+        rows = self._flat_bom(part=self.internal_tla)
+
+        self.assertNotIn(self.internal_tla.pk, rows)
+        self.assertEqual(list(rows), [self.bar_stock.pk])
+
+        bar = rows[self.bar_stock.pk]
+        self.assertEqual(bar['total_qty'], 5.0)
+        cut_list = bar['internal_fab_cut_list']
+        self.assertEqual(len(cut_list), 1)
+        self.assertEqual(cut_list[0]['piece_qty'], 5.0)
+        self.assertEqual(cut_list[0]['count'], 1)
 
 
 if __name__ == '__main__':

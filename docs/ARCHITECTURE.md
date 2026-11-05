@@ -79,7 +79,6 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `unit`: Unit of measurement (e.g., "pcs", "mm", "kg")
 - `is_assembly`: Boolean - whether part is an assembly
 - `purchaseable`: Boolean - whether part can be purchased
-- `has_default_supplier`: Boolean - whether part has a primary supplier configured
 - `default_supplier_id`: ID of primary SupplierPart (null if none)
 - `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
 - `internal_fab_cut_list`: Per-occurrence cut entries for children of internal-supplier assemblies (`{count, piece_qty, unit}`), null otherwise
@@ -313,7 +312,6 @@ interface BomItem {
     category?: string;
     is_assembly: boolean;
     purchaseable: boolean;
-    has_default_supplier: boolean;
     default_supplier_id?: number | null;
     internal_supplier?: boolean;
     optional?: boolean;

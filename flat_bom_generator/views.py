@@ -283,8 +283,11 @@ class FlatBOMView(APIView):
             enriched_bom = []
             for item in flat_bom:
                 try:
-                    # Fetch full part details
-                    part_obj = Part.objects.get(pk=item["part_id"])
+                    # Fetch full part details (category prefetched - it is
+                    # read for the Category column below)
+                    part_obj = Part.objects.select_related("category").get(
+                        pk=item["part_id"]
+                    )
 
                     # Calculate stock and order quantities
                     total_stock = part_obj.total_stock or 0

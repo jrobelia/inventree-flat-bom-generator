@@ -80,7 +80,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           part_type: 'Other' as any,
           is_assembly: false,
           purchaseable: true,
-          has_default_supplier: false,
           // Clear fields that don't apply to substitutes
           internal_fab_cut_list: null,
           has_substitutes: false,

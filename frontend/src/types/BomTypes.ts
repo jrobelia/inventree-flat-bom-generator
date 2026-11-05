@@ -26,7 +26,6 @@ export interface BomItem {
   category?: string;
   is_assembly: boolean;
   purchaseable: boolean;
-  has_default_supplier: boolean;
   default_supplier_id?: number | null;
   internal_supplier?: boolean;
   optional?: boolean;

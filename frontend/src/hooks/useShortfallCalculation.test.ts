@@ -28,7 +28,6 @@ function createMockItem(
     unit: 'pcs',
     is_assembly: false,
     purchaseable: true,
-    has_default_supplier: true,
     default_supplier_name: 'Test Supplier',
     in_stock,
     allocated,

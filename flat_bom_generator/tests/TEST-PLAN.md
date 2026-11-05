@@ -1,9 +1,9 @@
 # FlatBOMGenerator - Test Plan
 
-**Last Updated**: January 15, 2026  
-**Test Count**: 151 tests total (8 warning + 22 get_bom_items + 61 other integration + 60 other unit = 151 passing, 1 skipped)  
+**Last Updated**: November 4, 2026  
+**Test Count**: 299 backend tests (154 unit + 145 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
-**Status**: All priorities complete, all critical gaps closed, 1 minor gap deferred (CtL integration)
+**Status**: All priorities complete, all critical gaps closed
 
 ---
 
@@ -38,17 +38,14 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (164 tests total)
-- `test_categorization.py` (50 tests) - Part type classification
-- `test_serializers.py` (38 tests) - DRF serializer validation
-- `test_views.py` (16 tests) - View structure and helper functions
-- `test_internal_fab_cutlist.py` (14 tests) - Internal fab cut lists
-- `test_assembly_no_children.py` (15 tests) - Warning flag logic
+**Files:** (154 tests total)
+- `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
+- `test_serializers.py` (47 tests) - DRF serializer validation
+- `test_views.py` (14 tests) - View structure and helper functions
+- `test_internal_fab_cutlist.py` (13 tests) - Internal fab cut lists
+- `test_assembly_no_children.py` (27 tests) - Expansion matrix + warning flag logic
 - `test_shortfall_calculation.py` (13 tests) - Frontend calculations
 - `test_max_depth_warnings.py` (8 tests) - Flag prioritization
-- `test_cut_to_length_aggregation.py` (8 tests) - CtL aggregation
-- `test_full_bom_part_13.py` (deleted) - Zero value test
-- `test_internal_fab_cut_rollup.py` (merged) - Consolidated into cutlist tests
 
 **Characteristics:**
 - Fast execution (< 1 second total)
@@ -68,10 +65,23 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 **Location:** `flat_bom_generator/tests/integration/*.py`  
 **Purpose:** Test with real InvenTree Part/BomItem/Stock models
 
-**Files:** (31 tests total)
+**Files:** (145 tests total)
+- `test_internal_supplier_expansion.py` (10 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
+- `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
+- `test_plugin_core.py` (15 tests) - Plugin registration, URLs, panels
+- `test_error_scenarios.py` (14 tests) - Error handling paths
 - `test_view_function.py` (14 tests) - FlatBOMView endpoint testing
+- `test_complex_bom_structures.py` (13 tests) - Multi-path/deep/wide BOM fixtures
 - `test_views_integration.py` (12 tests) - BOM traversal workflow
+- `test_query_parameters.py` (10 tests) - max_depth and query params
+- `test_plugin_settings.py` (9 tests) - Settings loading
+- `test_warning_generation.py` (7 tests) - Warning aggregation (fixture: `warning_scenarios.yaml`)
+- `test_view_settings_loading.py` (6 tests) - Settings/query-param plumbing
 - `test_bom_traversal_integration.py` (5 tests) - Core function integration
+- `test_circular_references.py` (5 tests) - Circular BOM detection
+- `test_view_permissions.py` (4 tests) - Role permission dispatch
+- `test_substitute_enrichment.py` (4 tests) - Substitute part enrichment
+- `test_stock_enrichment.py` (2 tests) - Stock field enrichment
 
 **Characteristics:**
 - Slower execution (2-5 seconds)
@@ -188,7 +198,7 @@ def test_serializer_validates_real_part(self):
 ## Test Improvement Priorities
 
 ### ✅ Priority 1: Plugin Settings & Configuration (COMPLETE)
-**Time Invested:** 2 hours | **Tests Added:** 31 tests
+**Time Invested:** 2 hours | **Tests Added:** 31 (17 later removed in ticket #6)
 
 **What Was Tested:**
 - `get_category_mappings()` with real plugin settings (8 tests)
@@ -196,19 +206,12 @@ def test_serializer_validates_real_part(self):
   - Multiple categories configured
   - Invalid category IDs (graceful degradation)
   - Empty/None settings
-  
-- `get_internal_supplier_ids()` extraction (9 tests)
-  - Settings with comma-separated IDs
-  - Single ID, empty settings, None plugin
-  - Invalid IDs filtered with logging
-  
-- `_extract_id_from_value()` type handling (8 tests)
-  - Integer, string, object with pk/id, None
-  - Invalid strings logged as warnings
-  
+
 - Plugin settings configuration edge cases (6 tests)
 
-**Status:** All 31 tests passing, committed January 9, 2026
+**Removed in ticket #6:** the `get_internal_supplier_ids()` extraction tests (9) and `_extract_id_from_value()` type-handling tests (8) were deleted with the functions and supplier-ID settings they covered - internal detection now reads the primary `SupplierPart`'s `is_internal` flag.
+
+**Status:** Passing
 
 ---
 
@@ -236,8 +239,7 @@ def test_serializer_validates_real_part(self):
   - Deleted categories logged
   - String validation errors logged
 
-**Status:** All 26 tests passing, committed January 10, 2026  
-**Bug Found:** test_get_internal_supplier_ids_with_invalid_company_ids had wrong expected count (fixed)
+**Status:** All 26 tests passing, committed January 10, 2026
 
 ---
 
@@ -405,7 +407,7 @@ def test_serializer_validates_real_part(self):
 **Gap #5: View Settings Loading (CLOSED)**
 - 6 integration tests for FlatBOMView settings loading
 - Test double-patch mocking pattern for plugin registry
-- Verify all 6 settings passed to get_flat_bom
+- Verify query parameters reach get_flat_bom and retired settings kwargs are absent
 - Commit: ab90c00 (January 12, 2026)
 
 **Gap #6: Stock Enrichment Error Handling (CLOSED)**
@@ -418,16 +420,9 @@ def test_serializer_validates_real_part(self):
 
 ## Remaining Test Gaps (Minor, Deferred)
 
-**Status:** 1 minor gap deferred until issues arise
+**Status:** No deferred gaps as of November 2026
 
-### 🟡 Deferred Gap
-
-**Cut-to-Length Features Integration**
-- **Current:** Unit tests cover edge cases
-- **Needed:** Integration tests for CtL extraction, unit mismatch detection, enable_ifab_cuts setting
-- **Priority:** Low - unit tests provide adequate coverage
-
-**Decision:** Gap is very low-risk, proceed with feature development. Address if issues arise.
+The former "CtL integration" gap is obsolete - the cut-to-length mechanism was removed in ticket #6. Internal-fab expansion and cut lists now carry fixture-backed integration coverage (`internal_supplier_expansion.yaml` + `test_internal_supplier_expansion.py`), including the sourced-TLA root arms pinned per ruling R-015.
 
 ---
 
@@ -589,8 +584,8 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-12 | Gap #5: View Settings | ✅ 6/6 PASS | Double-patch mocking for settings loading |
 | 2026-01-12 | Gap #6: Stock Enrichment | ✅ 2/2 PASS + 🐛 BUG FIXED | Production bug found/fixed (Part.DoesNotExist) |
 
-**Current Test Count:** 151 tests (150 passing, 1 skipped)  
-**Breakdown:** 60 unit + 91 integration (8 warning + 22 get_bom_items + 61 other)  
+**Current Test Count:** 299 backend tests  
+**Breakdown:** 154 unit + 145 integration  
 **All Critical Gaps Closed:** Gaps #1-#6 complete (61 tests added)  
 **Priorities 1-4 Complete:** 100% coverage achieved via fixture-based integration tests  
 **Production Bug Fixed:** Part.DoesNotExist crash in stock enrichment

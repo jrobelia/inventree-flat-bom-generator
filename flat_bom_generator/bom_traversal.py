@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections import defaultdict
 
 from .categorization import categorize_part
@@ -270,6 +271,9 @@ def get_leaf_parts_only(
     primary supplier — never by the display label in part_type.
 
     Line-item / expansion matrix:
+    - Top-level (level 0) input part: exempt — never emitted as a row for
+      itself; an assembly root always expands (ruling R-015). A childless
+      unsourced root still emits, carrying the assembly_no_children warning.
     - Non-assembly part: line item (always a leaf row).
     - Assembly with external primary supplier: line item, not expanded
       (expand_purchased_assemblies=True expands it into children instead).
@@ -326,14 +330,28 @@ def get_leaf_parts_only(
     has_supplier = tree.get("default_supplier_id") is not None
     is_internal = tree.get("internal_supplier", False)
 
+    # The level-0 TLA root is exempt from the emit matrix (ruling R-015):
+    # a flat BOM never collapses to a single row naming the part it was
+    # run on - the panel is opened on that part to see inside it. An
+    # assembly root always expands; the matrix below applies to
+    # descendants only. A childless root still falls through so an
+    # unsourced one emits its assembly_no_children warning.
+    is_root = tree.get("level") == 0
+    if is_root and is_assembly and children:
+        for child in children:
+            get_leaf_parts_only(child, leaves, expand_purchased_assemblies)
+        return leaves
+
     # Non-assembly parts are always line items
     if not is_assembly:
-        _emit(tree)
+        if not is_root:
+            _emit(tree)
         return leaves
 
     # Internal-supplier assembly: line item AND expand into children
     if has_supplier and is_internal:
-        _emit(tree)
+        if not is_root:
+            _emit(tree)
         for child in children:
             get_leaf_parts_only(child, leaves, expand_purchased_assemblies)
         return leaves
@@ -341,11 +359,11 @@ def get_leaf_parts_only(
     # External-supplier assembly: line item, not expanded (unless the
     # expand_purchased_assemblies toggle is on, which shows children instead)
     if has_supplier:
-        if not expand_purchased_assemblies:
-            _emit(tree)
-        else:
+        if is_root or expand_purchased_assemblies:
             for child in children:
                 get_leaf_parts_only(child, leaves, expand_purchased_assemblies)
+        else:
+            _emit(tree)
         return leaves
 
     # Unsourced assembly: build-order candidate. Expand; the assembly itself
@@ -377,7 +395,8 @@ def deduplicate_and_sum(
     quantity rollup. Children of internal-supplier assemblies additionally
     contribute an internal_fab_cut_list entry per BOM item occurrence:
     piece_qty is the BOM item quantity and count is the ancestor multiplier
-    (how many times that occurrence fires). No note parsing, no unit filter.
+    (how many times that occurrence fires, rounded up when non-integral).
+    No note parsing, no unit filter.
 
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
@@ -415,16 +434,17 @@ def deduplicate_and_sum(
 
         # One cut-list entry per BOM item occurrence under an
         # internal-supplier assembly. count = how many times this occurrence
-        # fires (the ancestor quantity multiplier); piece_qty = BOM item qty.
+        # fires (the ancestor quantity multiplier, rounded up when
+        # non-integral - a cut list never under-orders); piece_qty = BOM qty.
         if (
             enable_ifab_cuts
             and leaf.get("from_internal_fab_parent")
             and leaf.get("cut_length") is not None
         ):
             cut_length = leaf["cut_length"]
-            count = round(leaf["cumulative_qty"] / cut_length) if cut_length else 1
+            count = math.ceil(leaf["cumulative_qty"] / cut_length) if cut_length else 1
             cut_entry = {
-                "count": max(int(count), 1),
+                "count": max(count, 1),
                 "piece_qty": cut_length,
                 "unit": leaf.get("unit") or "",
             }

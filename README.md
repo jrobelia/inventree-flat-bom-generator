@@ -162,7 +162,7 @@ Display labels (`part_type`) answer "what should this line item show?" — they 
 
 | Part Type | is_assembly | Primary Supplier | Appears in Flat BOM | Expanded | Badge Color | Description |
 |-----------|-------------|------------------|---------------------|----------|-------------|-------------|
-| **TLA** | TRUE | any | ✅ YES | n/a | Grape | The top-level part being flattened |
+| **TLA** | TRUE | any | ❌ NO | ✅ YES | Grape | The top-level part being flattened - input only, never a row |
 | **Purchased Assy** | TRUE | external | ✅ YES | ❌ NO | Orange | PCBA, purchased complete from external supplier |
 | **Internal Fab** | TRUE | internal (`is_internal`) | ✅ YES | ✅ YES | Cyan | CNC, 3D print - row covers the internal PO, children show raw materials |
 | **Assy** | TRUE | none | ❌ NO | ✅ YES | Violet | Unsourced assembly - expanded as a build-order candidate |
@@ -171,6 +171,7 @@ Display labels (`part_type`) answer "what should this line item show?" — they 
 | **Other** | FALSE | any/none | ✅ YES | n/a | Gray | Parts not matching configured categories |
 
 **Expansion rules (independent of labels):**
+- The top-level input part is exempt from the matrix: an assembly TLA always expands and never appears as a row in its own flat BOM (a childless unsourced TLA still emits the assembly_no_children warning)
 - Non-assembly parts are always line items
 - External-supplier assemblies are line items, expanded only via the "Expand Purchased Assemblies" toggle
 - Internal-supplier assemblies are line items AND always expanded

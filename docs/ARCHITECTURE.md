@@ -234,6 +234,7 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
   - `Fab` - Non-assembly in a configured Fabrication category
   - `Other` - Everything else
 - **Expansion matrix** (in `bom_traversal.get_leaf_parts_only`, driven by assembly + supplier state, never the label):
+  - The top-level input part is exempt: an assembly root always expands and never emits a row for itself (a childless unsourced root still emits with `assembly_no_children`); the matrix below applies to descendants only
   - Non-assembly → line item
   - External-supplier assembly → line item, not expanded (expand toggle shows children instead)
   - Internal-supplier assembly → line item AND expanded

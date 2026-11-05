@@ -91,11 +91,11 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **Maximum Traversal Depth** | Maximum depth to traverse BOM hierarchy. Set to 0 for unlimited depth. Use positive values (e.g., 5) to limit traversal for very deep BOMs and improve performance. | `0` (unlimited) |
-| **Expand Purchased Assemblies** | When enabled, expands the BOM for assemblies that have an external primary supplier (normally treated as purchaseable units). Useful to see internal components of purchased sub-assemblies. | `False` |
 | **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) get the Fab display label. Affects labels only, not expansion. | None |
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) get the Coml display label. Affects labels only, not expansion. | None |
-| **Include Internal Fab Parts in Cutlist** | Show cut-list rows for children of internal-supplier assemblies. | `False` |
+| **Show Substitute Parts** | Include substitute parts in the flat BOM by default (shown as child rows with individual stock levels). The panel's Include Substitute Parts toggle overrides this per run. | `False` |
+
+Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, **Include Internal Fab Parts in Cutlist**, and **Include Substitute Parts** — are panel settings, not plugin admin settings: they live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run.
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 
@@ -249,18 +249,17 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Component** | Full part name with IPN prefix and variant (includes thumbnail image, clickable link) |
 | **IPN** | Internal Part Number |
 | **Description** | Part description |
-| **Category** | InvenTree part category name (empty if uncategorized) |
 | **Type** | Color-coded badge: Coml (green), Fab (blue), Purchased Assy (orange), Internal Fab (cyan), Assy (violet), TLA (grape), Other (gray) |
+| **Category** | InvenTree part category name (empty if uncategorized) |
 | **Flags** | Assembly, Purchaseable, and Internal Supplier indicators plus Optional (orange badge) and Consumable (yellow badge) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
+| **Cut Length** | Piece size on internal-fab cut-list child rows with [unit] |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
-| **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
-| **Building** | Stock currently in production builds (cyan badge if > 0) |
 | **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
-| **Available** | Stock available after subtracting allocations (green if sufficient, orange if partial, red if none) |
+| **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
 | **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
-All columns are **sortable** and the table is **paginated** (10/25/50/100/All per page).
+All columns except **Cut Length** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
 
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)

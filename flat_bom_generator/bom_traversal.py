@@ -442,7 +442,19 @@ def deduplicate_and_sum(
             and leaf.get("cut_length") is not None
         ):
             cut_length = leaf["cut_length"]
-            count = math.ceil(leaf["cumulative_qty"] / cut_length) if cut_length else 1
+            if cut_length:
+                ratio = leaf["cumulative_qty"] / cut_length
+                # Snap a ratio within float error of a whole count -
+                # an integral multiplier must not over-ceil by one
+                # piece (e.g. 3 x 0.1 -> ratio 3.0000000000000004).
+                nearest = round(ratio)
+                count = (
+                    int(nearest)
+                    if math.isclose(ratio, nearest, abs_tol=1e-6)
+                    else math.ceil(ratio)
+                )
+            else:
+                count = 1
             cut_entry = {
                 "count": max(count, 1),
                 "piece_qty": cut_length,

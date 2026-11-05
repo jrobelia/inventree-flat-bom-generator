@@ -101,6 +101,25 @@ class InternalFabCutListTests(unittest.TestCase):
         self.assertEqual(cut_entries[0]["piece_qty"], 2.5)
         self.assertEqual(cut_entries[0]["count"], 3)
 
+    def test_integral_multiplier_float_error_does_not_over_ceil(self):
+        """Float error on an integral multiplier must not add a piece.
+
+        3 x 0.1 pieces: cumulative_qty carries binary float error
+        (0.30000000000000004), so the ratio lands an ulp above 3 and a
+        bare ceil over-orders by one. 6 x 0.1 over-ceils the same way.
+        """
+        leaves = [
+            create_leaf(123, "TUBE-001", "Tube", 3 * 0.1, 0.1, "mm"),
+            create_leaf(456, "TUBE-002", "Tube 2", 6 * 0.1, 0.1, "mm"),
+        ]
+        result = deduplicate_and_sum(leaves, enable_ifab_cuts=True)
+
+        counts = {
+            row["ipn"]: row["internal_fab_cut_list"][0]["count"]
+            for row in result
+        }
+        self.assertEqual(counts, {"TUBE-001": 3, "TUBE-002": 6})
+
     def test_occurrences_not_merged(self):
         """Two BOM item occurrences stay as two entries, even at same length."""
         leaves = [

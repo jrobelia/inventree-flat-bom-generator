@@ -221,7 +221,7 @@ def test_serializer_validates_real_part(self):
 **What Was Tested:**
 - Database exceptions (4 tests)
   - `Part.DoesNotExist` when part_id invalid
-  - Non-assembly parts return 200 with empty BOM
+  - Non-assembly parts return 400 "Part is not an assembly"
   - Category deletion handled gracefully
   
 - Invalid query parameters (4 tests)

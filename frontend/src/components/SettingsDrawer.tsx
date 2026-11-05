@@ -58,7 +58,7 @@ export function SettingsDrawer({
 
         <Switch
           label='Expand Purchased Assemblies'
-          description='Include purchased assemblies in the flat BOM (normally filtered as leaf parts)'
+          description='Show components of external-supplier assemblies instead of the assembly row'
           checked={settings.expandPurchasedAssemblies}
           onChange={(event) =>
             onUpdateSetting(

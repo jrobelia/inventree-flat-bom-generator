@@ -86,8 +86,6 @@ export function usePluginSettings(): UsePluginSettingsResult {
     settings.maxDepth !== DEFAULT_PLUGIN_SETTINGS.maxDepth ||
     settings.expandPurchasedAssemblies !==
       DEFAULT_PLUGIN_SETTINGS.expandPurchasedAssemblies ||
-    settings.includeInternalFabInCutlist !==
-      DEFAULT_PLUGIN_SETTINGS.includeInternalFabInCutlist ||
     settings.includeSubstitutes !== DEFAULT_PLUGIN_SETTINGS.includeSubstitutes;
 
   return {

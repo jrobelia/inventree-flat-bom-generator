@@ -12,22 +12,68 @@ logger = logging.getLogger("inventree")
 _UNSET = object()
 
 
+def _resolve_unit_registry():
+    """Return the best available pint UnitRegistry, or None.
+
+    Prefers InvenTree's conversion registry, which knows custom units
+    configured in the deployment; falls back to a bare pint registry when
+    InvenTree is not importable (bare unit-test environments). Returns None
+    when neither is available, in which case no leaf qualifies as a cut line.
+    """
+    try:
+        from InvenTree.conversion import get_unit_registry
+
+        return get_unit_registry()
+    except Exception:  # noqa: BLE001
+        try:
+            import pint
+
+            return pint.UnitRegistry()
+        except Exception:  # noqa: BLE001
+            return None
+
+
+def _units_have_length_dimension(units: str, registry) -> bool:
+    """True when `units` parses in `registry` with [length] dimensionality.
+
+    Blank or unparseable unit strings are never cut lines (ruling R-016).
+    """
+    if registry is None or not units or not str(units).strip():
+        return False
+    try:
+        return bool(registry.Quantity(1, str(units).strip()).check("[length]"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def get_bom_items(part) -> list[dict]:
     """
     Fetch BOM items for a given part with related data.
+
+    Queries through part.get_bom_items() with upstream defaults
+    (include_inherited=True, include_virtual=True): inherited template lines
+    and virtual lines are included, so a variant assembly sees its template's
+    inherited BOM lines. Each returned line carries its own bom_item pk and
+    its defining part so inherited lines keep their identity for substitute
+    resolution and the inherited_from marker.
 
     Args:
         part: Part model instance
 
     Returns:
-        List of BOM item dictionaries with: sub_part, quantity, reference, etc.
+        List of BOM item dictionaries with: sub_part, quantity, piece_count,
+        is_consumable, bom_item_part, reference, etc.
     """
     from company.models import SupplierPart
-    from part.models import BomItem
 
     try:
-        # Prefetch sub_part for categorization
-        bom_items = list(BomItem.objects.filter(part=part).select_related("sub_part"))
+        # Join sub_part (categorization) and part (inherited_from check) -
+        # prefetch_related(None) drops upstream's now-redundant prefetches
+        bom_items = list(
+            part.get_bom_items()
+            .prefetch_related(None)
+            .select_related("sub_part", "part")
+        )
 
         # Batch-fetch the primary SupplierPart for every sub_part in a single
         # query (keyed by part id) to avoid an N+1 lookup per BOM line.
@@ -51,10 +97,12 @@ def get_bom_items(part) -> list[dict]:
                 "sub_part_id": bom_item.sub_part.pk,
                 "bom_item_pk": bom_item.pk,
                 "quantity": float(bom_item.quantity),
+                "piece_count": bom_item.piece_count,
+                "is_consumable": bom_item.is_consumable,
+                "bom_item_part": bom_item.part,
                 "reference": bom_item.reference or "",
                 "note": bom_item.note or "",
                 "optional": bom_item.optional,
-                "consumable": bom_item.consumable,
                 "inherited": bom_item.inherited,
                 "has_default_supplier": primary_supplier is not None,
                 "primary_supplier": primary_supplier,
@@ -213,8 +261,12 @@ def traverse_bom(
                 child_ref = bom_item["reference"]
                 child_note = bom_item["note"]
 
-                # Calculate cumulative quantity for child
-                child_cumulative_qty = parent_qty * child_qty
+                # Upstream quantity semantics: quantity is the size of one
+                # piece, piece_count is how many pieces the line needs -
+                # the line's total material is quantity x piece_count.
+                child_cumulative_qty = (
+                    parent_qty * child_qty * bom_item.get("piece_count", 1)
+                )
 
                 # CRITICAL: Pass visited.copy() to allow same part in different branches
                 child_node = traverse_bom(
@@ -232,24 +284,20 @@ def traverse_bom(
 
                 # Set child-specific values
                 child_node["quantity"] = child_qty
+                child_node["piece_count"] = bom_item.get("piece_count", 1)
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
                 child_node["optional"] = bom_item.get("optional", False)
-                child_node["consumable"] = bom_item.get("consumable", False)
+                child_node["consumable"] = bom_item.get("is_consumable", False)
                 child_node["bom_item_pk"] = bom_item.get("bom_item_pk")
 
-                # Children of an internal-supplier assembly become cut-list
-                # rows: one entry per BOM item occurrence, cut_length is the
-                # BOM item quantity in the child's native unit. Assemblies are
-                # not marked - their descendants are treated as regular parts.
-                if internal_supplier and not child_node["is_assembly"]:
-                    child_node["from_internal_fab_parent"] = True
-                    child_node["parent_ipn"] = ipn
-                    child_node["parent_part_id"] = part_id
-                    child_node["cut_length"] = child_qty
-                    logger.info(
-                        f"[FlatBOM][traverse_bom] Marked child as from_internal_fab_parent: child_part_id={child_node.get('part_id')}, parent_part_id={part_id}, child_unit={child_node.get('unit')}"
-                    )
+                # An inherited BOM line is defined on an ancestor (template)
+                # part, not the part being expanded - mark its IPN on the row.
+                bom_item_part = bom_item.get("bom_item_part")
+                if bom_item_part is not None and bom_item_part.pk != part_id:
+                    child_node["inherited_from"] = bom_item_part.IPN or ""
+                else:
+                    child_node["inherited_from"] = None
 
                 # Add to children list
                 node["children"].append(child_node)
@@ -313,10 +361,9 @@ def get_leaf_parts_only(
             "note": node.get("note", ""),
             "level": node["level"],
             "bom_item_pk": node.get("bom_item_pk"),
-            "from_internal_fab_parent": node.get("from_internal_fab_parent", False),
-            "parent_ipn": node.get("parent_ipn"),
-            "parent_part_id": node.get("parent_part_id"),
-            "cut_length": node.get("cut_length"),
+            "quantity": node.get("quantity"),
+            "piece_count": node.get("piece_count", 1),
+            "inherited_from": node.get("inherited_from"),
             "max_depth_exceeded": node.get("max_depth_exceeded", False),
             "optional": node.get("optional", False),
             "consumable": node.get("consumable", False),
@@ -384,24 +431,20 @@ def get_leaf_parts_only(
     return leaves
 
 
-def deduplicate_and_sum(
-    leaf_parts: list[dict],
-    enable_ifab_cuts: bool = False,
-) -> list[dict]:
+def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     """
     Sum quantities for parts appearing multiple times.
 
     Every line item aggregates by part_id with the standard cumulative
-    quantity rollup. Children of internal-supplier assemblies additionally
-    contribute an internal_fab_cut_list entry per BOM item occurrence:
-    piece_qty is the BOM item quantity and count is the ancestor multiplier
-    (how many times that occurrence fires, rounded up when non-integral).
-    No note parsing, no unit filter.
+    quantity rollup. Leaves whose units have pint [length] dimensionality
+    additionally contribute cut-list entries, aggregated per (part, piece
+    size): size is the BOM line quantity (size of one piece) and count is
+    ceil(piece_count x ancestor multiplier) - a cut list never under-orders.
+    Same sizes merge across all expanded parents; mixed sizes stay separate.
+    The parent assembly's supplier status is irrelevant (ruling R-016).
 
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
-        enable_ifab_cuts: Attach internal_fab_cut_list entries to rows for
-            children of internal-supplier assemblies
 
     Returns:
         Deduplicated list with aggregated quantities
@@ -409,9 +452,10 @@ def deduplicate_and_sum(
     totals = defaultdict(float)
     part_info = {}
     part_references = defaultdict(list)  # Store all note strings for aggregation
-    internal_fab_cut_lists = defaultdict(
-        list
-    )  # Cut list entries for internal-fab assembly children
+    # Cut-list entries keyed by piece size per part; first-seen order kept
+    cut_lists = defaultdict(dict)
+    unit_registry = _resolve_unit_registry()
+    length_unit_cache = {}
     # Track which BomItems contributed what qty to each deduplicated part
     # Used by views.py to aggregate substitute qtys per substitute part
     bom_item_contributions = defaultdict(
@@ -432,18 +476,19 @@ def deduplicate_and_sum(
 
         totals[key] += leaf["cumulative_qty"]
 
-        # One cut-list entry per BOM item occurrence under an
-        # internal-supplier assembly. count = how many times this occurrence
-        # fires (the ancestor quantity multiplier, rounded up when
-        # non-integral - a cut list never under-orders); piece_qty = BOM qty.
-        if (
-            enable_ifab_cuts
-            and leaf.get("from_internal_fab_parent")
-            and leaf.get("cut_length") is not None
-        ):
-            cut_length = leaf["cut_length"]
-            if cut_length:
-                ratio = leaf["cumulative_qty"] / cut_length
+        # One cut-list entry per piece size per BOM line whose sub_part's
+        # units have [length] dimensionality. count = how many pieces the
+        # ancestor multiplier demands (rounded up when non-integral - a cut
+        # list never under-orders); size = the BOM line quantity.
+        size = leaf.get("quantity")
+        if size:
+            units = leaf.get("unit") or ""
+            if units not in length_unit_cache:
+                length_unit_cache[units] = _units_have_length_dimension(
+                    units, unit_registry
+                )
+            if length_unit_cache[units]:
+                ratio = leaf["cumulative_qty"] / size
                 # Snap a ratio within float error of a whole count -
                 # an integral multiplier must not over-ceil by one
                 # piece (e.g. 3 x 0.1 -> ratio 3.0000000000000004).
@@ -453,14 +498,15 @@ def deduplicate_and_sum(
                     if math.isclose(ratio, nearest, abs_tol=1e-6)
                     else math.ceil(ratio)
                 )
-            else:
-                count = 1
-            cut_entry = {
-                "count": max(count, 1),
-                "piece_qty": cut_length,
-                "unit": leaf.get("unit") or "",
-            }
-            internal_fab_cut_lists[key].append(cut_entry)
+                entry = cut_lists[key].get(size)
+                if entry is None:
+                    cut_lists[key][size] = {
+                        "size": size,
+                        "count": max(count, 1),
+                        "unit": units,
+                    }
+                else:
+                    entry["count"] += max(count, 1)
 
         # Collect note strings for aggregation (display only - never parsed)
         note = leaf.get("note", "")
@@ -481,6 +527,8 @@ def deduplicate_and_sum(
                 "internal_supplier": leaf.get("internal_supplier", False),
                 "part_type": leaf["part_type"],
                 "note": leaf.get("note", ""),  # BOM item notes
+                "piece_count": leaf.get("piece_count", 1),
+                "inherited_from": leaf.get("inherited_from"),
                 "assembly_no_children": leaf.get("assembly_no_children", False),
                 "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
                 "optional": leaf.get(
@@ -503,7 +551,7 @@ def deduplicate_and_sum(
         if leaf.get("consumable", False):
             part_info[key]["consumable_instances"] += 1
 
-    all_keys = set(totals.keys()) | {k for k, v in internal_fab_cut_lists.items() if v}
+    all_keys = set(totals.keys())
 
     result = []
     for key in sorted(all_keys, key=lambda k: part_info[k]["ipn"]):
@@ -539,7 +587,9 @@ def deduplicate_and_sum(
             "part_type": part_info[key]["part_type"],
             "note": part_info[key]["note"],  # BOM item notes
             "reference": combined_reference,  # Aggregated note strings
-            "internal_fab_cut_list": internal_fab_cut_lists.get(key) or None,
+            "cut_list": list(cut_lists[key].values()) or None,
+            "piece_count": part_info[key]["piece_count"],
+            "inherited_from": part_info[key]["inherited_from"],
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
             "optional": is_optional,
@@ -556,7 +606,6 @@ def get_flat_bom(
     max_depth: int | None = None,
     expand_purchased_assemblies: bool = False,
     category_mappings: dict[str, int] | None = None,
-    enable_ifab_cuts: bool = False,
 ) -> tuple:
     """
     Get flat BOM line items with deduplicated quantities.
@@ -573,7 +622,6 @@ def get_flat_bom(
             assemblies to show subcomponents
         category_mappings: Dict mapping label types to lists of category IDs
             (display labels only - does not affect expansion)
-        enable_ifab_cuts: Attach internal_fab_cut_list entries to rows
 
     Returns:
         Tuple of (flat_bom_list, total_internal_fab_processed, warnings_list,
@@ -610,7 +658,7 @@ def get_flat_bom(
 
         # Step 3: Deduplicate and sum quantities
         logger.info("Deduplicating and summing quantities")
-        flat_bom = deduplicate_and_sum(leaf_parts, enable_ifab_cuts=enable_ifab_cuts)
+        flat_bom = deduplicate_and_sum(leaf_parts)
 
         logger.info(
             f"Result: {len(flat_bom)} unique line items, {imp_counter['count']} Internal Fab parts processed, max depth reached: {depth_tracker['max_level']}"

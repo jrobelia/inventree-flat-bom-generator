@@ -15,9 +15,6 @@ export interface PluginSettings {
   /** Expand assemblies with default suppliers */
   expandPurchasedAssemblies: boolean;
 
-  /** Include Internal Fab parts in cutlist processing */
-  includeInternalFabInCutlist: boolean;
-
   /** Include substitute parts in BOM (triggers backend DB queries) */
   includeSubstitutes: boolean;
 }
@@ -28,12 +25,10 @@ export interface PluginSettings {
  * These defaults match the old plugin admin panel defaults:
  * - MAX_DEPTH: 0 (unlimited)
  * - expand_purchased_assemblies: false
- * - include_internal_fab_in_cutlist: false
  */
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   maxDepth: 0,
   expandPurchasedAssemblies: false,
-  includeInternalFabInCutlist: false,
   includeSubstitutes: false
 };
 

@@ -6,8 +6,10 @@ Uses internal_supplier_expansion.yaml to verify, with real InvenTree models:
 - External-supplier assembly: line item, NOT expanded
 - Unsourced assembly: expanded as build-order candidate regardless of
   purchaseable flag, and not itself a line item
-- Internal-fab cut list: one entry per BOM item occurrence, piece_qty from
-  the BOM item quantity, count from the ancestor multiplier, no note parsing
+- Cut list (R-016): every child line whose sub_part units have [length]
+  dimensionality produces entries {size: BOM quantity, count: piece_count x
+  ancestor multiplier} aggregated by (part, piece size), regardless of which
+  expanded parent the line sits under - no note parsing
 - Sourced TLA roots (R-015): the input part is exempt from the emit matrix -
   it always expands and never appears as a row in its own flat BOM
 """
@@ -48,7 +50,6 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
     def _flat_bom(self, part=None, **kwargs):
         from flat_bom_generator.bom_traversal import get_flat_bom
 
-        kwargs.setdefault('enable_ifab_cuts', True)
         flat_bom, _ifps, _warnings, _depth = get_flat_bom(
             (part or self.tla).pk, **kwargs
         )
@@ -100,31 +101,36 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
         self.assertEqual(rows[self.screw.pk]['total_qty'], 4.0)
         self.assertEqual(rows[self.screw.pk]['part_type'], 'Other')
 
-    def test_ifab_cut_list_per_occurrence_uses_bom_quantity(self):
-        """Cut list: one entry per BOM item occurrence, BOM qty as piece."""
+    def test_cut_list_entry_uses_bom_quantity_as_size(self):
+        """Cut list: size = BOM line quantity, count = piece_count x multiplier."""
         rows = self._flat_bom()
         steel = rows[self.steel.pk]
 
-        # 2 assemblies x 3 pieces each = 6 total
+        # 2 assemblies x 3 mm-pieces each = 6 total (piece_count defaults to 1)
         self.assertEqual(steel['total_qty'], 6.0)
 
-        cut_list = steel['internal_fab_cut_list']
+        cut_list = steel['cut_list']
         self.assertEqual(len(cut_list), 1)
-        self.assertEqual(cut_list[0]['piece_qty'], 3.0)  # BOM item quantity
+        self.assertEqual(cut_list[0]['size'], 3.0)  # BOM item quantity
         self.assertEqual(cut_list[0]['count'], 2)  # ancestor multiplier
         self.assertEqual(cut_list[0]['unit'], 'mm')
 
-    def test_ifab_cut_list_disabled_by_flag(self):
-        """enable_ifab_cuts=False leaves internal_fab_cut_list empty."""
-        rows = self._flat_bom(enable_ifab_cuts=False)
-        self.assertIsNone(rows[self.steel.pk]['internal_fab_cut_list'])
+    def test_cut_list_emitted_without_toggle(self):
+        """The new cut list is always computed - no view/traversal flag."""
+        rows = self._flat_bom()
+        self.assertIsNotNone(rows[self.steel.pk]['cut_list'])
+
+    def test_non_length_unit_produces_no_cut_entry(self):
+        """The screw (unit 'pcs', unparseable) is not a cut line."""
+        rows = self._flat_bom()
+        self.assertIsNone(rows[self.screw.pk]['cut_list'])
 
     def test_cut_list_ignores_bom_note_text(self):
         """Note 'cut as needed' must not create extra or different entries."""
         rows = self._flat_bom()
-        cut_list = rows[self.steel.pk]['internal_fab_cut_list']
+        cut_list = rows[self.steel.pk]['cut_list']
         self.assertEqual(len(cut_list), 1)
-        self.assertEqual(cut_list[0]['piece_qty'], 3.0)
+        self.assertEqual(cut_list[0]['size'], 3.0)
 
     def test_sourced_tla_root_expands_without_self_row(self):
         """Externally sourced TLA (R-015): expands, never emits a self row."""
@@ -156,9 +162,9 @@ class InternalSupplierExpansionTests(InvenTreeTestCase):
 
         bar = rows[self.bar_stock.pk]
         self.assertEqual(bar['total_qty'], 5.0)
-        cut_list = bar['internal_fab_cut_list']
+        cut_list = bar['cut_list']
         self.assertEqual(len(cut_list), 1)
-        self.assertEqual(cut_list[0]['piece_qty'], 5.0)
+        self.assertEqual(cut_list[0]['size'], 5.0)
         self.assertEqual(cut_list[0]['count'], 1)
 
 

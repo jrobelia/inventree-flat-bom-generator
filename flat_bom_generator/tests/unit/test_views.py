@@ -125,8 +125,8 @@ class APIResponseStructureTests(unittest.TestCase):
             # Part properties (5)
             "is_assembly", "purchaseable", "default_supplier_id", "part_type",
             "internal_supplier",
-            # BOM data (2)
-            "note", "internal_fab_cut_list",
+            # BOM data (4)
+            "note", "cut_list", "piece_count", "inherited_from",
         ]
 
         # Warning flags are optional (only present if triggered)
@@ -135,7 +135,7 @@ class APIResponseStructureTests(unittest.TestCase):
             "max_depth_exceeded",
         ]
 
-        self.assertEqual(len(required_fields), 22)
+        self.assertEqual(len(required_fields), 24)
         self.assertTrue(True, "BOM item structure documented")
 
     def test_metadata_structure(self):

@@ -166,7 +166,9 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "part_type": "Coml",
             # BOM data (optional)
             "note": None,
-            "internal_fab_cut_list": None,
+            "cut_list": None,
+            "piece_count": 1,
+            "inherited_from": None,
             # Warning flags (required)
             "assembly_no_children": False,
             "max_depth_exceeded": False,
@@ -302,17 +304,27 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         self.assertEqual(serializer.validated_data["category"], "Machined Parts")
         self.assertTrue(serializer.validated_data["internal_supplier"])
 
-    def test_with_internal_fab_cut_list(self):
-        """BOM item with internal_fab_cut_list should serialize."""
+    def test_with_cut_list(self):
+        """BOM item with cut_list entries should serialize."""
         data = self.get_valid_bom_item_data()
-        data["internal_fab_cut_list"] = [
-            {"length": 100.0, "unit": "mm", "count": 2},
-            {"length": 50.0, "unit": "mm", "count": 1},
+        data["cut_list"] = [
+            {"size": 100.0, "unit": "mm", "count": 2},
+            {"size": 50.0, "unit": "mm", "count": 1},
         ]
         serializer = FlatBOMItemSerializer(data=data)
         self.assertTrue(serializer.is_valid())
-        self.assertIsInstance(serializer.validated_data["internal_fab_cut_list"], list)
-        self.assertEqual(len(serializer.validated_data["internal_fab_cut_list"]), 2)
+        self.assertIsInstance(serializer.validated_data["cut_list"], list)
+        self.assertEqual(len(serializer.validated_data["cut_list"]), 2)
+
+    def test_with_piece_count_and_inherited_from(self):
+        """piece_count int and inherited_from IPN serialize through."""
+        data = self.get_valid_bom_item_data()
+        data["piece_count"] = 4
+        data["inherited_from"] = "WELD-T"
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["piece_count"], 4)
+        self.assertEqual(serializer.validated_data["inherited_from"], "WELD-T")
 
     def test_all_part_types(self):
         """Test all category types serialize correctly."""

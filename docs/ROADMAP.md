@@ -101,7 +101,7 @@ view and build order system, which handles variants natively.
 - **Option C -- Toolbar redesign**: group related controls visually (e.g., display options vs build margin options).
 
 **Current checkboxes to rethink:**
-- Show Cutlist Rows (should hide/disable when no internal-fab cut-list rows exist -- see cutlist checkbox item)
+- Show Cutlist Rows (should hide/disable when no cut-list rows exist -- see cutlist checkbox item)
 - Show Substitutes (already has hide/disable logic)
 - Include Allocations in Build Margin
 - Include On Order in Build Margin
@@ -111,21 +111,13 @@ view and build order system, which handles variants natively.
 **Note:** This item subsumes and replaces the earlier "Consolidate Filter Checkboxes" plan.
 
 ### UX Polish: Cutlist Checkbox (0.5-1 hour, LOW PRIORITY)
-**Current:** "Show Cutlist Rows" checkbox is always enabled regardless of whether the BOM contains any internal-fab cut-list rows.  
+**Current:** "Show Cutlist Rows" checkbox is always enabled regardless of whether the BOM contains any cut-list rows.  
 **Goal:** Apply the same hide/disable pattern used for the Substitutes checkbox.
 
-**Complication -- cut-list rows come from a setting, not just data:**
-- The "Show Substitutes" checkbox can be hidden when the setting is off.
-- Cut-list rows appear only when `include_internal_fab_in_cutlist` is on AND the response contains `internal_fab_cut_list` entries.
-- Options:
-  1. **Data-driven only:** detect `hasCutlistRows` from response data and disable/hide purely based on that (simplest, no setting change needed)
-  2. **Mirror the Substitutes pattern exactly:** hide the checkbox when the `include_internal_fab_in_cutlist` setting is off
-- Option 2 gives users more control and is consistent with how Substitutes work.
-
-**Data-driven implementation (Option 1):**
+**Data-driven implementation:**
 ```typescript
 const hasCutlistRows = useMemo(() =>
-  bomData?.bom_items?.some(item => item.internal_fab_cut_list?.length > 0) || false
+  bomData?.bom_items?.some(item => item.cut_list?.length > 0) || false
 , [bomData]);
 ```
 Then apply same hide/disable/tooltip logic as `substituteCheckboxState.ts`.
@@ -143,7 +135,7 @@ Then apply same hide/disable/tooltip logic as `substituteCheckboxState.ts`.
 
 ### Child Row Visual Consistency (2-4 hours, MEDIUM PRIORITY)
 **Problem:** The plugin currently has three types of child/extra rows, each styled independently:
-- **Internal-fab cut-list child rows** (children of internal-supplier assemblies) -- grey/neutral theme, `↳` symbol
+- **Cut-list child rows** (piece breakdown of length-unit BOM lines) -- grey/neutral theme, `↳` symbol
 - **Substitute child rows** -- blue theme, `↳` symbol, "Substitute" badge
 - **Mixed flag rows (planned)** -- no style decided yet
 
@@ -171,7 +163,7 @@ These have grown organically and will diverge further as Mixed Flag Handling add
 **Features that are non-obvious to new users:**
 - Recursive flattening (all levels, not just immediate children)
 - Substitute parts display and the setting required to enable it
-- Internal-fab cut-list child rows and how the primary supplier's `is_internal` flag triggers them
+- Cut-list child rows and how sub-part units decide membership
 - Mixed flag handling (when implemented)
 - Stock columns: what "allocated", "on order", and "build margin" mean
 - Warning badges and what triggers them

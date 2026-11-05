@@ -35,9 +35,7 @@ class TestMaxDepthWarningLogic(unittest.TestCase):
             "reference": "",
             "note": "",
             "level": 2,
-            "from_internal_fab_parent": False,
             "parent_ipn": "PARENT-001",
-            "parent_part_id": 99,
             "children": [],  # No children because max_depth was hit
             "max_depth_exceeded": True,  # Flag indicating depth limit reached
         }
@@ -84,9 +82,7 @@ class TestMaxDepthWarningLogic(unittest.TestCase):
             "reference": "",
             "note": "",
             "level": 1,
-            "from_internal_fab_parent": False,
             "parent_ipn": "PARENT-001",
-            "parent_part_id": 99,
             "children": [],  # No children because BOM is empty
             "max_depth_exceeded": False,  # NOT stopped by depth limit
         }
@@ -130,9 +126,7 @@ class TestMaxDepthWarningLogic(unittest.TestCase):
             "reference": "",
             "note": "",
             "level": 2,
-            "from_internal_fab_parent": False,
             "parent_ipn": "PARENT-001",
-            "parent_part_id": 99,
             "children": [],
             "max_depth_exceeded": False,
         }

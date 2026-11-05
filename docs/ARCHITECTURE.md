@@ -81,7 +81,9 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `purchaseable`: Boolean - whether part can be purchased
 - `default_supplier_id`: ID of primary SupplierPart (null if none)
 - `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
-- `internal_fab_cut_list`: Per-occurrence cut entries for children of internal-supplier assemblies (`{count, piece_qty, unit}`), null otherwise
+- `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
+- `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line)
+- `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
 - `consumable`: Boolean - whether part is consumable (not tracked in build orders)
 - `note`: BOM item notes (free text, never parsed)
@@ -269,7 +271,6 @@ showCutlistRows: boolean        // Show/hide cutlist breakdown rows
 // usePluginSettings
 maxDepth: number                // Maximum BOM traversal depth
 expandPurchasedAssemblies: boolean  // Expand external-supplier assemblies
-includeInternalFabInCutlist: boolean // Show internal-fab cut-list rows
 includeSubstitutes: boolean     // Include substitute parts
 
 // useColumnVisibility
@@ -322,13 +323,15 @@ interface BomItem {
     total_qty: number;      // Aggregated from BOM traversal
     unit: string;
     
-    // Cut list support (internal-fab assembly children)
-    internal_fab_cut_list?: Array<{ count: number; piece_qty: number; unit: string }> | null;
+    // Cut list support (length-unit BOM lines, any expanded parent)
+    cut_list?: Array<{ size: number; count: number; unit: string }> | null;
     is_child_row?: boolean;
-    child_row_type?: 'cutlist_ifab' | 'substitute' | 'variant';
+    child_row_type?: 'cutlist' | 'substitute' | 'variant';
     parent_row_part_id?: number;
     cut_length?: number | null;
     cut_unit?: string;
+    piece_count?: number | null;
+    inherited_from?: string | null;
     
     // Stock levels
     in_stock: number;       // Total physical stock
@@ -385,18 +388,20 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**11 Columns** (all sortable, some toggleable):
+**13 Columns** (all sortable, some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
 5. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
 6. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
-7. **Cut Length** - For cutlist child rows, shows individual piece length (toggleable, hidden by default)
-8. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
-9. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
-10. **On Order** - Blue badge if > 0 with [unit] (toggleable)
-11. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+7. **Cut Length** - For cutlist child rows, shows individual piece length (toggleable, hidden unless cut data present)
+8. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
+9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+11. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+12. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+13. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
 **Column Visibility:**
 - Always visible: Component

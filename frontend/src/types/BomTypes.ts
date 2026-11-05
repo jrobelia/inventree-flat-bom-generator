@@ -35,18 +35,26 @@ export interface BomItem {
   total_qty: number;
   unit: string;
 
-  // Cut list support (internal-fab assembly children)
-  internal_fab_cut_list?: Array<{
+  // Cut list support (length-unit BOM lines, any expanded parent - R-016)
+  // Entries aggregate by (part, piece size): size = BOM line quantity,
+  // count = ceil(piece_count x ancestor multiplier)
+  cut_list?: Array<{
+    size: number;
     count: number;
-    piece_qty: number;
     unit: string;
   }> | null;
   cut_length?: number | null;
   cut_unit?: string;
 
+  // Upstream BOM line semantics (InvenTree 1.6): piece_count = pieces of
+  // `quantity` size; inherited_from = IPN of the ancestor part an inherited
+  // BOM line is defined on (null for direct lines)
+  piece_count?: number | null;
+  inherited_from?: string | null;
+
   // Generic child row system (v0.11.24+)
   is_child_row?: boolean; // True if cutlist/substitute/variant child
-  child_row_type?: 'cutlist_ifab' | 'substitute' | 'variant';
+  child_row_type?: 'cutlist' | 'substitute' | 'variant';
   parent_row_part_id?: number; // Parent row's part_id
 
   // Stock and order information

@@ -32,7 +32,6 @@ export const PART_TYPE_COLORS: Record<string, string> = {
   TLA: 'grape',
   Coml: 'green',
   Fab: 'blue',
-  CtL: 'teal',
   'Purchased Assy': 'orange',
   'Internal Fab': 'cyan',
   Assy: 'violet',

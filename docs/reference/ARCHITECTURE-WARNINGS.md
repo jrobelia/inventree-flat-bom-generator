@@ -214,7 +214,7 @@ def test_flag_logic():
 
 - ✅ 1 summary warning for max_depth (covers 30+ assemblies)
 - ✅ 1 warning for genuine empty assembly (OAStg-00001)
-- ✅ 2 unit mismatch warnings (CtL part)  
+- ✅ 2 unit mismatch warnings (part with length note)  
 - ✅ 1 inactive part warning
 
 **Code Quality**: 4 new unit tests, all passing, documenting the decision logic.

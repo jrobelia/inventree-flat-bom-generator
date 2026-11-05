@@ -172,9 +172,9 @@ class FlatBOMItemSerializer(serializers.Serializer):
     Fields are organized into categories:
     - Core identifiers (part_id, ipn, part_name)
     - Quantities (total_qty, in_stock, allocated, on_order, available)
-    - Display metadata (full_name, description, image, thumbnail, link)
-    - Part properties (units, is_assembly, purchaseable, part_type)
-    - BOM data (note, cut_list, internal_fab_cut_list)
+    - Display metadata (full_name, description, image, thumbnail, link, category)
+    - Part properties (units, is_assembly, purchaseable, internal_supplier, part_type)
+    - BOM data (note, internal_fab_cut_list)
     - Warning flags (assembly_no_children, max_depth_exceeded)
     """
 
@@ -244,6 +244,13 @@ class FlatBOMItemSerializer(serializers.Serializer):
         required=True, allow_blank=True, help_text="Part unit (mm, pcs, etc.)"
     )
 
+    category = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="InvenTree part category name (empty if uncategorized)",
+    )
+
     # Part properties
     is_assembly = serializers.BooleanField(
         required=True, help_text="Whether part is an assembly"
@@ -256,12 +263,18 @@ class FlatBOMItemSerializer(serializers.Serializer):
     default_supplier_id = serializers.IntegerField(
         required=False,
         allow_null=True,
-        help_text="Default supplier ID (None if no supplier)",
+        help_text="Primary SupplierPart ID (None if no supplier)",
+    )
+
+    internal_supplier = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="True when the primary supplier's company is flagged is_internal",
     )
 
     part_type = serializers.CharField(
         required=True,
-        help_text="Categorized part type (TLA, Fab, Coml, Internal Fab, etc.)",
+        help_text="Display label (TLA, Fab, Coml, Internal Fab, Purchased Assy, Assy, Other)",
     )
 
     optional = serializers.BooleanField(
@@ -281,14 +294,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         allow_blank=True,
-        help_text="BOM item notes (may contain cut-to-length specifications)",
-    )
-
-    cut_list = serializers.ListField(
-        required=False,
-        allow_null=True,
-        child=serializers.DictField(),
-        help_text="Cut-to-length breakdown for CtL parts (None if not applicable)",
+        help_text="BOM item notes (displayed as free text, never parsed)",
     )
 
     internal_fab_cut_list = serializers.ListField(
@@ -346,16 +352,17 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "thumbnail",
             "link",
             "unit",
+            "category",
             # Part properties
             "is_assembly",
             "purchaseable",
             "default_supplier_id",
+            "internal_supplier",
             "part_type",
             "optional",
             "consumable",
             # BOM data
             "note",
-            "cut_list",
             "internal_fab_cut_list",
             # Warning flags
             "assembly_no_children",
@@ -384,7 +391,6 @@ class FlatBOMResponseSerializer(serializers.Serializer):
         "bom_items": [...],  # List of FlatBOMItemSerializer
         "metadata": {
             "warnings": [...],  # List of BOMWarningSerializer
-            "cutlist_units_for_ifab": "mm,in,cm"  # Units for Internal Fab cutlist display
         }
     }
     """
@@ -429,7 +435,7 @@ class FlatBOMResponseSerializer(serializers.Serializer):
     # Metadata with warnings
     metadata = serializers.DictField(
         required=True,
-        help_text="Additional response metadata including warnings and cutlist units",
+        help_text="Additional response metadata including warnings",
     )
 
     def validate_metadata(self, value):

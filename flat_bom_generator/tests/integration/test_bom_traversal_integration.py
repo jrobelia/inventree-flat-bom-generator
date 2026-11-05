@@ -181,10 +181,8 @@ class CategoryIntegrationTests(InvenTreeTestCase):
             is_assembly=False,
             is_top_level=False,
             default_supplier_id=None,
-            internal_supplier_ids=[],
             part_category_id=self.fab_cat.pk,
             category_mappings={'fabrication': [self.fab_cat.pk]},
-            bom_item_notes=None
         )
         
         self.assertIsInstance(result, str)

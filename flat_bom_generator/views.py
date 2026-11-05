@@ -19,124 +19,23 @@ from .serializers import (
 logger = logging.getLogger("inventree")
 
 
-def _extract_id_from_value(value, setting_name):
-    """
-    Extract integer ID from various value types (int, str, object with pk/id).
-
-    Args:
-        value: Value to extract ID from (int, str, or object with pk/id attribute)
-        setting_name: Name of setting (for logging purposes)
-
-    Returns:
-        Integer ID if valid, None otherwise
-    """
-    if not value:
-        return None
-
-    if isinstance(value, int):
-        return value
-    elif isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            logger.warning(f"{setting_name} has invalid string value: '{value}'")
-            return None
-    elif hasattr(value, "pk"):
-        return value.pk
-    elif hasattr(value, "id"):
-        return value.id
-
-    return None
-
-
-def get_internal_supplier_ids(plugin):
-    """
-    Get list of internal supplier IDs from plugin settings.
-
-    Combines PRIMARY_INTERNAL_SUPPLIER and ADDITIONAL_INTERNAL_SUPPLIERS,
-    validates IDs exist in database, deduplicates, and returns sorted list of unique IDs.
-
-    Args:
-        plugin: Plugin instance
-
-    Returns:
-        List of unique internal supplier IDs (integers)
-    """
-    from company.models import Company
-
-    internal_ids = []
-
-    # Handle None plugin (test environment)
-    if plugin is None:
-        return []
-
-    # Get primary internal supplier
-    try:
-        primary_supplier = plugin.get_setting("PRIMARY_INTERNAL_SUPPLIER")
-        supplier_id = _extract_id_from_value(
-            primary_supplier, "PRIMARY_INTERNAL_SUPPLIER"
-        )
-        if supplier_id is not None:
-            internal_ids.append(supplier_id)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Error retrieving PRIMARY_INTERNAL_SUPPLIER: {e}")
-
-    # Get additional internal suppliers (comma-separated string)
-    try:
-        additional = plugin.get_setting(
-            "ADDITIONAL_INTERNAL_SUPPLIERS", backup_value=""
-        )
-        if additional and additional.strip():
-            # Parse comma-separated IDs
-            for id_str in additional.split(","):
-                try:
-                    supplier_id = int(id_str.strip())
-                    if supplier_id > 0:
-                        internal_ids.append(supplier_id)
-                except (ValueError, TypeError):
-                    logger.warning(
-                        f"Invalid supplier ID in ADDITIONAL_INTERNAL_SUPPLIERS: '{id_str}'"
-                    )
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Error parsing ADDITIONAL_INTERNAL_SUPPLIERS: {e}")
-
-    # Deduplicate
-    unique_ids = list(set(internal_ids))
-
-    # Validate that IDs exist in database
-    validated_ids = []
-    for supplier_id in unique_ids:
-        try:
-            if Company.objects.filter(pk=supplier_id).exists():
-                validated_ids.append(supplier_id)
-            else:
-                logger.warning(
-                    f"Internal supplier ID {supplier_id} does not exist in database. Ignoring."
-                )
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Error validating supplier ID {supplier_id}: {e}")
-
-    return sorted(validated_ids)
-
-
 def get_category_mappings(plugin):
     """
     Build category mappings from plugin settings.
 
-    Retrieves InvenTree category IDs for each part type (Fabrication, Commercial,
-    Cut-to-Length) from plugin settings. For each category, includes
-    the category itself plus all descendant (child) categories to support
-    hierarchical category structures.
+    Retrieves InvenTree category IDs for each display label (Fabrication,
+    Commercial) from plugin settings. For each category, includes the
+    category itself plus all descendant (child) categories to support
+    hierarchical category structures. Mappings drive display labels only.
 
     Args:
         plugin: Plugin instance
 
     Returns:
-        Dict mapping category type keys to lists of category IDs (includes descendants):
+        Dict mapping label keys to lists of category IDs (includes descendants):
         {
             'fabrication': [5, 12, 13],  # Parent + children
             'commercial': [8, 9, 10],
-            'cut_to_length': [20]
         }
         Empty dict if no categories configured.
     """
@@ -149,7 +48,6 @@ def get_category_mappings(plugin):
     category_settings = {
         "fabrication": "FABRICATION_CATEGORY",
         "commercial": "COMMERCIAL_CATEGORY",
-        "cut_to_length": "CUT_TO_LENGTH_CATEGORY",
     }
 
     for key, setting_name in category_settings.items():
@@ -263,54 +161,15 @@ class FlatBOMView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Get plugin for settings (categories, suppliers, units, defaults)
+        # Get plugin for settings (categories, substitutes default)
         plugin = registry.get_plugin("flat-bom-generator")
 
-        internal_supplier_ids = []
         category_mappings = {}
-        ifab_units = set()
 
-        # Load plugin settings as defaults for boolean parameters
-        expand_purchased_default = False
-        enable_ifab_cuts_default = False
         include_substitutes_default = False
 
         if plugin:
-            internal_supplier_ids = get_internal_supplier_ids(plugin)
             category_mappings = get_category_mappings(plugin)
-            units_csv = plugin.get_setting(
-                "CUTLIST_UNITS_FOR_INTERNAL_FAB", backup_value="mm,in,cm"
-            )
-            if units_csv:
-                ifab_units = {u.strip() for u in units_csv.split(",") if u.strip()}
-
-            # Load plugin settings as defaults (overridden by query params if provided)
-            # Convert to bool in case plugin returns string "True"/"False"
-            expand_purchased_setting = plugin.get_setting(
-                "SHOW_PURCHASED_ASSEMBLIES", backup_value=False
-            )
-            expand_purchased_default = (
-                bool(expand_purchased_setting)
-                if isinstance(expand_purchased_setting, bool)
-                else (
-                    str(expand_purchased_setting).lower() == "true"
-                    if expand_purchased_setting
-                    else False
-                )
-            )
-
-            enable_ifab_cuts_setting = plugin.get_setting(
-                "ENABLE_INTERNAL_FAB_CUT_BREAKDOWN", backup_value=False
-            )
-            enable_ifab_cuts_default = (
-                bool(enable_ifab_cuts_setting)
-                if isinstance(enable_ifab_cuts_setting, bool)
-                else (
-                    str(enable_ifab_cuts_setting).lower() == "true"
-                    if enable_ifab_cuts_setting
-                    else False
-                )
-            )
 
             include_substitutes_setting = plugin.get_setting(
                 "SHOW_SUBSTITUTE_PARTS", backup_value=False
@@ -327,18 +186,16 @@ class FlatBOMView(APIView):
         else:
             logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
-        # Parse boolean parameters (use plugin defaults if query param not provided)
-        if expand_purchased_assemblies_param is not None:
-            expand_purchased_assemblies = (
-                expand_purchased_assemblies_param.lower() == "true"
-            )
-        else:
-            expand_purchased_assemblies = expand_purchased_default
+        # Parse boolean parameters (query params only - no plugin-setting fallbacks)
+        expand_purchased_assemblies = (
+            expand_purchased_assemblies_param is not None
+            and expand_purchased_assemblies_param.lower() == "true"
+        )
 
-        if include_ifab_cuts_param is not None:
-            enable_ifab_cuts = include_ifab_cuts_param.lower() == "true"
-        else:
-            enable_ifab_cuts = enable_ifab_cuts_default
+        enable_ifab_cuts = (
+            include_ifab_cuts_param is not None
+            and include_ifab_cuts_param.lower() == "true"
+        )
 
         if include_substitutes_param is not None:
             include_substitutes = include_substitutes_param.lower() == "true"
@@ -348,21 +205,14 @@ class FlatBOMView(APIView):
         if plugin:
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
-                f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (from {'query param' if expand_purchased_assemblies_param else 'plugin default'})"
+                f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (query param)"
             )
-            logger.info(
-                f"  - enable_ifab_cuts: {enable_ifab_cuts} (from {'query param' if include_ifab_cuts_param else 'plugin default'})"
-            )
+            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts} (query param)")
             logger.info(
                 f"  - include_substitutes: {include_substitutes} (from {'query param' if include_substitutes_param else 'plugin default'})"
             )
             logger.info(f"  - max_depth: {max_depth} (from query param)")
-            logger.info(f"  - internal_supplier_ids: {internal_supplier_ids}")
             logger.info(f"  - category_mappings: {category_mappings}")
-            logger.info(f"  - ifab_units: {ifab_units}")
-            logger.info(
-                f"[FlatBOM][DEBUG] Using settings for cut_list logic: enable_ifab_cuts={enable_ifab_cuts}, ifab_units={ifab_units}"
-            )
 
         # Validate part exists and is an assembly
         try:
@@ -384,23 +234,20 @@ class FlatBOMView(APIView):
             logger.info(
                 f"[FlatBOM] Starting BOM traversal for part {part_id} ({part.name})"
             )
-            flat_bom, total_ifps_processed, ctl_warnings, max_depth_reached = (
+            flat_bom, total_ifps_processed, bom_warnings, max_depth_reached = (
                 get_flat_bom(
                     part_id,
                     max_depth=max_depth,
                     expand_purchased_assemblies=expand_purchased_assemblies,
-                    internal_supplier_ids=internal_supplier_ids,
                     category_mappings=category_mappings,
                     enable_ifab_cuts=enable_ifab_cuts,
-                    ifab_units=ifab_units,
                 )
             )
             logger.info(
                 f"[FlatBOM] Traversal complete: {len(flat_bom)} unique parts, {total_ifps_processed} IFPs processed, max depth: {max_depth_reached}"
             )
 
-            # Start with CtL warnings from deduplicate_and_sum
-            warnings = ctl_warnings.copy()
+            warnings = list(bom_warnings)
 
             # WARNING GENERATION TESTING APPROACH:
             # View-level aggregation logic (lines 334-421) is NOT directly tested via integration
@@ -436,8 +283,11 @@ class FlatBOMView(APIView):
             enriched_bom = []
             for item in flat_bom:
                 try:
-                    # Fetch full part details
-                    part_obj = Part.objects.get(pk=item["part_id"])
+                    # Fetch full part details (category prefetched - it is
+                    # read for the Category column below)
+                    part_obj = Part.objects.select_related("category").get(
+                        pk=item["part_id"]
+                    )
 
                     # Calculate stock and order quantities
                     total_stock = part_obj.total_stock or 0
@@ -487,30 +337,30 @@ class FlatBOMView(APIView):
                     # Note: max_depth_exceeded is handled by summary warning above
                     # (one warning for all assemblies instead of per-part warnings)
 
-                    # Check for unit mismatch in BOM notes (non-CtL parts only)
-                    # CtL parts already checked above to catch all cut list variants
-                    if item.get("part_type") != "CtL":
-                        bom_notes = item.get("note", "")
-                        part_units = part_obj.units or ""
+                    # Check for unit mismatch in BOM notes.
+                    # Notes are never parsed for lengths or units to drive
+                    # output - this check only surfaces a warning to the user.
+                    bom_notes = item.get("note", "")
+                    part_units = part_obj.units or ""
 
-                        unit_warning = _check_unit_mismatch(bom_notes, part_units)
+                    unit_warning = _check_unit_mismatch(bom_notes, part_units)
 
-                        if unit_warning:
-                            part_full_name = (
-                                part_obj.full_name
-                                if hasattr(part_obj, "full_name")
-                                else part_obj.name
-                            )
-                            serializer = BOMWarningSerializer(
-                                data={
-                                    "type": "unit_mismatch",
-                                    "part_id": item["part_id"],
-                                    "part_name": part_full_name,
-                                    "message": unit_warning,
-                                }
-                            )
-                            serializer.is_valid(raise_exception=True)
-                            warnings.append(serializer.validated_data)
+                    if unit_warning:
+                        part_full_name = (
+                            part_obj.full_name
+                            if hasattr(part_obj, "full_name")
+                            else part_obj.name
+                        )
+                        serializer = BOMWarningSerializer(
+                            data={
+                                "type": "unit_mismatch",
+                                "part_id": item["part_id"],
+                                "part_name": part_full_name,
+                                "message": unit_warning,
+                            }
+                        )
+                        serializer.is_valid(raise_exception=True)
+                        warnings.append(serializer.validated_data)
 
                     # Serialize enriched item using FlatBOMItemSerializer
                     enriched_data = {
@@ -531,6 +381,8 @@ class FlatBOMView(APIView):
                         "link": part_obj.get_absolute_url()
                         if hasattr(part_obj, "get_absolute_url")
                         else f"/part/{part_obj.pk}/",
+                        "category": part_obj.category.name if part_obj.category else "",
+                        "internal_supplier": item.get("internal_supplier", False),
                     }
 
                     # Enrich with substitute parts if setting enabled
@@ -672,16 +524,6 @@ class FlatBOMView(APIView):
             for idx, warning in enumerate(warnings):
                 logger.info(f"[FlatBOM] Warning {idx + 1}: {warning}")
 
-            # Get units list for frontend label (serializer requires list, not string)
-            cutlist_units_str = (
-                plugin.get_setting(
-                    "CUTLIST_UNITS_FOR_INTERNAL_FAB", backup_value="mm,in,cm"
-                )
-                if plugin
-                else "mm,in,cm"
-            )
-            cutlist_units_list = [u.strip() for u in cutlist_units_str.split(",")]
-
             # Prepare response data
             response_data = {
                 "part_id": part_id,
@@ -693,7 +535,6 @@ class FlatBOMView(APIView):
                 "bom_items": enriched_bom,
                 "metadata": {
                     "warnings": warnings,
-                    "cutlist_units_for_ifab": cutlist_units_list,
                 },
             }
 

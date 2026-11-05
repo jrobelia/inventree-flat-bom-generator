@@ -14,19 +14,20 @@ export interface BomItem {
   full_name: string;
   description: string;
 
-  // Categorization
+  // Display label (labels do not drive expansion - flags below do)
   part_type:
     | 'TLA'
     | 'Coml'
     | 'Fab'
-    | 'CtL'
     | 'Purchased Assy'
     | 'Internal Fab'
     | 'Assy'
     | 'Other';
+  category?: string;
   is_assembly: boolean;
   purchaseable: boolean;
-  has_default_supplier: boolean;
+  default_supplier_id?: number | null;
+  internal_supplier?: boolean;
   optional?: boolean;
   consumable?: boolean;
 
@@ -34,8 +35,7 @@ export interface BomItem {
   total_qty: number;
   unit: string;
 
-  // Cut list support
-  cut_list?: Array<{ quantity: number; length: number }> | null;
+  // Cut list support (internal-fab assembly children)
   internal_fab_cut_list?: Array<{
     count: number;
     piece_qty: number;
@@ -46,7 +46,7 @@ export interface BomItem {
 
   // Generic child row system (v0.11.24+)
   is_child_row?: boolean; // True if cutlist/substitute/variant child
-  child_row_type?: 'cutlist_ctl' | 'cutlist_ifab' | 'substitute' | 'variant';
+  child_row_type?: 'cutlist_ifab' | 'substitute' | 'variant';
   parent_row_part_id?: number; // Parent row's part_id
 
   // Stock and order information
@@ -127,6 +127,5 @@ export interface FlatBomResponse {
   bom_items: BomItem[];
   metadata?: {
     warnings?: Warning[];
-    cutlist_units_for_ifab?: string; // Added in v0.11.0 - units for Internal Fab cutlist display
   };
 }

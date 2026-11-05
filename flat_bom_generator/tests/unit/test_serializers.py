@@ -157,14 +157,15 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "thumbnail": None,
             "link": "/part/123/",
             "unit": "pcs",
+            "category": "Test Category",
             # Part properties (required)
             "is_assembly": False,
             "purchaseable": True,
             "default_supplier_id": None,
+            "internal_supplier": False,
             "part_type": "Coml",
             # BOM data (optional)
             "note": None,
-            "cut_list": None,
             "internal_fab_cut_list": None,
             # Warning flags (required)
             "assembly_no_children": False,
@@ -291,14 +292,15 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         # Test that it at least accepts proper booleans
         self.assertTrue(serializer.is_valid() or "is_assembly" in serializer.errors)
 
-    def test_with_cut_list(self):
-        """BOM item with cut_list should serialize."""
+    def test_category_and_internal_supplier_fields(self):
+        """Explicit category + internal_supplier fields serialize through."""
         data = self.get_valid_bom_item_data()
-        data["cut_list"] = [{"length": 100.0, "unit": "mm", "count": 2}, {"length": 50.0, "unit": "mm", "count": 1}]
+        data["category"] = "Machined Parts"
+        data["internal_supplier"] = True
         serializer = FlatBOMItemSerializer(data=data)
         self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
-        self.assertIsInstance(serializer.validated_data["cut_list"], list)
-        self.assertEqual(len(serializer.validated_data["cut_list"]), 2)
+        self.assertEqual(serializer.validated_data["category"], "Machined Parts")
+        self.assertTrue(serializer.validated_data["internal_supplier"])
 
     def test_with_internal_fab_cut_list(self):
         """BOM item with internal_fab_cut_list should serialize."""
@@ -314,7 +316,7 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
 
     def test_all_part_types(self):
         """Test all category types serialize correctly."""
-        part_types = ["TLA", "Internal Fab", "Purchased Assy", "CtL", "Coml", "Fab", "Assy", "Other"]
+        part_types = ["TLA", "Internal Fab", "Purchased Assy", "Coml", "Fab", "Assy", "Other"]
         for part_type in part_types:
             with self.subTest(part_type=part_type):
                 data = self.get_valid_bom_item_data()

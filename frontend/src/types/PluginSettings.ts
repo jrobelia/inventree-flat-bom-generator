@@ -27,8 +27,8 @@ export interface PluginSettings {
  *
  * These defaults match the old plugin admin panel defaults:
  * - MAX_DEPTH: 0 (unlimited)
- * - SHOW_PURCHASED_ASSEMBLIES: false
- * - INCLUDE_INTERNAL_FAB_IN_CUTLIST: false
+ * - expand_purchased_assemblies: false
+ * - include_internal_fab_in_cutlist: false
  */
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   maxDepth: 0,

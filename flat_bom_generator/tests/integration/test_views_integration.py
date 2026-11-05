@@ -473,16 +473,14 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
         from flat_bom_generator.categorization import categorize_part
         
         # Test FAB part - needs category_id for classification
-        # Category mapping keys must match categorize_part expectations: 'fabrication', 'commercial', 'cut_to_length'
+        # Category mapping keys must match categorize_part expectations: 'fabrication', 'commercial'
         fab_result = categorize_part(
             self.fab.name,
             is_assembly=False,
             is_top_level=False,
             default_supplier_id=None,
-            internal_supplier_ids=[],
             part_category_id=self.fab_cat.pk,
             category_mappings={'fabrication': [self.fab_cat.pk]},  # Must be 'fabrication' not 'fab'
-            bom_item_notes=None
         )
         self.assertEqual(fab_result, "Fab")
         
@@ -492,10 +490,8 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             is_assembly=False,
             is_top_level=False,
             default_supplier_id=None,
-            internal_supplier_ids=[],
             part_category_id=self.coml_cat.pk,
             category_mappings={'commercial': [self.coml_cat.pk]},  # Must be 'commercial' not 'coml'
-            bom_item_notes=None
         )
         self.assertEqual(coml_result, "Coml")
         
@@ -505,10 +501,8 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             is_assembly=True,
             is_top_level=True,
             default_supplier_id=None,
-            internal_supplier_ids=[],
             part_category_id=self.assemblies_cat.pk,
             category_mappings={},
-            bom_item_notes=None
         )
         self.assertEqual(tla_result, "TLA")
     

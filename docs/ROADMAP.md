@@ -22,9 +22,9 @@
 
 ### 🎯 Next Steps
 1. **Mixed Flag Handling** -- same part with different optional/consumable flags loses info during deduplication (HIGH, 2-3 hours)
-2. **Child Row Visual Consistency** -- CtL, substitute, and mixed-flag child rows need a coherent look that feels InvenTree-native (MEDIUM, 2-4 hours)
-3. **UI Overhaul: Control Bar** -- too many checkboxes; evaluate dropdown vs other pattern, resolve hide/disable UX for CtL and substitute rows (MEDIUM, 1-2 hours)
-4. **Pre-Generation Info Panel** -- explain plugin-specific features (substitutes, CtL, mixed flags) before user hits Generate (LOW, 1-2 hours)
+2. **Child Row Visual Consistency** -- cut-list, substitute, and mixed-flag child rows need a coherent look that feels InvenTree-native (MEDIUM, 2-4 hours)
+3. **UI Overhaul: Control Bar** -- too many checkboxes; evaluate dropdown vs other pattern, resolve hide/disable UX for cut-list and substitute rows (MEDIUM, 1-2 hours)
+4. **Pre-Generation Info Panel** -- explain plugin-specific features (substitutes, cut lists, mixed flags) before user hits Generate (LOW, 1-2 hours)
 5. Replace "All" rows-per-page option with 500 / 1000 to match InvenTree (LOW, 0.5 hours)
 6. InvenTree export integration (replace custom CSV) (LOW, 4-6 hours)
 
@@ -54,7 +54,7 @@ key = (part_id, optional, consumable, cut_length)
 **Properties that could create separate line items:**
 1. `optional` - Can be omitted to save cost
 2. `consumable` - Not in final product (solder paste, etc.)
-3. `note` (CtL only) - Already handled via cutlist breakdown
+3. `note` - Free text; shown as aggregated reference, never parsed
 4. `reference` - Combines correctly ("R1, R2, R3")
 5. `inherited` - Ignore (doesn't affect purchasing)
 
@@ -101,7 +101,7 @@ view and build order system, which handles variants natively.
 - **Option C -- Toolbar redesign**: group related controls visually (e.g., display options vs build margin options).
 
 **Current checkboxes to rethink:**
-- Show Cutlist Rows (should hide/disable when no CtL parts -- see cutlist checkbox item)
+- Show Cutlist Rows (should hide/disable when no internal-fab cut-list rows exist -- see cutlist checkbox item)
 - Show Substitutes (already has hide/disable logic)
 - Include Allocations in Build Margin
 - Include On Order in Build Margin
@@ -111,21 +111,21 @@ view and build order system, which handles variants natively.
 **Note:** This item subsumes and replaces the earlier "Consolidate Filter Checkboxes" plan.
 
 ### UX Polish: Cutlist Checkbox (0.5-1 hour, LOW PRIORITY)
-**Current:** "Show Cutlist Rows" checkbox is always enabled regardless of whether the BOM contains any cut-to-length parts.  
+**Current:** "Show Cutlist Rows" checkbox is always enabled regardless of whether the BOM contains any internal-fab cut-list rows.  
 **Goal:** Apply the same hide/disable pattern used for the Substitutes checkbox.
 
-**Complication -- CtL parts come from a setting, not just data:**
+**Complication -- cut-list rows come from a setting, not just data:**
 - The "Show Substitutes" checkbox can be hidden when the setting is off.
-- For CtL, there is no equivalent plugin setting today -- CtL detection is implicit (parts with a length-based unit and a `note` field).
+- Cut-list rows appear only when `include_internal_fab_in_cutlist` is on AND the response contains `internal_fab_cut_list` entries.
 - Options:
   1. **Data-driven only:** detect `hasCutlistRows` from response data and disable/hide purely based on that (simplest, no setting change needed)
-  2. **Add a plugin setting:** introduce an explicit `ENABLE_CUTLIST` toggle in the settings panel so users can hide CtL rows at a higher level, then mirror the Substitutes pattern exactly
-- Option 2 gives users more control and is consistent with how Substitutes work. May be the right solution if CtL is something not all users want.
+  2. **Mirror the Substitutes pattern exactly:** hide the checkbox when the `include_internal_fab_in_cutlist` setting is off
+- Option 2 gives users more control and is consistent with how Substitutes work.
 
 **Data-driven implementation (Option 1):**
 ```typescript
 const hasCutlistRows = useMemo(() =>
-  bomData?.bom_items?.some(item => item.cutlist_breakdown?.length > 0) || false
+  bomData?.bom_items?.some(item => item.internal_fab_cut_list?.length > 0) || false
 , [bomData]);
 ```
 Then apply same hide/disable/tooltip logic as `substituteCheckboxState.ts`.
@@ -143,7 +143,7 @@ Then apply same hide/disable/tooltip logic as `substituteCheckboxState.ts`.
 
 ### Child Row Visual Consistency (2-4 hours, MEDIUM PRIORITY)
 **Problem:** The plugin currently has three types of child/extra rows, each styled independently:
-- **Cut-to-length child rows** -- grey/neutral theme, `↳` symbol
+- **Internal-fab cut-list child rows** (children of internal-supplier assemblies) -- grey/neutral theme, `↳` symbol
 - **Substitute child rows** -- blue theme, `↳` symbol, "Substitute" badge
 - **Mixed flag rows (planned)** -- no style decided yet
 
@@ -171,7 +171,7 @@ These have grown organically and will diverge further as Mixed Flag Handling add
 **Features that are non-obvious to new users:**
 - Recursive flattening (all levels, not just immediate children)
 - Substitute parts display and the setting required to enable it
-- Cut-to-length child rows and how length units trigger them
+- Internal-fab cut-list child rows and how the primary supplier's `is_internal` flag triggers them
 - Mixed flag handling (when implemented)
 - Stock columns: what "allocated", "on order", and "build margin" mean
 - Warning badges and what triggers them

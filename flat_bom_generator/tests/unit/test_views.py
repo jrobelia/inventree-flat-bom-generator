@@ -83,8 +83,6 @@ class ViewsCodeStructureTests(unittest.TestCase):
         """Test helper functions are defined."""
         from flat_bom_generator import views
         
-        self.assertTrue(hasattr(views, "_extract_id_from_value"))
-        self.assertTrue(hasattr(views, "get_internal_supplier_ids"))
         self.assertTrue(hasattr(views, "get_category_mappings"))
 
 
@@ -115,27 +113,29 @@ class APIResponseStructureTests(unittest.TestCase):
 
     def test_bom_item_structure(self):
         """Document expected structure of each bom_item."""
-        # These 21 core fields MUST be present in each bom_item
+        # These 22 core fields MUST be present in each bom_item
         required_fields = [
             # Core identifiers (3)
             "part_id", "ipn", "part_name",
             # Quantities (5)
             "total_qty", "in_stock", "allocated", "on_order", "available",
-            # Display metadata (6)
-            "full_name", "description", "image", "thumbnail", "link", "unit",  # FIXED: unit not units
-            # Part properties (4)
+            # Display metadata (7)
+            "full_name", "description", "image", "thumbnail", "link", "unit",
+            "category",
+            # Part properties (5)
             "is_assembly", "purchaseable", "default_supplier_id", "part_type",
-            # BOM data (3)
-            "note", "cut_list", "internal_fab_cut_list",
+            "internal_supplier",
+            # BOM data (2)
+            "note", "internal_fab_cut_list",
         ]
-        
+
         # Warning flags are optional (only present if triggered)
         optional_fields = [
             "assembly_no_children",
             "max_depth_exceeded",
         ]
-        
-        self.assertEqual(len(required_fields), 21)
+
+        self.assertEqual(len(required_fields), 22)
         self.assertTrue(True, "BOM item structure documented")
 
     def test_metadata_structure(self):
@@ -221,51 +221,6 @@ class ErrorHandlingTests(unittest.TestCase):
 
 class HelperFunctionTests(unittest.TestCase):
     """Test helper function signatures and behavior."""
-
-    def test_extract_id_from_value_function(self):
-        """Test _extract_id_from_value helper function signature and behavior."""
-        from flat_bom_generator.views import _extract_id_from_value
-        import inspect
-        
-        # Check function signature
-        sig = inspect.signature(_extract_id_from_value)
-        self.assertIn("value", sig.parameters)
-        self.assertIn("setting_name", sig.parameters)
-        
-        # Test with integer
-        self.assertEqual(_extract_id_from_value(123, "test_setting"), 123)
-        
-        # Test with string number
-        self.assertEqual(_extract_id_from_value("456", "test_setting"), 456)
-        
-        # Test with object having pk attribute
-        mock_obj = MagicMock()
-        mock_obj.pk = 789
-        self.assertEqual(_extract_id_from_value(mock_obj, "test_setting"), 789)
-        
-        # Test with object having id attribute
-        mock_obj2 = MagicMock()
-        mock_obj2.pk = None
-        mock_obj2.id = 101
-        del mock_obj2.pk  # Remove pk to test id fallback
-        self.assertEqual(_extract_id_from_value(mock_obj2, "test_setting"), 101)
-        
-        # Test with None
-        self.assertIsNone(_extract_id_from_value(None, "test_setting"))
-        
-        # Test with empty string
-        self.assertIsNone(_extract_id_from_value("", "test_setting"))
-        
-        # Test with invalid string
-        self.assertIsNone(_extract_id_from_value("not-a-number", "test_setting"))
-
-    def test_get_internal_supplier_ids_accepts_plugin(self):
-        """Test get_internal_supplier_ids accepts plugin parameter."""
-        from flat_bom_generator.views import get_internal_supplier_ids
-        import inspect
-        
-        sig = inspect.signature(get_internal_supplier_ids)
-        self.assertIn("plugin", sig.parameters)
 
     def test_get_category_mappings_accepts_plugin(self):
         """Test get_category_mappings accepts plugin parameter."""

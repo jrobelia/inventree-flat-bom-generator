@@ -13,7 +13,6 @@ import type { PluginSettings } from '../types/PluginSettings';
 interface SettingsPanelProps {
   title?: string;
   settings: PluginSettings;
-  cutlistUnits: string;
   onUpdateSetting: <K extends keyof PluginSettings>(
     key: K,
     value: PluginSettings[K]
@@ -30,7 +29,6 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   title,
   settings,
-  cutlistUnits,
   onUpdateSetting,
   onResetToDefaults
 }: SettingsPanelProps) {
@@ -56,7 +54,7 @@ export function SettingsPanel({
 
         <Switch
           label='Expand Purchased Assemblies'
-          description='Include purchased assemblies in the flat BOM (normally filtered as leaf parts)'
+          description='Show components of external-supplier assemblies instead of the assembly row'
           checked={settings.expandPurchasedAssemblies}
           onChange={(event) =>
             onUpdateSetting(
@@ -67,8 +65,8 @@ export function SettingsPanel({
         />
 
         <Switch
-          label={`Include Internal Fab in Cutlists${cutlistUnits !== 'units' ? ` (${cutlistUnits})` : ''}`}
-          description='Show internal fabrication parts expanded in cutlist breakdown'
+          label='Include Internal Fab in Cutlists'
+          description='Show cut-list rows for children of internal-supplier assemblies'
           checked={settings.includeInternalFabInCutlist}
           onChange={(event) =>
             onUpdateSetting(

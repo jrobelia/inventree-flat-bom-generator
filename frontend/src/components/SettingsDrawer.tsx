@@ -13,7 +13,6 @@ interface SettingsDrawerProps {
   opened: boolean;
   onClose: () => void;
   settings: PluginSettings;
-  cutlistUnits: string;
   onUpdateSetting: <K extends keyof PluginSettings>(
     key: K,
     value: PluginSettings[K]
@@ -32,7 +31,6 @@ export function SettingsDrawer({
   opened,
   onClose,
   settings,
-  cutlistUnits,
   onUpdateSetting,
   onResetToDefaults,
   onApply
@@ -60,7 +58,7 @@ export function SettingsDrawer({
 
         <Switch
           label='Expand Purchased Assemblies'
-          description='Include purchased assemblies in the flat BOM (normally filtered as leaf parts)'
+          description='Show components of external-supplier assemblies instead of the assembly row'
           checked={settings.expandPurchasedAssemblies}
           onChange={(event) =>
             onUpdateSetting(
@@ -71,8 +69,8 @@ export function SettingsDrawer({
         />
 
         <Switch
-          label={`Include Internal Fab in Cutlists${cutlistUnits !== 'units' ? ` (${cutlistUnits})` : ''}`}
-          description='Show internal fabrication parts expanded in cutlist breakdown'
+          label='Include Internal Fab in Cutlists'
+          description='Show cut-list rows for children of internal-supplier assemblies'
           checked={settings.includeInternalFabInCutlist}
           onChange={(event) =>
             onUpdateSetting(

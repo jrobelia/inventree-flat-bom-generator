@@ -73,16 +73,18 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `part_name`: Part name
 - `full_name`: Full display name (includes variant info)
 - `description`: Part description
-- `part_type`: "TLA", "Coml", "Fab", "CtL", "Purchased Assy", "Internal Fab", "Assy", or "Other"
+- `part_type`: "TLA", "Coml", "Fab", "Purchased Assy", "Internal Fab", "Assy", or "Other" (display label only)
+- `category`: InvenTree part category name (empty if uncategorized)
 - `total_qty`: Total quantity needed through BOM hierarchy (aggregated from all BOM levels)
 - `unit`: Unit of measurement (e.g., "pcs", "mm", "kg")
 - `is_assembly`: Boolean - whether part is an assembly
 - `purchaseable`: Boolean - whether part can be purchased
-- `has_default_supplier`: Boolean - whether part has default supplier configured
-- `default_supplier_id`: ID of default supplier (null if none)
+- `default_supplier_id`: ID of primary SupplierPart (null if none)
+- `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
+- `internal_fab_cut_list`: Per-occurrence cut entries for children of internal-supplier assemblies (`{count, piece_qty, unit}`), null otherwise
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
 - `consumable`: Boolean - whether part is consumable (not tracked in build orders)
-- `note`: BOM item notes
+- `note`: BOM item notes (free text, never parsed)
 - `level`: Depth in original BOM tree
 - `in_stock`: Total inventory
 - `on_order`: Quantity on incomplete purchase orders
@@ -211,7 +213,7 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
 # Returns tuple of 4 values:
 # - flat_bom: List[Dict] - Deduplicated leaf parts with aggregated quantities
 # - imp_count: int - Count of Internal Made Parts processed
-# - warnings: List[Dict] - CtL warnings from deduplicate_and_sum
+# - warnings: List[Dict] - warnings produced during traversal (currently always empty; warnings are generated at view level)
 # - max_depth_reached: int - Actual depth traversed (NOT a boolean flag)
 #                            Returns 0 if no depth limit hit
 ```
@@ -221,15 +223,22 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
 **Critical Pattern**: `visited.copy()` allows same part in different branches while preventing circular references
 
 #### `flat_bom_generator/categorization.py`
-- **Purpose**: Classifies parts into types
-- **Function**: `categorize_part(part_name, is_assembly, is_top_level, has_default_supplier)`
-- **Categories**:
+- **Purpose**: Assigns display labels — answers "what should this line item show?" only; expansion decisions live in `get_leaf_parts_only`
+- **Function**: `categorize_part(part_name, is_assembly, is_top_level, default_supplier_id, supplier_is_internal, part_category_id, category_mappings)`
+- **Labels**:
   - `TLA` - Top Level Assembly
-  - `Fab Part` - Fabricated (non-assembly) ← LEAF
-  - `Coml Part` - Commercial (non-assembly) ← LEAF
-  - `Purchaseable Assembly` - Assembly with default supplier ← LEAF
-  - `Assembly` - Standard assembly (not leaf)
-  - `Made From` - Fabrication assembly (not leaf)
+  - `Internal Fab` - Assembly whose primary supplier company has `is_internal`
+  - `Purchased Assy` - Assembly with an external primary supplier
+  - `Assy` - Assembly with no primary supplier
+  - `Coml` - Non-assembly in a configured Commercial category
+  - `Fab` - Non-assembly in a configured Fabrication category
+  - `Other` - Everything else
+- **Expansion matrix** (in `bom_traversal.get_leaf_parts_only`, driven by assembly + supplier state, never the label):
+  - The top-level input part is exempt: an assembly root always expands and never emits a row for itself (a childless unsourced root still emits with `assembly_no_children`); the matrix below applies to descendants only
+  - Non-assembly → line item
+  - External-supplier assembly → line item, not expanded (expand toggle shows children instead)
+  - Internal-supplier assembly → line item AND expanded
+  - Unsourced assembly → expanded (regardless of `purchaseable`); emitted + flagged only when it has no children
 
 ### Frontend Files
 
@@ -259,8 +268,9 @@ showCutlistRows: boolean        // Show/hide cutlist breakdown rows
 
 // usePluginSettings
 maxDepth: number                // Maximum BOM traversal depth
-enableIfabCuts: boolean         // Enable Internal Fab cutlist extraction
-enableCtlCuts: boolean          // Enable Cut-to-Length processing
+expandPurchasedAssemblies: boolean  // Expand external-supplier assemblies
+includeInternalFabInCutlist: boolean // Show internal-fab cut-list rows
+includeSubstitutes: boolean     // Include substitute parts
 
 // useColumnVisibility
 hiddenColumns: Record<string, boolean> // Column visibility state
@@ -298,11 +308,13 @@ interface BomItem {
     full_name: string;
     description: string;
     
-    // Categorization
-    part_type: 'TLA' | 'Coml' | 'Fab' | 'CtL' | 'Purchased Assy' | 'Internal Fab' | 'Assy' | 'Other';
+    // Categorization (display label only)
+    part_type: 'TLA' | 'Coml' | 'Fab' | 'Purchased Assy' | 'Internal Fab' | 'Assy' | 'Other';
+    category?: string;
     is_assembly: boolean;
     purchaseable: boolean;
-    has_default_supplier: boolean;
+    default_supplier_id?: number | null;
+    internal_supplier?: boolean;
     optional?: boolean;
     consumable?: boolean;
     
@@ -310,10 +322,11 @@ interface BomItem {
     total_qty: number;      // Aggregated from BOM traversal
     unit: string;
     
-    // Cut list support
-    cut_list?: Array<{ quantity: number; length: number }> | null;
+    // Cut list support (internal-fab assembly children)
     internal_fab_cut_list?: Array<{ count: number; piece_qty: number; unit: string }> | null;
-    is_cut_list_child?: boolean;
+    is_child_row?: boolean;
+    child_row_type?: 'cutlist_ifab' | 'substitute' | 'variant';
+    parent_row_part_id?: number;
     cut_length?: number | null;
     cut_unit?: string;
     
@@ -345,8 +358,7 @@ interface BomItem {
   "max_depth_reached": 0,
   "bom_items": [/* array of BomItem */],
   "metadata": {
-    "warnings": [/* array of Warning */],
-    "cutlist_units_for_ifab": "mm"
+    "warnings": [/* array of Warning */]
   }
 }
 ```

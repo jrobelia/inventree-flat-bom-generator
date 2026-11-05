@@ -12,7 +12,8 @@ Strategy:
 
 Settings/param sources:
 - expand_purchased_assemblies -> query param only
-- include_internal_fab_in_cutlist -> query param -> enable_ifab_cuts kwarg
+- include_internal_fab_in_cutlist -> retired with the internal-fab cut-list
+  mechanism (issue #14); the view no longer reads it
 - FABRICATION_CATEGORY / COMMERCIAL_CATEGORY -> category_mappings
 - Internal-supplier detection uses Company.is_internal in traversal - the
   view passes no supplier settings at all.
@@ -151,8 +152,8 @@ class ViewSettingsLoadingTests(InvenTreeTestCase):
 
     @patch('flat_bom_generator.views.get_flat_bom')
     @patch('plugin.registry.registry.get_plugin')
-    def test_view_loads_ifab_cuts_query_param(self, mock_get_plugin, mock_get_flat_bom):
-        """include_internal_fab_in_cutlist query param -> enable_ifab_cuts kwarg."""
+    def test_view_ignores_retired_ifab_cuts_param(self, mock_get_plugin, mock_get_flat_bom):
+        """The retired include_internal_fab_in_cutlist param reaches nothing."""
         plugin = FlatBOMGenerator()
         mock_get_plugin.return_value = plugin
 
@@ -168,7 +169,7 @@ class ViewSettingsLoadingTests(InvenTreeTestCase):
         mock_get_flat_bom.assert_called_once()
 
         call_kwargs = mock_get_flat_bom.call_args[1]
-        self.assertEqual(call_kwargs['enable_ifab_cuts'], True)
+        self.assertNotIn('enable_ifab_cuts', call_kwargs)
 
     @patch('flat_bom_generator.views.get_flat_bom')
     @patch('plugin.registry.registry.get_plugin')
@@ -193,7 +194,7 @@ class ViewSettingsLoadingTests(InvenTreeTestCase):
         call_kwargs = mock_get_flat_bom.call_args[1]
         self.assertEqual(call_kwargs['expand_purchased_assemblies'], False)
         self.assertEqual(call_kwargs['category_mappings'], {})
-        self.assertEqual(call_kwargs['enable_ifab_cuts'], False)
+        self.assertNotIn('enable_ifab_cuts', call_kwargs)
 
     @patch('flat_bom_generator.views.get_flat_bom')
     @patch('plugin.registry.registry.get_plugin')
@@ -221,7 +222,6 @@ class ViewSettingsLoadingTests(InvenTreeTestCase):
             'max_depth',
             'expand_purchased_assemblies',
             'category_mappings',
-            'enable_ifab_cuts',
         ]
 
         for kwarg in required_kwargs:

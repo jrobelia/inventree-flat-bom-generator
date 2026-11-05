@@ -15,10 +15,12 @@ export interface UseColumnVisibilityResult {
  *
  * Features:
  * - Persists hidden columns in localStorage
- * - Auto-manages cut_length column based on BOM data (shows only if internal-fab cut lists present)
+ * - Auto-manages data-dependent columns (cut_length, piece_count,
+ *   inherited_from) based on BOM data (shows only when data is present)
  * - Provides toggle function for column visibility
  *
- * @param bomData - Current BOM data (used to detect internal-fab cut lists)
+ * @param bomData - Current BOM data (used to detect cut lists, piece
+ *   counts, and inherited BOM lines)
  * @returns Hidden columns set and toggle function
  */
 export function useColumnVisibility(
@@ -30,21 +32,32 @@ export function useColumnVisibility(
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
 
-  // Auto-manage cut_length column visibility based on BOM data
+  // Auto-manage data-dependent column visibility based on BOM data
   useEffect(() => {
     if (bomData) {
       const hasCutListRows = bomData.bom_items.some(
-        (item) =>
-          item.internal_fab_cut_list && item.internal_fab_cut_list.length > 0
+        (item) => item.cut_list && item.cut_list.length > 0
+      );
+      const hasPieceCounts = bomData.bom_items.some(
+        (item) => (item.piece_count ?? 1) > 1
+      );
+      const hasInheritedLines = bomData.bom_items.some(
+        (item) => !!item.inherited_from
       );
 
       setHiddenColumns((prev) => {
         const newSet = new Set(prev);
 
-        if (hasCutListRows) {
-          newSet.delete('cut_length');
-        } else {
-          newSet.add('cut_length');
+        for (const [accessor, present] of [
+          ['cut_length', hasCutListRows],
+          ['piece_count', hasPieceCounts],
+          ['inherited_from', hasInheritedLines]
+        ] as const) {
+          if (present) {
+            newSet.delete(accessor);
+          } else {
+            newSet.add(accessor);
+          }
         }
 
         localStorage.setItem(

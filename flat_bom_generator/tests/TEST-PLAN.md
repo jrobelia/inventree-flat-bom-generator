@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Test Plan
 
 **Last Updated**: November 4, 2026  
-**Test Count**: 299 backend tests (154 unit + 145 integration); frontend Vitest + Playwright run in the suite  
+**Test Count**: 320 backend tests (163 unit + 157 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
 
@@ -38,11 +38,11 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (154 tests total)
+**Files:** (163 tests total)
 - `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
-- `test_serializers.py` (47 tests) - DRF serializer validation
+- `test_serializers.py` (48 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
-- `test_internal_fab_cutlist.py` (13 tests) - Internal fab cut lists
+- `test_cut_list.py` (21 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
 - `test_assembly_no_children.py` (27 tests) - Expansion matrix + warning flag logic
 - `test_shortfall_calculation.py` (13 tests) - Frontend calculations
 - `test_max_depth_warnings.py` (8 tests) - Flag prioritization
@@ -65,8 +65,9 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 **Location:** `flat_bom_generator/tests/integration/*.py`  
 **Purpose:** Test with real InvenTree Part/BomItem/Stock models
 
-**Files:** (145 tests total)
-- `test_internal_supplier_expansion.py` (10 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
+**Files:** (157 tests total)
+- `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
+- `test_upstream_bom_semantics.py` (11 tests) - piece_count, inherited lines, effective consumable (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
 - `test_plugin_core.py` (15 tests) - Plugin registration, URLs, panels
 - `test_error_scenarios.py` (14 tests) - Error handling paths

@@ -122,9 +122,9 @@ export function createBomTableColumns({
         const baseType = record.part_type;
         const color = getPartTypeColor(baseType);
 
-        // Internal Fab child rows get the CUT suffix
+        // Cut-list child rows get the CUT suffix on their own type
         const display =
-          record.is_child_row && baseType === 'Internal Fab'
+          record.is_child_row && record.child_row_type === 'cutlist'
             ? `${baseType} - CUT`
             : baseType;
 
@@ -155,7 +155,7 @@ export function createBomTableColumns({
     {
       accessor: 'category',
       title: 'Category',
-      sortable: true,
+      sortable: false,
       switchable: true,
       render: (record) => {
         if (record.is_child_row) {
@@ -397,6 +397,33 @@ export function createBomTableColumns({
           </Group>
         );
       }
+    },
+    {
+      accessor: 'piece_count',
+      title: 'Pieces',
+      sortable: false,
+      switchable: true,
+      render: (record) => {
+        if (record.is_child_row || record.piece_count == null) {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+        return <Text size='sm'>{record.piece_count}</Text>;
+      }
+    },
+    {
+      accessor: 'inherited_from',
+      title: 'Inherited From',
+      sortable: false,
+      switchable: true,
+      render: (record) => (
+        <Text size='sm' c={record.inherited_from ? undefined : 'dimmed'}>
+          {record.inherited_from || '-'}
+        </Text>
+      )
     },
     {
       accessor: 'in_stock',

@@ -65,18 +65,6 @@ export function SettingsPanel({
         />
 
         <Switch
-          label='Include Internal Fab in Cutlists'
-          description='Show cut-list rows for children of internal-supplier assemblies'
-          checked={settings.includeInternalFabInCutlist}
-          onChange={(event) =>
-            onUpdateSetting(
-              'includeInternalFabInCutlist',
-              event.currentTarget.checked
-            )
-          }
-        />
-
-        <Switch
           label='Include Substitute Parts'
           description='Fetch and display substitute part options with individual stock data'
           checked={settings.includeSubstitutes}

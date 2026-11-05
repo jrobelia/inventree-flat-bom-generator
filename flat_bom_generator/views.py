@@ -127,7 +127,6 @@ class FlatBOMView(APIView):
         Query Parameters:
             max_depth: Maximum depth to traverse (default: 0/unlimited)
             expand_purchased_assemblies: Expand assemblies with suppliers (default: false)
-            include_internal_fab_in_cutlist: Process Internal Fab parts as cutlist (default: false)
 
         Returns:
             List of unique leaf parts with total quantities and display metadata
@@ -140,9 +139,6 @@ class FlatBOMView(APIView):
         max_depth_param = request.query_params.get("max_depth", None)
         expand_purchased_assemblies_param = request.query_params.get(
             "expand_purchased_assemblies", None
-        )
-        include_ifab_cuts_param = request.query_params.get(
-            "include_internal_fab_in_cutlist", None
         )
         include_substitutes_param = request.query_params.get(
             "include_substitutes", None
@@ -192,11 +188,6 @@ class FlatBOMView(APIView):
             and expand_purchased_assemblies_param.lower() == "true"
         )
 
-        enable_ifab_cuts = (
-            include_ifab_cuts_param is not None
-            and include_ifab_cuts_param.lower() == "true"
-        )
-
         if include_substitutes_param is not None:
             include_substitutes = include_substitutes_param.lower() == "true"
         else:
@@ -207,7 +198,6 @@ class FlatBOMView(APIView):
             logger.info(
                 f"  - expand_purchased_assemblies: {expand_purchased_assemblies} (query param)"
             )
-            logger.info(f"  - enable_ifab_cuts: {enable_ifab_cuts} (query param)")
             logger.info(
                 f"  - include_substitutes: {include_substitutes} (from {'query param' if include_substitutes_param else 'plugin default'})"
             )
@@ -240,7 +230,6 @@ class FlatBOMView(APIView):
                     max_depth=max_depth,
                     expand_purchased_assemblies=expand_purchased_assemblies,
                     category_mappings=category_mappings,
-                    enable_ifab_cuts=enable_ifab_cuts,
                 )
             )
             logger.info(

@@ -174,7 +174,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
     - Quantities (total_qty, in_stock, allocated, on_order, available)
     - Display metadata (full_name, description, image, thumbnail, link, category)
     - Part properties (units, is_assembly, purchaseable, internal_supplier, part_type)
-    - BOM data (note, internal_fab_cut_list)
+    - BOM data (note, cut_list, piece_count, inherited_from)
     - Warning flags (assembly_no_children, max_depth_exceeded)
     """
 
@@ -286,7 +286,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
     consumable = serializers.BooleanField(
         required=False,
         default=False,
-        help_text="Whether part is consumable (not tracked in build orders)",
+        help_text="Whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)",
     )
 
     # BOM data
@@ -297,11 +297,24 @@ class FlatBOMItemSerializer(serializers.Serializer):
         help_text="BOM item notes (displayed as free text, never parsed)",
     )
 
-    internal_fab_cut_list = serializers.ListField(
+    cut_list = serializers.ListField(
         required=False,
         allow_null=True,
         child=serializers.DictField(),
-        help_text="Internal Fab cut breakdown for Internal Fab parents (None if not applicable)",
+        help_text="Cut-list entries for length-unit BOM lines, aggregated by piece size - {size, count, unit} dicts (None if not applicable)",
+    )
+
+    piece_count = serializers.IntegerField(
+        required=False,
+        default=1,
+        help_text="BOM line piece count - how many pieces of `quantity` size the line needs (1 when not a cut-to-length line)",
+    )
+
+    inherited_from = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="IPN of the ancestor part an inherited BOM line is defined on (None for direct lines)",
     )
 
     # Warning flags
@@ -363,7 +376,9 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "consumable",
             # BOM data
             "note",
-            "internal_fab_cut_list",
+            "cut_list",
+            "piece_count",
+            "inherited_from",
             # Warning flags
             "assembly_no_children",
             "max_depth_exceeded",
@@ -418,7 +433,7 @@ class FlatBOMResponseSerializer(serializers.Serializer):
 
     total_ifps_processed = serializers.IntegerField(
         required=True,
-        help_text="Count of Internal Fab Parts (IFP) processed for cut list generation",
+        help_text="Count of Internal Fab parts encountered during BOM traversal",
     )
 
     max_depth_reached = serializers.IntegerField(

@@ -1,0 +1,469 @@
+# Fixture for upstream BOM semantics tests (ticket #14).
+#
+# Structure:
+#   SEM-TLA (8100) - unsourced assembly root
+#   +- Bracket Weldment A (8101) x1 - unsourced assembly
+#   |   +- Steel Bar (8103) 500mm x4 pieces        -> 2000mm
+#   +- Bracket Weldment B (8102) x1 - unsourced assembly
+#   |   +- Steel Bar (8103) 500mm x2 pieces        -> 1000mm (merges to 500x6)
+#   |   +- Square Tube (8104) 500mm x4 pieces      -> 2000mm
+#   |   +- Square Tube (8104) 250mm x8 pieces      -> 2000mm (separate entry)
+#   +- Linear Rail (8105) 500mm x1 piece           -> 500mm   (500 x 1)
+#   +- M8 Bolt (8106) 10 each x5 pieces            -> 50 each (no cut entry)
+#   +- Epoxy (8107) 2 ml x1 - Part.consumable=True, line flag False
+#
+#   Template Weldment WELD-T (8110) - is_template, assembly
+#   +- Bracket (8120) x2 inherited:true   -> propagates to variant
+#   +- Hidden Line (8122) x9 inherited:false -> stays off variant BOM
+#   Variant WELD-V (8111) - variant_of=8110, assembly
+#   +- Cover (8121) x1 - direct line (inherited_from null)
+#   BomItemSubstitute on the inherited bracket line -> Alt Bracket (8123)
+#
+# piece_count is upstream BomItem semantics: quantity is the size of one
+# piece, piece_count is how many pieces. Line total = quantity x
+# piece_count x ancestor multiplier.
+- model: part.partcategory
+  pk: 8100
+  fields:
+    name: 'Upstream Semantics'
+    description: 'Category for upstream BOM semantics tests'
+    default_location: null
+    parent: null
+    tree_id: 8100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8100
+  fields:
+    name: 'Semantics TLA'
+    IPN: 'SEM-TLA'
+    description: 'Top-level assembly for piece_count tests'
+    category: 8100
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: false
+    variant_of: null
+    units: ''
+    tree_id: 8100
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8101
+  fields:
+    name: 'Bracket Weldment A'
+    IPN: 'SEM-ASSY-A'
+    description: 'Unsourced sub-assembly'
+    category: 8100
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: false
+    variant_of: null
+    units: ''
+    tree_id: 8101
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8102
+  fields:
+    name: 'Bracket Weldment B'
+    IPN: 'SEM-ASSY-B'
+    description: 'Unsourced sub-assembly'
+    category: 8100
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: false
+    variant_of: null
+    units: ''
+    tree_id: 8102
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8103
+  fields:
+    name: 'Steel Bar'
+    IPN: 'SEM-BAR'
+    description: 'Length stock cut under both weldments'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'mm'
+    tree_id: 8103
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8104
+  fields:
+    name: 'Square Tube'
+    IPN: 'SEM-TUBE'
+    description: 'Length stock at two piece sizes'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'mm'
+    tree_id: 8104
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8105
+  fields:
+    name: 'Linear Rail'
+    IPN: 'SEM-RAIL'
+    description: 'Length stock as a single piece'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'mm'
+    tree_id: 8105
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8106
+  fields:
+    name: 'M8 Bolt'
+    IPN: 'SEM-BOLT'
+    description: 'Fastener - not a length unit'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'each'
+    tree_id: 8106
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8107
+  fields:
+    name: 'Epoxy Adhesive'
+    IPN: 'SEM-GLUE'
+    description: 'Part-level consumable - BOM line flag stays False'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    consumable: true
+    units: 'ml'
+    tree_id: 8107
+    level: 0
+    lft: 1
+    rght: 2
+
+# Variant family - template part + variant assembly
+- model: part.part
+  pk: 8110
+  fields:
+    name: 'Weldment Template'
+    IPN: 'WELD-T'
+    description: 'Template part holding inherited BOM lines'
+    category: 8100
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: true
+    variant_of: null
+    units: ''
+    tree_id: 8110
+    level: 0
+    lft: 1
+    rght: 4
+
+- model: part.part
+  pk: 8111
+  fields:
+    name: 'Weldment Variant'
+    IPN: 'WELD-V'
+    description: 'Variant assembly inheriting template BOM lines'
+    category: 8100
+    active: true
+    assembly: true
+    purchaseable: false
+    salable: false
+    is_template: false
+    variant_of: 8110
+    units: ''
+    tree_id: 8110
+    level: 1
+    lft: 2
+    rght: 3
+
+- model: part.part
+  pk: 8120
+  fields:
+    name: 'Template Bracket'
+    IPN: 'BRK-T'
+    description: 'Inherited BOM line sub_part'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8120
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8121
+  fields:
+    name: 'Variant Cover'
+    IPN: 'CVR-V'
+    description: 'Direct BOM line on the variant'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8121
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8122
+  fields:
+    name: 'Template Only Part'
+    IPN: 'HID-T'
+    description: 'Non-inherited template line - must stay off variant BOM'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8122
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8123
+  fields:
+    name: 'Alt Bracket'
+    IPN: 'BRK-ALT'
+    description: 'Substitute for the inherited bracket line'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8123
+    level: 0
+    lft: 1
+    rght: 2
+
+# BOM items on the TLA
+- model: part.bomitem
+  pk: 81000
+  fields:
+    part: 8100
+    sub_part: 8101
+    quantity: 1.0
+    raw_amount: '1'
+    reference: 'A1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81001
+  fields:
+    part: 8100
+    sub_part: 8102
+    quantity: 1.0
+    raw_amount: '1'
+    reference: 'A2'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81002
+  fields:
+    part: 8100
+    sub_part: 8105
+    quantity: 500.0
+    raw_amount: '500'
+    piece_count: 1
+    reference: 'R1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81003
+  fields:
+    part: 8100
+    sub_part: 8106
+    quantity: 10.0
+    raw_amount: '10'
+    piece_count: 5
+    reference: 'F1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81004
+  fields:
+    part: 8100
+    sub_part: 8107
+    quantity: 2.0
+    raw_amount: '2'
+    piece_count: 1
+    reference: 'G1'
+    consumable: false  # line flag False; Part.consumable=True still wins
+    optional: false
+    inherited: false
+    validated: true
+
+# BOM items on weldment A / B
+- model: part.bomitem
+  pk: 81010
+  fields:
+    part: 8101
+    sub_part: 8103
+    quantity: 500.0
+    raw_amount: '500'
+    piece_count: 4
+    reference: 'B1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81011
+  fields:
+    part: 8102
+    sub_part: 8103
+    quantity: 500.0
+    raw_amount: '500'
+    piece_count: 2
+    reference: 'C1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81012
+  fields:
+    part: 8102
+    sub_part: 8104
+    quantity: 500.0
+    raw_amount: '500'
+    piece_count: 4
+    reference: 'C2'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81013
+  fields:
+    part: 8102
+    sub_part: 8104
+    quantity: 250.0
+    raw_amount: '250'
+    piece_count: 8
+    reference: 'C3'
+    optional: false
+    inherited: false
+    validated: true
+
+# Template BOM lines
+- model: part.bomitem
+  pk: 81020
+  fields:
+    part: 8110
+    sub_part: 8120
+    quantity: 2.0
+    raw_amount: '2'
+    piece_count: 1
+    reference: 'T1'
+    optional: false
+    inherited: true   # propagates to variant WELD-V
+    validated: true
+
+- model: part.bomitem
+  pk: 81021
+  fields:
+    part: 8110
+    sub_part: 8122
+    quantity: 9.0
+    raw_amount: '9'
+    piece_count: 1
+    reference: 'T2'
+    optional: false
+    inherited: false  # template-only line - not inherited by variant
+    validated: true
+
+# Direct BOM line on the variant
+- model: part.bomitem
+  pk: 81022
+  fields:
+    part: 8111
+    sub_part: 8121
+    quantity: 1.0
+    raw_amount: '1'
+    piece_count: 1
+    reference: 'V1'
+    optional: false
+    inherited: false
+    validated: true
+
+# Substitute on the inherited line - resolves by its own bom_item pk
+- model: part.BomItemSubstitute
+  pk: 81001
+  fields:
+    bom_item: 81020
+    part: 8123

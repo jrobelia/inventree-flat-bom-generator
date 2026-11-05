@@ -15,7 +15,7 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 - **Automatic Line-Item Extraction**: Traverses the entire BOM tree and emits line items driven by assembly status and each part's primary supplier — external-supplier assemblies appear as purchased units, internal-supplier assemblies appear and are expanded, unsourced assemblies expand as build candidates
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
 - **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag)
-- **Internal Fabrication Cut Lists**: Children of internal-supplier assemblies get a per-occurrence cut breakdown showing piece quantity and how many times each occurrence fires
+- **Cut Lists**: BOM lines in length units (mm, m, ft...) get a piece breakdown — each entry shows the piece size and how many pieces the BOM demands, aggregated per part and size
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
 
@@ -95,33 +95,31 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) get the Coml display label. Affects labels only, not expansion. | None |
 | **Show Substitute Parts** | Include substitute parts in the flat BOM by default (shown as child rows with individual stock levels). The panel's Include Substitute Parts toggle overrides this per run. | `False` |
 
-Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, **Include Internal Fab Parts in Cutlist**, and **Include Substitute Parts** — are panel settings, not plugin admin settings: they live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run.
+Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, and **Include Substitute Parts** — are panel settings, not plugin admin settings: they live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run.
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 
-### Internal Fabrication Cut Lists
+### Cut Lists
 
-**Feature Overview**: When an assembly's primary supplier is a company flagged **internal** (`Company.is_internal`), the plugin shows the assembly as a line item *and* expands its children, attaching a cut breakdown to each child material.
+**Feature Overview**: Any BOM line whose sub-part's units resolve to a **length** dimension (mm, m, inch...) becomes a cut-list candidate — every piece it needs shows as a child row under the part, under whatever expanded assembly it sits. This uses InvenTree's native `piece_count` semantics: `quantity` is the size of one piece and `piece_count` is how many pieces the line calls for.
 
 **How It Works**:
-1. Flag your internal manufacturing company as internal in InvenTree (`Company → is internal`)
-2. Set that company as the part's **primary supplier** on the fabricated assembly
-3. Add the assembly to a parent BOM
-4. The plugin will:
-   - Display the assembly itself as a line item (the internal work/PO line)
-   - Expand its children into the flat BOM as raw-material pulls
-   - Attach one cut-list entry per BOM item occurrence on each child
-   - Scale counts automatically with build quantity
+1. Give cut stock a length unit on the part record (e.g. `mm`)
+2. Add it to BOMs with `quantity` = piece size and `piece_count` = pieces per build
+3. The plugin will:
+   - Total the material as `quantity × piece_count` through the tree (a 500mm × 4 line counts 2000mm)
+   - Attach cut-list child rows to the part — one per piece size, each showing size and count scaled to build quantity
+   - Aggregate entries by (part, piece size): the same part at 500×4 under one assembly and 500×2 under another shows a single `500 x 6` row; `500×4` + `250×8` stays two rows
 
 **Cut-List Entry Semantics**:
-- **Piece qty** = the BOM item quantity on the child line (in the child's native unit)
-- **Count** = how many times that occurrence fires (the ancestor quantity multiplier)
-- Entries are per occurrence — two BOM lines of the same piece size stay two rows
-- BOM item notes are free text — the plugin never parses them for lengths or units, and no unit filtering is applied
+- **Size** = the BOM item quantity (piece size, in the child's native unit)
+- **Count** = pieces demanded, `ceil(piece_count × ancestor multiplier)`
+- A `piece_count` of 1 still lists as one piece (`500 x 1`)
+- Membership is decided by unit dimensionality only — notes are free text, never parsed, and which assembly the line sits under doesn't matter
 
-**Example**: `TLA x1 → Welded Frame (internal supplier) x2 → Steel Bar 350mm x1` produces:
-- `Welded Frame` — line item, qty 2, type "Internal Fab"
-- `Steel Bar` — line item, total qty 700mm, with a cut-list child row: `count 2 × piece_qty 350mm` (two frames, one 350mm piece each)
+### Internal-Supplier Assemblies
+
+When an assembly's primary supplier is a company flagged **internal** (`Company.is_internal`), the plugin shows the assembly as a line item *and* expands its children into the flat BOM as raw-material pulls. Cut-list membership for those children follows the same length-unit rule as everywhere else.
 
 ### Understanding Default Suppliers
 
@@ -253,7 +251,9 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Category** | InvenTree part category name (empty if uncategorized) |
 | **Flags** | Assembly, Purchaseable, and Internal Supplier indicators plus Optional (orange badge) and Consumable (yellow badge) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
-| **Cut Length** | Piece size on internal-fab cut-list child rows with [unit] |
+| **Cut Length** | Piece size on cut-list child rows with [unit] |
+| **Pieces** | BOM line piece count — how many pieces of `quantity` size the line needs |
+| **Inherited From** | IPN of the ancestor part an inherited BOM line is defined on |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
@@ -278,7 +278,7 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 2. **Filter**: Apply the line-item / expansion matrix
    - Non-assembly parts: always line items
    - External-supplier assemblies: line items (children hidden unless expanded)
-   - Internal-supplier assemblies: line items, always expanded (children get cut lists)
+   - Internal-supplier assemblies: line items, always expanded
    - Unsourced assemblies: always expanded as build candidates
 
 3. **Deduplicate**: Sum quantities for parts appearing multiple times
@@ -303,9 +303,9 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 
 ## Known Limitations
 
-### Variant Parts -- Not Supported
+### Variant Stock Aggregation -- Not Supported
 
-**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock. Variant parts support (template parts, `allow_variants` flag) is **out of scope** for this plugin.
+**Current Behavior**: The plugin shows stock for the specific part in the BOM, not aggregate variant stock. BOM lines inherited from a template part are shown, marked with their source in the `Inherited From` column. Variant stock aggregation (template parts, `allow_variants` flag) is **out of scope** for this plugin.
 
 **Impact**:
 - Template parts (with variants) show zero stock (actual stock is on the variant children)

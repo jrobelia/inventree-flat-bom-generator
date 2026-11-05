@@ -7,16 +7,16 @@ import type { BomItem } from '../types/BomTypes';
 
 /**
  * Flatten BOM data by inserting cut list child rows after parents
- * Internal Fab assembly children carry one cut-list entry per BOM item
- * occurrence (count = ancestor multiplier, piece_qty = BOM item quantity).
+ * Length-unit BOM lines carry cut-list entries aggregated by (part, piece
+ * size): size = BOM line quantity, count = pieces demanded (R-016).
  *
  * @param items - Array of BOM items from API
  * @returns Flattened array with child rows inserted after parents
  *
  * @example
- * const items = [{ part_id: 1, internal_fab_cut_list: [{ count: 2, piece_qty: 100, unit: 'mm' }] }];
+ * const items = [{ part_id: 1, cut_list: [{ count: 2, size: 100, unit: 'mm' }] }];
  * const flattened = flattenBomData(items);
- * // Returns: [parent, child_with_count_2_piece_qty_100]
+ * // Returns: [parent, child_with_count_2_size_100]
  */
 export function flattenBomData(items: BomItem[]): BomItem[] {
   const flattenedData: BomItem[] = [];
@@ -25,26 +25,26 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
     // Add parent row
     flattenedData.push(item);
 
-    // Add Internal Fab cut breakdown children
-    if (item.internal_fab_cut_list && item.internal_fab_cut_list.length > 0) {
-      for (const piece of item.internal_fab_cut_list) {
+    // Add cut-list children (one row per piece size)
+    if (item.cut_list && item.cut_list.length > 0) {
+      for (const piece of item.cut_list) {
         flattenedData.push({
           ...item,
           total_qty: piece.count,
-          part_type: 'Internal Fab' as any,
           in_stock: null as any,
           on_order: null as any,
           allocated: null as any,
           building: null as any,
           available: null as any,
           default_supplier_name: '',
-          cut_length: piece.piece_qty,
+          cut_length: piece.size,
           cut_unit: piece.unit,
+          piece_count: null,
           // Generic child row fields
           is_child_row: true,
-          child_row_type: 'cutlist_ifab',
+          child_row_type: 'cutlist',
           parent_row_part_id: item.part_id,
-          internal_fab_cut_list: null
+          cut_list: null
         });
       }
     }
@@ -81,7 +81,8 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           is_assembly: false,
           purchaseable: true,
           // Clear fields that don't apply to substitutes
-          internal_fab_cut_list: null,
+          cut_list: null,
+          piece_count: null,
           has_substitutes: false,
           substitute_parts: null
         } as BomItem);

@@ -62,11 +62,6 @@ export function useFlatBom(
         queryParams.append('expand_purchased_assemblies', 'true');
       }
 
-      // include_internal_fab_in_cutlist: Include if true (default false)
-      if (settings.includeInternalFabInCutlist) {
-        queryParams.append('include_internal_fab_in_cutlist', 'true');
-      }
-
       // include_substitutes: Always send to override plugin default
       queryParams.append(
         'include_substitutes',

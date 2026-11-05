@@ -250,21 +250,23 @@ class TestAssemblyNoChildren(unittest.TestCase):
 
         self.assertEqual(len(leaves), 1)
         self.assertEqual(leaves[0]["part_id"], 600)
-        # cut_length is set only for internal-fab children - never from notes
-        self.assertIsNone(leaves[0]["cut_length"])
+        # cut list membership derives from units, never from note text
+        self.assertNotIn("cut_length", leaves[0])
 
-    def test_internal_fab_child_preserves_cut_length(self):
-        """Part from Internal Fab parent should preserve cut_length from tree."""
+    def test_child_preserves_bom_line_fields(self):
+        """BOM line fields (quantity, piece_count, inherited_from) carry to leaf."""
         from flat_bom_generator.bom_traversal import get_leaf_parts_only
 
         tree = {
             "part_id": 700,
             "ipn": "COML-003",
             "part_name": "Aluminum Extrusion",
-            "description": "Child of Internal Fab",
-            "cumulative_qty": 4.0,
-            "cut_length": 120.0,  # Set by traverse_bom for Internal Fab children
-            "unit": "pcs",
+            "description": "Cut-to-length stock",
+            "cumulative_qty": 480.0,
+            "quantity": 120.0,  # BOM item quantity (size of one piece)
+            "piece_count": 4,
+            "inherited_from": "WELD-T",
+            "unit": "mm",
             "is_assembly": False,
             "assembly": False,
             "purchaseable": True,
@@ -273,7 +275,6 @@ class TestAssemblyNoChildren(unittest.TestCase):
             "reference": "",
             "note": "",
             "level": 2,
-            "from_internal_fab_parent": True,  # Special flag
             "children": [],
         }
 
@@ -281,7 +282,9 @@ class TestAssemblyNoChildren(unittest.TestCase):
 
         self.assertEqual(len(leaves), 1)
         self.assertEqual(leaves[0]["part_id"], 700)
-        self.assertEqual(leaves[0]["cut_length"], 120.0)  # Should preserve from tree
+        self.assertEqual(leaves[0]["quantity"], 120.0)
+        self.assertEqual(leaves[0]["piece_count"], 4)
+        self.assertEqual(leaves[0]["inherited_from"], "WELD-T")
 
     def test_assembly_no_children_due_to_max_depth_not_flagged(self):
         """Assembly with no children due to max_depth should NOT be flagged."""
@@ -527,7 +530,7 @@ class TestLineItemExpansionMatrix(unittest.TestCase):
 
         self.assertEqual(len(leaves), 1)
         self.assertEqual(leaves[0]["part_id"], 10)
-        self.assertFalse(leaves[0]["from_internal_fab_parent"])
+        self.assertNotIn("from_internal_fab_parent", leaves[0])
 
     def test_external_supplier_assembly_expands_with_toggle(self):
         """External supplier + expand_purchased_assemblies -> children only."""
@@ -552,8 +555,7 @@ class TestLineItemExpansionMatrix(unittest.TestCase):
             part_id=20, is_assembly=True, purchaseable=True,
             default_supplier_id=7, internal_supplier=True,
             part_type="Internal Fab",
-            children=[self._child(from_internal_fab_parent=True,
-                                  cut_length=35.0, parent_part_id=20)],
+            children=[self._child()],
         )
         leaves = get_leaf_parts_only(tree, expand_purchased_assemblies=False)
 
@@ -728,13 +730,11 @@ class TestTlaRootExemption(unittest.TestCase):
 
         tree = self._root(
             default_supplier_id=7, internal_supplier=True,
-            children=[self._child(from_internal_fab_parent=True,
-                                  cut_length=35.0, parent_part_id=1)],
+            children=[self._child()],
         )
         leaves = get_leaf_parts_only(tree, expand_purchased_assemblies=False)
 
         self.assertEqual([leaf["part_id"] for leaf in leaves], [2])
-        self.assertTrue(leaves[0]["from_internal_fab_parent"])
 
     def test_childless_sourced_root_emits_nothing(self):
         """Sourced TLA with no BOM children -> empty flat BOM, no self row."""

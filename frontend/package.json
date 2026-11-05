@@ -17,13 +17,13 @@
   },
   "dependencies": {
     "@inventreedb/ui": "latest",
-    "react": ">= 19.1.1",
-    "react-dom": ">= 19.1.1",
-    "@mantine/core": ">= 8.2.7",
-    "@mantine/hooks": ">= 8.2.7",
-    "@mantine/modals": ">= 8.2.7",
-    "@mantine/notifications": ">= 8.2.7",
-    "mantine-datatable": "^8.2.0"
+    "react": ">= 19.2",
+    "react-dom": ">= 19.2",
+    "@mantine/core": "^9.7.1",
+    "@mantine/hooks": "^9.7.1",
+    "@mantine/modals": "^9.7.1",
+    "@mantine/notifications": "^9.7.1",
+    "mantine-datatable": "^9.2.2"
   },
   "peerDependencies": {},
   "devDependencies": {

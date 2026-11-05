@@ -67,6 +67,10 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
             defaults={'password': 'testpass'}
         )
 
+        # Grant the 'bom' view permission FlatBOMView requires (role_required='bom')
+        cls.user.groups.add(cls.group)
+        cls.assignRole('bom.view')
+
         # Get parts from fixture
         cls.assembly = Part.objects.get(pk=8001)
         cls.primary_part = Part.objects.get(pk=8002)
@@ -83,7 +87,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         """Test substitutes appear in API response when SHOW_SUBSTITUTE_PARTS=True."""
         # Create mock plugin with setting enabled
         mock_plugin = type('MockPlugin', (), {
-            'get_setting': lambda self, key, default=None: {
+            'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
                 'SHOW_PURCHASED_ASSEMBLIES': False,
                 'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
@@ -93,7 +97,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
                 'COMMERCIAL_CATEGORY': None,
                 'CUT_TO_LENGTH_CATEGORY': None,
                 'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
-            }.get(key, default)
+            }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
 
@@ -150,7 +154,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         """Test substitutes NOT in response when SHOW_SUBSTITUTE_PARTS=False."""
         # Create mock plugin with setting disabled
         mock_plugin = type('MockPlugin', (), {
-            'get_setting': lambda self, key, default=None: {
+            'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': False,  # Setting disabled
                 'SHOW_PURCHASED_ASSEMBLIES': False,
                 'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
@@ -160,7 +164,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
                 'COMMERCIAL_CATEGORY': None,
                 'CUT_TO_LENGTH_CATEGORY': None,
                 'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
-            }.get(key, default)
+            }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
 
@@ -192,7 +196,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         """Test substitute stock values match Part model calculations."""
         # Create mock plugin with setting enabled
         mock_plugin = type('MockPlugin', (), {
-            'get_setting': lambda self, key, default=None: {
+            'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
                 'SHOW_PURCHASED_ASSEMBLIES': False,
                 'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
@@ -202,7 +206,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
                 'COMMERCIAL_CATEGORY': None,
                 'CUT_TO_LENGTH_CATEGORY': None,
                 'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
-            }.get(key, default)
+            }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
 
@@ -255,13 +259,13 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
         BomItem.objects.create(
             part=self.assembly,
             sub_part=part_no_subs,
-            quantity=5,
+            raw_amount='5',
             validated=True
         )
 
         # Create mock plugin with setting enabled
         mock_plugin = type('MockPlugin', (), {
-            'get_setting': lambda self, key, default=None: {
+            'get_setting': lambda self, key, cache=False, backup_value=None: {
                 'SHOW_SUBSTITUTE_PARTS': True,
                 'SHOW_PURCHASED_ASSEMBLIES': False,
                 'ENABLE_INTERNAL_FAB_CUT_BREAKDOWN': False,
@@ -271,7 +275,7 @@ class SubstituteEnrichmentTests(InvenTreeTestCase):
                 'COMMERCIAL_CATEGORY': None,
                 'CUT_TO_LENGTH_CATEGORY': None,
                 'CUTLIST_UNITS_FOR_INTERNAL_FAB': 'mm',
-            }.get(key, default)
+            }.get(key, backup_value)
         })()
         mock_registry.get_plugin.return_value = mock_plugin
 

@@ -70,11 +70,11 @@ class DatabaseExceptionTests(InvenTreeTestCase):
         """Test that invalid category IDs are handled gracefully."""
         # Create mock plugin with invalid category ID
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": 999999,  # Non-existent category
             "COMMERCIAL_CATEGORY": None,
             "CUT_TO_LENGTH_CATEGORY": None,
-        }.get(key, default)
+        }.get(key, backup_value)
 
         # Should not raise exception, should log warning and skip
         result = get_category_mappings(mock_plugin)
@@ -91,11 +91,11 @@ class DatabaseExceptionTests(InvenTreeTestCase):
 
         # Create mock plugin with deleted category ID
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category_id,
             "COMMERCIAL_CATEGORY": None,
             "CUT_TO_LENGTH_CATEGORY": None,
-        }.get(key, default)
+        }.get(key, backup_value)
 
         # Should not raise exception
         result = get_category_mappings(mock_plugin)
@@ -189,10 +189,10 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
     def test_get_internal_supplier_ids_with_empty_string(self):
         """Test that empty string settings return empty list."""
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "PRIMARY_INTERNAL_SUPPLIER": "",
             "ADDITIONAL_INTERNAL_SUPPLIERS": "",
-        }.get(key, default)
+        }.get(key, backup_value)
 
         result = get_internal_supplier_ids(mock_plugin)
 
@@ -201,10 +201,10 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
     def test_get_internal_supplier_ids_with_invalid_company_ids(self):
         """Test that invalid company IDs are filtered out."""
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "PRIMARY_INTERNAL_SUPPLIER": 999999,  # Non-existent
             "ADDITIONAL_INTERNAL_SUPPLIERS": "999998,999997",  # Also non-existent
-        }.get(key, default)
+        }.get(key, backup_value)
 
         result = get_internal_supplier_ids(mock_plugin)
 
@@ -217,10 +217,10 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
         company = Company.objects.create(name="Test Company", is_supplier=True)
 
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "PRIMARY_INTERNAL_SUPPLIER": company.pk,  # Valid
             "ADDITIONAL_INTERNAL_SUPPLIERS": f"{company.pk},999999",  # Valid + Invalid
-        }.get(key, default)
+        }.get(key, backup_value)
 
         result = get_internal_supplier_ids(mock_plugin)
 
@@ -246,11 +246,11 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
     def test_get_category_mappings_with_empty_string_settings(self):
         """Test that empty string settings return empty dict."""
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": "",
             "COMMERCIAL_CATEGORY": "",
             "CUT_TO_LENGTH_CATEGORY": "",
-        }.get(key, default)
+        }.get(key, backup_value)
 
         result = get_category_mappings(mock_plugin)
 
@@ -262,11 +262,11 @@ class EmptyPluginSettingsTests(InvenTreeTestCase):
         category = PartCategory.objects.create(name="Test Category")
 
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category.pk,  # Configured
             "COMMERCIAL_CATEGORY": None,  # Not configured
             "CUT_TO_LENGTH_CATEGORY": "",  # Empty string
-        }.get(key, default)
+        }.get(key, backup_value)
 
         result = get_category_mappings(mock_plugin)
 
@@ -289,10 +289,10 @@ class LoggingAndExceptionHandlingTests(InvenTreeTestCase):
     def test_invalid_string_supplier_id_logs_warning(self):
         """Test that invalid string supplier ID logs warning."""
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "PRIMARY_INTERNAL_SUPPLIER": "not_a_number",
             "ADDITIONAL_INTERNAL_SUPPLIERS": "",
-        }.get(key, default)
+        }.get(key, backup_value)
 
         with self.assertLogs("inventree", level="WARNING") as cm:
             result = get_internal_supplier_ids(mock_plugin)
@@ -312,11 +312,11 @@ class LoggingAndExceptionHandlingTests(InvenTreeTestCase):
     def test_invalid_string_category_id_logs_warning(self):
         """Test that invalid string category ID logs warning and continues."""
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": "invalid_id",
             "COMMERCIAL_CATEGORY": None,
             "CUT_TO_LENGTH_CATEGORY": None,
-        }.get(key, default)
+        }.get(key, backup_value)
 
         with self.assertLogs("inventree", level="WARNING") as cm:
             result = get_category_mappings(mock_plugin)
@@ -341,11 +341,11 @@ class LoggingAndExceptionHandlingTests(InvenTreeTestCase):
         category.delete()
 
         mock_plugin = Mock()
-        mock_plugin.get_setting.side_effect = lambda key, default=None: {
+        mock_plugin.get_setting.side_effect = lambda key, cache=False, backup_value=None: {
             "FABRICATION_CATEGORY": category_id,
             "COMMERCIAL_CATEGORY": None,
             "CUT_TO_LENGTH_CATEGORY": None,
-        }.get(key, default)
+        }.get(key, backup_value)
 
         with self.assertLogs("inventree", level="WARNING") as cm:
             result = get_category_mappings(mock_plugin)

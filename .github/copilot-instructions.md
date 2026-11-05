@@ -76,4 +76,4 @@ Keep progress logs brief (3-5 lines, reference git commits).
 
 ---
 
-**Plugin Version:** 0.11.51 | **InvenTree Compatibility:** 1.1.6+
+**Plugin Version:** 0.11.51 | **InvenTree Compatibility:** 1.6.0+

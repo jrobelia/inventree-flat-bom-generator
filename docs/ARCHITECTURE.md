@@ -523,11 +523,11 @@ python -m build
 
 ## Version Information
 
-- **InvenTree**: Compatible with 1.1.6+ (stable branch API)
+- **InvenTree**: Requires 1.6.0+ (MIN_VERSION floor, no upper bound)
 - **React**: 19.x
 - **Mantine**: 8.x
 - **DataTable**: mantine-datatable 8.2.0
-- **Python**: 3.9+
+- **Python**: 3.12+
 - **Django**: Via InvenTree version
 
 ---

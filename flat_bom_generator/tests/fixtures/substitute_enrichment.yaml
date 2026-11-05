@@ -162,6 +162,7 @@
     part: 8001  # Assembly
     sub_part: 8002  # Primary Part
     quantity: 2
+    raw_amount: '2'
     reference: R1
     note: ''
     validated: true
@@ -199,7 +200,6 @@
     customer: null
     packaging: ''
     link: ''
-    notes: ''
     purchase_price: null
 
 # StockItem for Substitute 1 (100 qty)
@@ -217,7 +217,6 @@
     customer: null
     packaging: ''
     link: ''
-    notes: ''
     purchase_price: null
 
 # StockItem for Substitute 2 (25 qty)
@@ -235,5 +234,4 @@
     customer: null
     packaging: ''
     link: ''
-    notes: ''
     purchase_price: null

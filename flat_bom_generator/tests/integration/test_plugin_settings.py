@@ -22,9 +22,9 @@ class MockPlugin:
         """Initialize mock plugin with settings dictionary."""
         self.settings = settings_dict or {}
 
-    def get_setting(self, key, default=None):
-        """Mock get_setting method."""
-        return self.settings.get(key, default)
+    def get_setting(self, key, cache=False, backup_value=None):
+        """Mock get_setting method (mirrors SettingsMixin signature)."""
+        return self.settings.get(key, backup_value)
 
 
 class ExtractIdFromValueTests(InvenTreeTestCase):

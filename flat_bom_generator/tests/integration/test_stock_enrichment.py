@@ -35,10 +35,14 @@ class StockEnrichmentErrorHandlingTests(InvenTreeTestCase):
 
         # Create test user (unique username to avoid conflicts)
         cls.user = User.objects.create_user(
-            username='test_stock_enrichment_user', 
+            username='test_stock_enrichment_user',
             password='testpass',
             is_staff=True
         )
+
+        # Grant the 'bom' view permission FlatBOMView requires (role_required='bom')
+        cls.user.groups.add(cls.group)
+        cls.assignRole('bom.view')
 
         # Create test category
         cls.test_cat = PartCategory.objects.create(
@@ -63,6 +67,12 @@ class StockEnrichmentErrorHandlingTests(InvenTreeTestCase):
 
     def setUp(self):
         """Set up each test."""
+        # Re-import at test time: the plugin registry can reload
+        # flat_bom_generator modules mid-suite, replacing sys.modules entries.
+        # The view class and the @patch('flat_bom_generator.views.*') targets
+        # must resolve the same module object or mocks silently miss.
+        from flat_bom_generator.views import FlatBOMView
+
         self.factory = APIRequestFactory()
         self.view = FlatBOMView.as_view()
 

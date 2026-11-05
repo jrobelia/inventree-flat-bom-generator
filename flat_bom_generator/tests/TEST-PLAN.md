@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Test Plan
 
 **Last Updated**: November 4, 2026  
-**Test Count**: 320 backend tests (163 unit + 157 integration); frontend Vitest + Playwright run in the suite  
+**Test Count**: 325 backend tests (166 unit + 159 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
 
@@ -585,8 +585,8 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-12 | Gap #5: View Settings | ✅ 6/6 PASS | Double-patch mocking for settings loading |
 | 2026-01-12 | Gap #6: Stock Enrichment | ✅ 2/2 PASS + 🐛 BUG FIXED | Production bug found/fixed (Part.DoesNotExist) |
 
-**Current Test Count:** 299 backend tests  
-**Breakdown:** 154 unit + 145 integration  
+**Current Test Count:** 325 backend tests  
+**Breakdown:** 166 unit + 159 integration  
 **All Critical Gaps Closed:** Gaps #1-#6 complete (61 tests added)  
 **Priorities 1-4 Complete:** 100% coverage achieved via fixture-based integration tests  
 **Production Bug Fixed:** Part.DoesNotExist crash in stock enrichment

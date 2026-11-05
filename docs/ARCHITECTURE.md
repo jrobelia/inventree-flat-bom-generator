@@ -143,7 +143,7 @@ frontend/
 │   └── utils/              # Utility functions
 │       ├── colorUtils.ts
 │       ├── csvExport.ts
-│       └── filterAndSort.ts
+│       └── bomDataProcessing.ts
 ├── package.json            # Frontend dependencies
 └── vite.config.ts          # Build configuration
 
@@ -394,26 +394,27 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**15 Columns** (sortable except Category, Cut Length, Pieces, and Inherited From; some toggleable):
+**16 Columns** (sortable except Category, Cut Length, Pieces, and Inherited From; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
-5. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
-6. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
-7. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
-8. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
-9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
-10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
-11. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
-12. **On Order** - Blue badge if > 0 with [unit] (toggleable)
-13. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
-14. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
-15. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+5. **Category** - InvenTree part category name (toggleable)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
+7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
+8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
+9. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
+10. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+11. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+12. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+13. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+14. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
+15. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
+16. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
 **Column Visibility:**
 - Always visible: Component
-- Default visible: IPN, Description, Type, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
+- Default visible: IPN, Description, Type, Category, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
 - Hidden by default: Flags, Cut Length
 - User can toggle visibility via gear icon in ControlBar (v0.11.23+)
 

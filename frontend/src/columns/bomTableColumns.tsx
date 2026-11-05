@@ -155,7 +155,7 @@ export function createBomTableColumns({
     {
       accessor: 'category',
       title: 'Category',
-      sortable: true,
+      sortable: false,
       switchable: true,
       render: (record) => {
         if (record.is_child_row) {

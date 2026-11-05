@@ -388,14 +388,14 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**13 Columns** (all sortable, some toggleable):
+**13 Columns** (sortable except Cut Length, Pieces, and Inherited From; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
 5. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable, hidden by default)
 6. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
-7. **Cut Length** - For cutlist child rows, shows individual piece length (toggleable, hidden unless cut data present)
+7. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
 8. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
 9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
 10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
@@ -473,7 +473,7 @@ python -m build
 - [ ] Stock calculations (allocated, available) accurate
 
 **Frontend:**
-- [ ] All columns sortable
+- [ ] Sortable columns sort correctly (Cut Length, Pieces, and Inherited From are not sortable)
 - [ ] Search filters IPN and Part Name
 - [ ] Checkboxes affect shortfall calculation
 - [ ] Build quantity multiplies all requirements

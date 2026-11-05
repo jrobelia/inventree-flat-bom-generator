@@ -237,6 +237,13 @@ class TestLengthUnitDimensionalityRealRegistry(unittest.TestCase):
     def test_each_is_not_length(self):
         self.assertFalse(_units_have_length_dimension("each", _REAL_REGISTRY))
 
+    def test_pcs_is_not_length(self):
+        """'pcs' means pieces, not parsecs - pint pluralization trap."""
+        self.assertFalse(_units_have_length_dimension("pcs", _REAL_REGISTRY))
+
+    def test_pc_is_not_length(self):
+        self.assertFalse(_units_have_length_dimension("pc", _REAL_REGISTRY))
+
     def test_blank_is_not_length(self):
         self.assertFalse(_units_have_length_dimension("", _REAL_REGISTRY))
 

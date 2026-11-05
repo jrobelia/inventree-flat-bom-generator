@@ -33,6 +33,23 @@ def _resolve_unit_registry():
             return None
 
 
+# Piece-count spellings are never cut stock, whatever the registry says.
+# pint resolves 'pc'/'pcs' to 'parsec' ([length]) via pluralization, which
+# would otherwise mark every default-unit part as a cut line.
+_COUNT_UNITS = frozenset({
+    "pc",
+    "pcs",
+    "piece",
+    "pieces",
+    "each",
+    "ea",
+    "dozen",
+    "dz",
+    "hundred",
+    "thousand",
+})
+
+
 def _units_have_length_dimension(units: str, registry) -> bool:
     """True when `units` parses in `registry` with [length] dimensionality.
 
@@ -40,8 +57,11 @@ def _units_have_length_dimension(units: str, registry) -> bool:
     """
     if registry is None or not units or not str(units).strip():
         return False
+    text = str(units).strip()
+    if text.lower() in _COUNT_UNITS:
+        return False
     try:
-        return bool(registry.Quantity(1, str(units).strip()).check("[length]"))
+        return bool(registry.Quantity(1, text).check("[length]"))
     except Exception:  # noqa: BLE001
         return False
 

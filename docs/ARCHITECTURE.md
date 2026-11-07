@@ -498,7 +498,7 @@ python -m build
 - [ ] CSV export includes all fields
 - [ ] Pagination includes "All" option and works correctly
 - [ ] Component column displays full_name instead of part_name
-- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, and To Order columns
+- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, and Max Stock columns
 - [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
 - [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
 - [ ] Column visibility toggles work correctly (gear icon)

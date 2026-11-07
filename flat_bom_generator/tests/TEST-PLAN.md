@@ -586,8 +586,8 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-12 | Gap #5: View Settings | ✅ 6/6 PASS | Double-patch mocking for settings loading |
 | 2026-01-12 | Gap #6: Stock Enrichment | ✅ 2/2 PASS + 🐛 BUG FIXED | Production bug found/fixed (Part.DoesNotExist) |
 
-**Current Test Count:** 325 backend tests  
-**Breakdown:** 166 unit + 159 integration  
+**Current Test Count:** 340 backend tests  
+**Breakdown:** 177 unit + 163 integration  
 **All Critical Gaps Closed:** Gaps #1-#6 complete (61 tests added)  
 **Priorities 1-4 Complete:** 100% coverage achieved via fixture-based integration tests  
 **Production Bug Fixed:** Part.DoesNotExist crash in stock enrichment

@@ -611,4 +611,4 @@ class MyFeatureTests(InvenTreeTestCase):
 
 ---
 
-_Last updated: January 15, 2026_
+_Last updated: November 7, 2026_

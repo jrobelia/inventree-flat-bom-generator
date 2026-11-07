@@ -15,10 +15,10 @@ Current sources of truth:
 
 | File | Retired under | Was |
 |---|---|---|
-| `ROADMAP.md` | #11 (2026-11-07) | Living roadmap — open items migrated to issues #30–#39 |
+| `ROADMAP.md` | #11 (2026-11-07) | Living roadmap — open items migrated to issues #30–#36 |
 | `ARCHITECTURE.md` | #11 | Living architecture guide — current content lives at `docs/reference/ARCHITECTURE.md` |
 | `decisions.md` | #11 | Append-only decision log — DEC-001…009 migrated to `docs/adr/` 0001–0009 |
-| `planning/` | #11 | Future-work proposals (9 docs) — open items migrated to issues #30–#40 |
+| `planning/` | #11 | Future-work proposals (10 docs) — open items migrated to issues #36–#40 (plus reuse of #16/#18) |
 | `TEST-WRITING-METHODOLOGY.md` | `d8d9b99` | Code-first test case study — deliberately archived earlier; still cited as background |
 
 Do not edit files in this directory to "fix" them — the point of the

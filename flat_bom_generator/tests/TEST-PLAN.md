@@ -194,7 +194,7 @@ def test_serializer_validates_real_part(self):
   leaves the view bound to the stale module while the mock patches the
   fresh one (see `test_stock_enrichment.py`, `test_view_settings_loading.py`).
 
-**Reference:** See [docs/reference/INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) for integration testing setup.
+**Reference:** Integration testing setup docs live in the `inventree-plugin-ai-toolkit` repo under `docs/reference/` (outside this checkout).
 
 ---
 
@@ -459,7 +459,7 @@ The former "CtL integration" gap is obsolete - the cut-to-length mechanism was r
 4. Write tests that validate actual behavior
 5. Look for dead code and incorrect fallbacks
 
-**See:** [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) for detailed guide
+**See:** [TEST-WRITING-METHODOLOGY.md](../../docs/archive/TEST-WRITING-METHODOLOGY.md) for detailed guide (archived, non-authoritative)
 
 ---
 

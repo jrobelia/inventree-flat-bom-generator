@@ -369,7 +369,7 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
     # === Serializer Tests ===
     
     def test_flat_bom_item_serializer_validates_all_fields(self):
-        """FlatBOMItemSerializer should validate all 24 required fields."""
+        """FlatBOMItemSerializer should validate all 26 required fields."""
         from flat_bom_generator.serializers import FlatBOMItemSerializer
         from flat_bom_generator.bom_traversal import get_flat_bom
         
@@ -398,6 +398,18 @@ class FlatBOMIntegrationTests(InvenTreeTestCase):
             'on_order': float(part_obj.on_order),
             'net_stock': float(part_obj.net_stock or 0),
             'quantity_to_order': float(part_obj.quantity_to_order or 0),
+            'maximum_stock': (
+                float(part_obj.maximum_stock) if part_obj.maximum_stock else None
+            ),
+            'exceeds_max_stock': (
+                (
+                    float(part_obj.net_stock or 0)
+                    + float(part_obj.quantity_to_order or 0)
+                    > float(part_obj.maximum_stock)
+                )
+                if part_obj.maximum_stock
+                else None
+            ),
             'default_supplier_id': None,
             'assembly_no_children': False,
             'max_depth_exceeded': False,

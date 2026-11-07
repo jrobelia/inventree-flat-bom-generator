@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (export endpoint: #36); accepted
+> decisions are in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Export Integration Plan
 
 **Status:** ON HOLD  

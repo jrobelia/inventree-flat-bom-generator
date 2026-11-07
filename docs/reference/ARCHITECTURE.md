@@ -1,0 +1,617 @@
+# Architecture Guide - Flat BOM Generator Plugin
+
+> **Developer reference for plugin architecture, API, and technical implementation details.**
+> Relocated from `docs/ARCHITECTURE.md` under issue #11 (2026-11-07); that file is archived
+> non-authoritative at `docs/archive/ARCHITECTURE.md`. Planned work lives in GitHub issues;
+> accepted decisions live in `docs/adr/`.
+
+## Project Overview
+
+InvenTree plugin providing advanced flat bill of materials analysis with intelligent stock tracking, allocation awareness, and production planning capabilities.
+
+**Tech Stack:**
+- Backend: Django REST Framework (Python)
+- Frontend: React 19 + TypeScript + Mantine UI v9 + mantine-datatable
+- Build: Python setuptools + Vite 6
+- InvenTree: Plugin system with panel integration
+
+---
+
+## API Endpoint (Internal Use Only)
+
+**Note**: This endpoint is internal to InvenTree and **not accessible externally**. It's called by the frontend Panel.tsx component.
+
+### Get Flat BOM
+
+```
+GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
+```
+
+**Performance Warning:** Each API call performs a complete recursive BOM traversal with no caching. For large assemblies, response times can be several seconds.
+
+**Query Parameters:**
+- `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
+
+**Response:**
+```json
+{
+  "part_id": 123,
+  "part_name": "Main Assembly",
+  "ipn": "ASM-001",
+  "total_unique_parts": 45,
+  "total_ifps_processed": 12,
+  "bom_items": [
+    {
+      "part_id": 456,
+      "ipn": "FAB-100",
+      "part_name": "Bracket, Mounting, Steel",
+      "full_name": "FAB-100 | Bracket, Mounting, Steel | A ",
+      "description": "Steel mounting bracket",
+      "part_type": "Fab",
+      "total_qty": 2.0,
+      "unit": "pcs",
+      "is_assembly": false,
+      "purchaseable": true,
+      "default_supplier_id": 789,
+      "optional": false,
+      "consumable": false,
+      "reference": "U1, U2",
+      "note": "",
+      "level": 1,
+      "in_stock": 50.0,
+      "on_order": 100.0,
+      "allocated": 10.0,
+      "available": 40.0,
+      "net_stock": 140.0,
+      "quantity_to_order": 0.0,
+      "maximum_stock": 200.0,
+      "exceeds_max_stock": false,
+      "image": "/media/part_images/fab-100.jpg",
+      "thumbnail": "/media/part_images/fab-100_thumbnail.jpg",
+      "link": "/part/456/"
+    }
+  ]
+}
+```
+
+**Response Fields** - Each item in `bom_items` contains:
+- `part_id`: Part database ID
+- `ipn`: Internal Part Number
+- `part_name`: Part name
+- `full_name`: Full display name (includes variant info)
+- `description`: Part description
+- `part_type`: "TLA", "Coml", "Fab", "Purchased Assy", "Internal Fab", "Assy", or "Other" (display label only)
+- `category`: InvenTree part category name (empty if uncategorized)
+- `total_qty`: Total quantity needed through BOM hierarchy (aggregated from all BOM levels)
+- `unit`: Unit of measurement (e.g., "pcs", "mm", "kg")
+- `is_assembly`: Boolean - whether part is an assembly
+- `purchaseable`: Boolean - whether part can be purchased
+- `default_supplier_id`: ID of primary SupplierPart (null if none)
+- `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
+- `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
+- `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line; null when merged occurrences disagree, ruling R-025)
+- `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
+- `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
+- `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)
+- `note`: BOM item notes (free text, never parsed)
+- `level`: Depth in original BOM tree
+- `in_stock`: Total inventory
+- `on_order`: Quantity on incomplete purchase orders
+- `allocated`: Stock reserved for builds/sales
+- `available`: Total stock minus allocated
+- `net_stock`: Upstream `Part.net_stock` - total stock minus allocated plus on-order; can go negative (shortage signal)
+- `quantity_to_order`: Upstream `Part.quantity_to_order` - suggested order quantity after stock, open orders, and in-production builds (floored at 0)
+- `maximum_stock`: Upstream `Part.maximum_stock` - per-part stock ceiling (null when unset; upstream stores 0 for "no maximum")
+- `exceeds_max_stock`: True when `net_stock + quantity_to_order` exceeds `maximum_stock` (null when no ceiling is set)
+- `image`: Full-size image URL (null if none)
+- `thumbnail`: Thumbnail image URL (null if none)
+- `link`: URL to part detail page
+
+---
+
+## Repository Layout
+
+```
+flat_bom_generator/
+├── __init__.py              # Plugin metadata & registration
+├── core.py                  # FlatBOMGeneratorPlugin class
+├── views.py                 # FlatBOMView API endpoint
+├── bom_traversal.py         # Core BOM algorithms
+├── categorization.py        # Part type classification
+├── serializers.py           # API data serializers
+├── static/                  # Compiled frontend assets
+└── tests/                   # Unit + integration tests
+    ├── TEST-PLAN.md         # Test strategy and inventory
+    ├── unit/                # Fast tests, no InvenTree required
+    ├── integration/         # Fixture-based tests against real models
+    └── test_data/           # Test input data (CSV/YAML fixtures)
+
+frontend/
+├── src/
+│   ├── Panel.tsx           # Main React component
+│   ├── locale.tsx          # i18n setup
+│   ├── vite-env.d.ts       # TypeScript definitions
+│   ├── columns/            # DataTable column definitions
+│   │   └── bomTableColumns.tsx
+│   ├── components/         # Reusable UI components
+│   │   ├── ControlBar.tsx
+│   │   ├── ErrorAlert.tsx
+│   │   ├── SettingsDrawer.tsx
+│   │   ├── SettingsPanel.tsx
+│   │   ├── StatisticsPanel.tsx
+│   │   └── WarningsAlert.tsx
+│   ├── hooks/              # Custom React hooks
+│   │   ├── useBuildQuantity.ts
+│   │   ├── useColumnVisibility.ts
+│   │   ├── useFlatBom.ts
+│   │   ├── usePluginSettings.ts
+│   │   └── useShortfallCalculation.ts
+│   ├── types/              # TypeScript interfaces
+│   │   ├── BomTypes.ts
+│   │   └── PluginSettings.ts
+│   └── utils/              # Utility functions
+│       ├── colorUtils.ts
+│       ├── csvExport.ts
+│       ├── bomDataProcessing.ts
+│       └── substituteCheckboxState.ts
+├── package.json            # Frontend dependencies
+└── vite.config.ts          # Build configuration
+
+docs/
+├── adr/                    # Accepted decision records (migrated from decisions.md)
+├── agents/                 # Agent conventions (issue tracker, triage labels, domain docs)
+├── reference/              # Stable operational docs
+│   ├── ARCHITECTURE.md     # This file
+│   ├── ARCHITECTURE-WARNINGS.md   # Warning system implementation patterns
+│   └── DEPLOYMENT-WORKFLOW.md     # Deploy/test checklist
+└── archive/                # Non-authoritative history (committed, see archive/README.md)
+    ├── ROADMAP.md
+    ├── ARCHITECTURE.md     # Retired living doc superseded by this file
+    ├── decisions.md        # Retired decision log → docs/adr/
+    ├── TEST-WRITING-METHODOLOGY.md
+    └── planning/           # Retired future-work proposals
+
+imgs/                        # Screenshots for README.md
+tools/                       # Local-only dev utilities (gitignored)
+docs/internal/               # Local-only scratch (gitignored)
+```
+
+---
+
+## Key Files & Responsibilities
+
+### Backend Files
+
+#### `flat_bom_generator/core.py`
+- **Purpose**: Plugin registration with InvenTree
+- **Key Class**: `FlatBOMGeneratorPlugin`
+- **Exports**:
+  - Panel definition: `PANEL_FLAT_BOM`
+  - API endpoint: `/plugin/flat-bom-generator/flat-bom/{part_id}/`
+
+#### `flat_bom_generator/views.py`
+- **Purpose**: REST API endpoint that enriches BOM data for UI display
+- **Endpoint**: `GET /plugin/flat-bom-generator/flat-bom/{part_id}/`
+- **Key Responsibilities**:
+  - Calls `get_flat_bom()` to get deduplicated leaf parts
+  - Enriches with stock data: `total_stock`, `allocated`, `available`, `on_order`, `building`, `net_stock`, `quantity_to_order`
+  - Adds display metadata: `thumbnail`, `image`, `link`, `default_supplier_name`
+- **Response Structure**: See API Response Schema below
+
+#### `flat_bom_generator/bom_traversal.py`
+- **Purpose**: Core BOM traversal algorithms
+- **Critical Functions**:
+  1. `traverse_bom()` - Recursive traversal with `visited.copy()` pattern
+  2. `get_leaf_parts_only()` - Filters to Fab/Coml/Purchaseable Assembly
+  3. `deduplicate_and_sum()` - Aggregates quantities by part_id
+  4. `get_flat_bom()` - Orchestrates the 3-step pipeline
+
+**Algorithm Flow:**
+```
+Part ID → traverse_bom() → get_leaf_parts_only() → deduplicate_and_sum() → Flat BOM
+          (build tree)      (filter leaves)         (sum quantities)
+```
+
+**`get_flat_bom()` Return Signature:**
+```python
+flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_depth=None)
+
+# Returns tuple of 4 values:
+# - flat_bom: List[Dict] - Deduplicated leaf parts with aggregated quantities
+# - imp_count: int - Count of Internal Made Parts processed
+# - warnings: List[Dict] - warnings produced during traversal (currently always empty; warnings are generated at view level)
+# - max_depth_reached: int - Actual depth traversed (NOT a boolean flag)
+#                            Returns 0 if no depth limit hit
+```
+
+**Important**: `max_depth_reached` is an **integer** representing the actual BOM depth traversed, not a boolean flag. This is critical for tests and API responses.
+
+**Critical Pattern**: `visited.copy()` allows same part in different branches while preventing circular references
+
+#### `flat_bom_generator/categorization.py`
+- **Purpose**: Assigns display labels — answers "what should this line item show?" only; expansion decisions live in `get_leaf_parts_only`
+- **Function**: `categorize_part(part_name, is_assembly, is_top_level, default_supplier_id, supplier_is_internal, part_category_id, category_mappings)`
+- **Labels**:
+  - `TLA` - Top Level Assembly
+  - `Internal Fab` - Assembly whose primary supplier company has `is_internal`
+  - `Purchased Assy` - Assembly with an external primary supplier
+  - `Assy` - Assembly with no primary supplier
+  - `Coml` - Non-assembly in a configured Commercial category
+  - `Fab` - Non-assembly in a configured Fabrication category
+  - `Other` - Everything else
+- **Expansion matrix** (in `bom_traversal.get_leaf_parts_only`, driven by assembly + supplier state, never the label):
+  - The top-level input part is exempt: an assembly root always expands and never emits a row for itself (a childless unsourced root still emits with `assembly_no_children`); the matrix below applies to descendants only
+  - Non-assembly → line item
+  - External-supplier assembly → line item, not expanded (expand toggle shows children instead)
+  - Internal-supplier assembly → line item AND expanded
+  - Unsourced assembly → expanded (regardless of `purchaseable`); emitted + flagged only when it has no children
+
+### Frontend Files
+
+#### `frontend/src/Panel.tsx`
+- **Purpose**: Main React component for flat BOM UI (refactored from 1250 to 306 lines in v0.11.6)
+- **Component**: `Panel` (exported function)
+- **Key Features**:
+  - DataTable with sorting, filtering, pagination
+  - Build quantity multiplier
+  - Allocation/on-order toggle checkboxes
+  - Stats panel with counters
+  - CSV export
+  - Search by IPN/Part Name
+  - In-panel settings with progressive disclosure (v0.11.6+)
+  - Column visibility toggles (v0.11.23+)
+  - Optional/Consumable part flags (v0.11.23+)
+
+**State Variables (via custom hooks):**
+```typescript
+// useBuildQuantity
+buildQuantity: number           // Multiplier for requirements
+
+// useShortfallCalculation
+includeAllocations: boolean     // Use available vs total stock
+includeOnOrder: boolean         // Include incoming in shortfall
+showCutlistRows: boolean        // Show/hide cutlist breakdown rows
+
+// usePluginSettings
+maxDepth: number                // Maximum BOM traversal depth
+expandPurchasedAssemblies: boolean  // Expand external-supplier assemblies
+includeSubstitutes: boolean     // Include substitute parts
+
+// useColumnVisibility
+hiddenColumns: Record<string, boolean> // Column visibility state
+
+// useFlatBom
+bomData: FlatBomResponse | null // API response
+loading: boolean                // Loading state
+error: string | null            // Error state
+
+// Local state
+searchQuery: string             // Filter text
+sortStatus: DataTableSortStatus // Column + direction
+page: number                    // Current page
+recordsPerPage: number | 'All'  // Pagination size (can be 'All')
+settingsExpanded: boolean       // Settings panel expansion state
+```
+
+**Data Flow:**
+```
+API Call → bomData → filteredAndSortedData → DataTable
+                     (applies search + sort)   (pagination)
+```
+
+---
+
+## Data Structures
+
+### BomItem Interface (TypeScript)
+```typescript
+interface BomItem {
+    // Identity
+    part_id: number;
+    ipn: string;
+    part_name: string;
+    full_name: string;
+    description: string;
+    
+    // Categorization (display label only)
+    part_type: 'TLA' | 'Coml' | 'Fab' | 'Purchased Assy' | 'Internal Fab' | 'Assy' | 'Other';
+    category?: string;
+    is_assembly: boolean;
+    purchaseable: boolean;
+    default_supplier_id?: number | null;
+    internal_supplier?: boolean;
+    optional?: boolean;
+    consumable?: boolean;
+    
+    // Quantities
+    total_qty: number;      // Aggregated from BOM traversal
+    unit: string;
+    
+    // Cut list support (length-unit BOM lines, any expanded parent)
+    cut_list?: Array<{ size: number; count: number; unit: string }> | null;
+    is_child_row?: boolean;
+    child_row_type?: 'cutlist' | 'substitute' | 'variant';
+    parent_row_part_id?: number;
+    cut_length?: number | null;
+    cut_unit?: string;
+    piece_count?: number | null;
+    inherited_from?: string | null;
+    
+    // Stock levels
+    in_stock: number;       // Total physical stock
+    allocated: number;      // Reserved for builds/sales
+    available: number;      // in_stock - allocated
+    on_order: number;       // Incoming from POs
+    net_stock: number;      // in_stock - allocated + on_order (upstream; can go negative)
+    quantity_to_order: number; // upstream suggested order quantity (floored at 0)
+    maximum_stock?: number | null; // upstream per-part stock ceiling (null = no ceiling)
+    exceeds_max_stock?: boolean | null; // net_stock + quantity_to_order > maximum_stock
+    building?: number;      // In production
+    
+    // Procurement
+    default_supplier_name?: string;
+    
+    // Display
+    image?: string;
+    thumbnail?: string;
+    link: string;
+}
+```
+
+### API Response Schema
+```json
+{
+  "part_id": 123,
+  "part_name": "Assembly Name",
+  "ipn": "ASM-001",
+  "total_unique_parts": 45,
+  "total_ifps_processed": 12,
+  "max_depth_reached": 0,
+  "bom_items": [/* array of BomItem */],
+  "metadata": {
+    "warnings": [/* array of Warning */]
+  }
+}
+```
+
+---
+
+## Critical Calculations
+
+### Shortfall Calculation
+```typescript
+const stockToUse = includeAllocations ? record.available : record.in_stock;
+const onOrderToUse = includeOnOrder ? record.on_order : 0;
+const totalRequired = record.total_qty * buildQuantity;
+const shortfall = Math.max(0, totalRequired - stockToUse - onOrderToUse);
+```
+
+### Stock Allocations (Backend)
+```python
+allocated = part_obj.allocation_count()  # Sum of build + sales order allocations
+available = part_obj.available_stock     # Property: total_stock - allocation_count()
+```
+
+---
+
+## DataTable Column Configuration
+
+**17 Columns** (sortable except Category, Cut Length, Pieces, Inherited From, and Max Stock; some toggleable):
+1. **Component** - Thumbnail + clickable full_name (always visible)
+2. **IPN** - Monospace font (toggleable)
+3. **Description** - Line clamped (toggleable)
+4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
+5. **Category** - InvenTree part category name (toggleable)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
+7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
+8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
+9. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
+10. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+11. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+12. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+13. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+14. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
+15. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
+16. **Max Stock** - Upstream per-part stock ceiling; red badge when net stock plus suggested order would exceed it (toggleable, hidden unless a ceiling is set)
+17. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+
+**Column Visibility:**
+- Always visible: Component
+- Default visible: IPN, Description, Type, Category, Flags, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
+- Auto-hidden unless data present: Cut Length, Pieces, Inherited From, Max Stock
+- User can toggle visibility via gear icon in ControlBar (v0.11.23+)
+
+**Sort Logic Location**: `utils/bomDataProcessing.ts` (`sortBomData`, extracted from Panel.tsx in v0.11.6)
+
+---
+
+## Common Modification Patterns
+
+### Adding a New Column
+1. Update `BomItem` interface in `types/BomTypes.ts`
+2. Add field to enrichment in `views.py` (backend)
+3. Add column definition to `columns/bomTableColumns.tsx`
+4. Add sort case in `utils/bomDataProcessing.ts` (`sortBomData`)
+5. Update CSV export in `utils/csvExport.ts`
+6. Update `FlatBOMItemSerializer` in `serializers.py`
+
+### Modifying Calculations
+1. **Shortfall**: Update render function in shortfall column + sort logic
+2. **Stock levels**: Modify enrichment in `views.py`
+3. **Quantities**: Check `deduplicate_and_sum()` in `bom_traversal.py`
+
+### Changing Filters
+1. Update `utils/bomDataProcessing.ts` (filter/sort logic)
+2. Update `Panel.tsx` if new UI controls needed
+3. Update `components/ControlBar.tsx` if adding to control bar
+
+---
+
+## Build & Deployment
+
+### Local Development
+```bash
+# Frontend hot reload
+npm run dev
+
+# Build frontend
+npm run build
+
+# Build Python package
+python -m build
+```
+
+### Deployment (via toolkit scripts)
+```powershell
+# Build + Deploy in one step
+.\scripts\Deploy-Plugin.ps1 -Plugin FlatBOMGenerator -Server staging
+
+# Build only
+.\scripts\Build-Plugin.ps1 -Plugin FlatBOMGenerator
+```
+
+See `DEPLOYMENT-WORKFLOW.md` in this directory for the full checklist.
+
+### Build Output
+- Frontend: Compiles to `flat_bom_generator/static/Panel.js`
+- Python: Creates `.whl` file in `dist/`
+
+---
+
+## Testing Checklist
+
+**Backend:**
+- [ ] Circular BOM references handled gracefully
+- [ ] Duplicate parts aggregated correctly
+- [ ] Leaf-part filtering (no assemblies unless purchaseable)
+- [ ] Stock calculations (allocated, available) accurate
+
+**Frontend:**
+- [ ] Sortable columns sort correctly (Category, Cut Length, Pieces, Inherited From, and Max Stock are not sortable)
+- [ ] Search filters IPN and Part Name
+- [ ] Checkboxes affect shortfall calculation
+- [ ] Build quantity multiplies all requirements
+- [ ] Stats panel counts update dynamically
+- [ ] CSV export includes all fields
+- [ ] Pagination works correctly at every size
+- [ ] Component column displays full_name instead of part_name
+- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, and Max Stock columns
+- [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
+- [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
+- [ ] Column visibility toggles work correctly (gear icon)
+- [ ] Settings panel collapses after first generation (progressive disclosure)
+- [ ] Cutlist rows can be shown/hidden with checkbox
+
+**Integration:**
+- [ ] Panel appears on assembly part pages
+- [ ] Generate button triggers API call
+- [ ] Refresh button reloads data
+- [ ] Loading states display correctly
+- [ ] Error handling shows user-friendly messages
+
+The authoritative test inventory and strategy is `flat_bom_generator/tests/TEST-PLAN.md`.
+
+---
+
+## Known Patterns & Conventions
+
+### InvenTree Integration
+- Plugin panels use `InvenTreePluginContext` for part data
+- Part ID from: `context?.id || context?.instance?.pk`
+- API calls via: `context.api.get()`
+
+### React Patterns
+- Mantine UI components for all UI elements
+- `useMemo` for expensive computations (filtering, sorting)
+- Color scheme: green (good), orange (warning), red (critical), blue (info), cyan (building), yellow (allocated)
+
+### Python Patterns
+- Django ORM with `select_related()` for performance
+- Logger: `logger = logging.getLogger('inventree')`
+- Always handle `Part.DoesNotExist` exceptions
+
+### Accepted decisions
+`docs/adr/` holds the settled choices a change must not silently contradict — fixture-based integration tests (0001), DRF serializers everywhere (0002), code-first test methodology (0003), frontend extraction conventions (0004–0005), all-instances flag aggregation (0006), doc ownership (0007), variant-parts scope (0008), merged-row scalar nulling (0009).
+
+---
+
+## File Change Impact Map
+
+| Change This... | May Require Updating... |
+|----------------|-------------------------|
+| BomItem interface | views.py enrichment, columns array, CSV export |
+| Shortfall calculation | Shortfall column render, sort logic, "Need to Order" stat |
+| New state variable | Dependency arrays in useMemo hooks |
+| API response structure | TypeScript interfaces, error handling |
+| BOM traversal logic | Unit tests, documentation |
+| Stock calculations | Backend views.py, frontend calculations |
+
+---
+
+## Performance Considerations
+
+- **Backend**: Use `select_related()` to prefetch related models (default_supplier)
+- **Frontend**: `useMemo` for filtering/sorting large datasets
+- **Pagination**: Defaults to 50 items per page, adjustable
+- **Search**: Only searches IPN and Part Name (not description) for speed
+
+---
+
+## Version Information
+
+- **InvenTree**: Requires 1.6.0+ (MIN_VERSION floor, no upper bound)
+- **React**: 19.x
+- **Mantine**: 9.x
+- **DataTable**: mantine-datatable 9.2.2
+- **Python**: 3.12+
+- **Django**: Via InvenTree version
+
+---
+
+## Quick Command Reference
+
+```bash
+# Install dependencies
+npm install
+
+# TypeScript check
+npm run tsc
+
+# Build for production
+npm run build
+
+# Format code
+npx biome format --write .
+```
+
+---
+
+## Troubleshooting
+
+**"Column not sorting"**: Add accessor case to switch statement in sort logic
+
+**"Checkbox not affecting calculation"**: Check dependency arrays and calculation functions
+
+**"API returning wrong data"**: Verify enrichment in views.py and field names match BomItem interface
+
+**"Build fails"**: Check TypeScript errors with `npm run tsc`, ensure all imports exist
+
+**"Frontend changes not showing"**: Run `npm run build` then rebuild plugin package
+
+---
+
+## Keeping Documentation Current
+
+Update documentation immediately when you change:
+
+- **UI columns, labels, pagination, stats** → `README.md` (Table Columns / Usage) + this file's column and state sections
+- **BomItem interface or API response shape** → this file's interface/schema + `README.md` where user-visible
+- **Backend enrichment or calculations** → this file's calculations + `TEST-PLAN.md` where coverage changes
+- **Component structure or state variables** → this file's Key Files / State sections
+- **A settled decision a shipped change contradicts** → append an `## Amendment (ticket #N)` section to the affected ADR; never edit the frozen text
+
+Docs to keep synchronized: `README.md` (user-facing), this file (developer reference), `flat_bom_generator/tests/TEST-PLAN.md` (test inventory), `docs/adr/` (frozen decisions). Work tracking belongs in GitHub issues, not in docs.
+
+---
+
+*Relocated from `docs/ARCHITECTURE.md` under issue #11 (2026-11-07). Prior update history lives in `docs/archive/ARCHITECTURE.md`.*

@@ -12,9 +12,10 @@
 This document covers **testing strategy, execution, and improvement priorities** for the FlatBOMGenerator plugin.
 
 **Related Documents:**
-- [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan and architecture
-- [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) - Code-first validation approach
-- [ARCHITECTURE.md](../../docs/ARCHITECTURE.md) - Plugin architecture and API reference
+- [ARCHITECTURE.md](../../docs/reference/ARCHITECTURE.md) - Plugin architecture and API reference
+- [DEPLOYMENT-WORKFLOW.md](../../docs/reference/DEPLOYMENT-WORKFLOW.md) - Deployment checklist
+- [TEST-WRITING-METHODOLOGY.md](../../docs/archive/TEST-WRITING-METHODOLOGY.md) - Code-first validation case study (archived, non-authoritative)
+- Planned work lives in [GitHub issues](https://github.com/jrobelia/inventree-flat-bom-generator/issues)
 
 ---
 
@@ -597,12 +598,13 @@ class MyFeatureTests(InvenTreeTestCase):
 ## References
 
 **Toolkit Testing Documentation:**
-- [INVENTREE-DEV-SETUP.md](../../../../docs/reference/INVENTREE-DEV-SETUP.md) - Dev environment setup
+- Dev environment setup docs live in the `inventree-plugin-ai-toolkit` repo under `docs/reference/` (outside this checkout)
 
 **Plugin Documentation:**
-- [ROADMAP.md](../../docs/ROADMAP.md) - Plugin improvement plan
-- [TEST-WRITING-METHODOLOGY.md](../../docs/reference/TEST-WRITING-METHODOLOGY.md) - Code-first validation
+- [ARCHITECTURE.md](../../docs/reference/ARCHITECTURE.md) - Plugin architecture and API reference
 - [DEPLOYMENT-WORKFLOW.md](../../docs/reference/DEPLOYMENT-WORKFLOW.md) - Deployment checklist
+- [TEST-WRITING-METHODOLOGY.md](../../docs/archive/TEST-WRITING-METHODOLOGY.md) - Code-first validation (archived, non-authoritative)
+- Planned work lives in [GitHub issues](https://github.com/jrobelia/inventree-flat-bom-generator/issues)
 
 **External Resources:**
 - [InvenTree Plugin Testing](https://docs.inventree.org/en/latest/plugins/test/)

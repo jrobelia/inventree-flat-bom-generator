@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Deferred 1.6.x ideas are tracked in issue #16; accepted decisions are in
+> `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # InvenTree 1.1.7 → 1.6.3 Upgrade Review
 
 **Status:** Research complete — pending maintainer triage

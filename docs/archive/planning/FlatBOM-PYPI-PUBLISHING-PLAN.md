@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (PyPI: #38); accepted decisions are in
+> `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # PyPI Publishing Plan for FlatBOMGenerator
 
 **Status:** Optional - Git-based installation already works perfectly  

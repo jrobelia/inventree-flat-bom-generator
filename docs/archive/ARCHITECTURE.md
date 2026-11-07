@@ -1,3 +1,10 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues; accepted decisions are in `docs/adr/`;
+> operational docs are in `docs/reference/` — the living architecture
+> reference is `docs/reference/ARCHITECTURE.md`. See `docs/archive/README.md`.
+
+---
+
 # Architecture Guide - Flat BOM Generator Plugin
 
 > **Developer reference for plugin architecture, API, and technical implementation details**

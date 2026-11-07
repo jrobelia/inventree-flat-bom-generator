@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (charter: #40); accepted decisions are
+> in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Build Order Generator — UX & Flow Spec
 
 > **Status:** Vision / ideas phase — companion to PLUGIN-TRILOGY.md, Plugin 2

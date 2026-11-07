@@ -338,22 +338,13 @@ Plugin shows: 0 in stock (template has no physical stock)
 Reality: 150 total across variants (any could fulfill requirement)
 ```
 
-**Why Not Planned**: Correctly respecting `allow_variants` requires per-BomItem flag tracking through the entire traversal, deduplication, and stock calculation pipeline. The effort (8-10 hours) outweighs the value for this plugin's use case. Users who need variant-aware BOM analysis should use InvenTree's built-in BOM view and build order system, which handles variants natively. See [DEC-008 in decisions.md](docs/decisions.md) for full rationale.
+**Why Not Planned**: Correctly respecting `allow_variants` requires per-BomItem flag tracking through the entire traversal, deduplication, and stock calculation pipeline. The effort (8-10 hours) outweighs the value for this plugin's use case. Users who need variant-aware BOM analysis should use InvenTree's built-in BOM view and build order system, which handles variants natively. See [ADR-0008](docs/adr/0008-variant-parts-are-out-of-scope.md) for full rationale.
 
 ## Future Work
 
 ### Planned Features
 
-**Status**: v0.11.53 -- substitute parts, checkbox UX, and test infrastructure complete. Future work focuses on UX polish and new display features.
-
-1. **Mixed Flag Handling** (HIGH) - Separate line items when the same part has different optional/consumable flags across BOM lines
-2. **Child Row Visual Consistency** (MEDIUM) - Unified styling for cut-list, substitute, and mixed-flag child rows that feels InvenTree-native
-3. **UI Overhaul: Control Bar** (MEDIUM) - Replace checkbox clutter with a cleaner pattern (dropdown menu, collapsible panel, or toolbar redesign)
-4. **Pre-Generation Info Panel** (LOW) - Explain plugin-specific features before the user hits Generate
-5. **Rows-Per-Page Fix** (LOW) - Replace "All" with 500/1000 to match InvenTree's standard pagination
-6. **InvenTree Export Integration** (LOW) - Replace custom CSV with InvenTree's built-in export system (CSV, JSON, XLSX)
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed implementation plans and prioritization.
+Planned and proposed work is tracked as [GitHub issues](https://github.com/jrobelia/inventree-flat-bom-generator/issues) -- the `enhancement` and `needs-triage` labels mark the live backlog. Completed phases and retired planning documents are kept under `docs/archive/` for history (non-authoritative).
 
 ### Related Plugins
 

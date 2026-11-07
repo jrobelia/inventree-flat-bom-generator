@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (deferred refactor: #37); accepted
+> decisions are in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Frontend Refactoring Plan: InvenTree Pattern Alignment
 
 **Status:** Analysis Complete - Awaiting Decision  

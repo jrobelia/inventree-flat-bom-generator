@@ -1,3 +1,10 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Suite direction lives in the README's Related Plugins section and the
+> toolkit's `docs/reference/inventree-bom-build-buy-suite/` context; live
+> planning is in GitHub issues (charters: #18, #40). See `docs/archive/README.md`.
+
+---
+
 # InvenTree Assembly Plugin Suite
 
 > **Status:** Vision / ideas phase -- capturing intent and open questions  

@@ -5,9 +5,9 @@
 **Philosophy:** Test each change before stacking more changes
 
 **Related Documentation:**
-- [ROADMAP.md](ROADMAP.md) - Current refactoring status and priorities
+- [GitHub issues](https://github.com/jrobelia/inventree-flat-bom-generator/issues) - Planned work and priorities
 - [TEST-PLAN.md](../../flat_bom_generator/tests/TEST-PLAN.md) - Testing strategy
-- [TEST-WRITING-METHODOLOGY.md](TEST-WRITING-METHODOLOGY.md) - Code-first testing approach
+- [TEST-WRITING-METHODOLOGY.md](../archive/TEST-WRITING-METHODOLOGY.md) - Code-first testing approach (archived case study)
 
 ---
 

@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (charter: #40); accepted decisions are
+> in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Build Order Generator — Row Interaction Model & Tree Rendering
 
 > **Status:** Vision / ideas phase — companion to `BUILD-ORDER-GENERATOR-UX.md`

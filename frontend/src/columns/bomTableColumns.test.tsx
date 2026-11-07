@@ -179,3 +179,31 @@ describe('shortage field columns (ticket #15)', () => {
     expect(textOf(toOrder.render!(subChild, 0))).toBe('-[pcs]');
   });
 });
+
+describe('merged-row scalar cells (ticket #23, ruling R-025)', () => {
+  // A merged row nulls piece_count/inherited_from when its occurrences
+  // disagree; the cells render the null as a dimmed dash, never a stale
+  // first-seen value.
+
+  it('renders a dash for a null piece_count (occurrences disagreed)', () => {
+    const pieces = columnBy('piece_count');
+    expect(textOf(pieces.render!(makeItem({ piece_count: null }), 0))).toBe(
+      '-'
+    );
+  });
+
+  it('renders the count when merged occurrences agree', () => {
+    const pieces = columnBy('piece_count');
+    expect(textOf(pieces.render!(makeItem({ piece_count: 4 }), 0))).toBe('4');
+  });
+
+  it('renders a dash for null inherited_from and the IPN when set', () => {
+    const inherited = columnBy('inherited_from');
+    expect(
+      textOf(inherited.render!(makeItem({ inherited_from: null }), 0))
+    ).toBe('-');
+    expect(
+      textOf(inherited.render!(makeItem({ inherited_from: 'WELD-T' }), 0))
+    ).toBe('WELD-T');
+  });
+});

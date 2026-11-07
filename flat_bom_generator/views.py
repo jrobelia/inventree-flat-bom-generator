@@ -370,6 +370,18 @@ class FlatBOMView(APIView):
                         # net_stock may go negative - do not floor it
                         "net_stock": float(part_obj.net_stock or 0),
                         "quantity_to_order": float(part_obj.quantity_to_order or 0),
+                        # Stock ceiling (Part.maximum_stock, upstream 1.4.0+;
+                        # 0 means "no maximum" - part/api.py:756 excludes it)
+                        "maximum_stock": float(part_obj.maximum_stock)
+                        if part_obj.maximum_stock
+                        else None,
+                        "exceeds_max_stock": (
+                            float(part_obj.net_stock or 0)
+                            + float(part_obj.quantity_to_order or 0)
+                            > float(part_obj.maximum_stock)
+                        )
+                        if part_obj.maximum_stock
+                        else None,
                         "unit": part_obj.units
                         or "",  # Frontend expects 'unit' not 'units'
                         "link": part_obj.get_absolute_url()
@@ -513,6 +525,8 @@ class FlatBOMView(APIView):
                         "available": 0,
                         "net_stock": 0,
                         "quantity_to_order": 0,
+                        "maximum_stock": None,
+                        "exceeds_max_stock": None,
                         "unit": item.get("unit", ""),
                         "link": f"/part/{item['part_id']}/",
                     }

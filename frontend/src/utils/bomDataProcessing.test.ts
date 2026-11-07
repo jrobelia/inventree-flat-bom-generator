@@ -162,6 +162,25 @@ describe('flattenBomData', () => {
     expect(child.available).toBeNull();
   });
 
+  it('should null the max-stock fields on cut list children (ticket #26)', () => {
+    // The ceiling and its flag are stock-family fields - a cut row shows
+    // the same dash its siblings do, never the parent's leaked values.
+    const items = [
+      createBomItem({
+        part_id: 1,
+        maximum_stock: 40,
+        exceeds_max_stock: true,
+        cut_list: [{ size: 100, count: 2, unit: 'mm' }]
+      })
+    ];
+
+    const result = flattenBomData(items);
+
+    const child = result[1];
+    expect(child.maximum_stock).toBeNull();
+    expect(child.exceeds_max_stock).toBeNull();
+  });
+
   it('should handle empty cut list arrays', () => {
     const items = [
       createBomItem({

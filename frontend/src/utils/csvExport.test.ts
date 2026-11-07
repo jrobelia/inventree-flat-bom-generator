@@ -218,3 +218,90 @@ describe('Pieces / Inherited From columns (ticket #24, ruling R-026)', () => {
     expect(subChild.length).toBe(header.length);
   });
 });
+
+describe('Max Stock columns (ticket #26, ruling R-026 parity)', () => {
+  // The CSV mirrors the table (R-017): the Max Stock column and the
+  // exceeds_max_stock flag are contract fields on the API row, so both
+  // get CSV counterparts in grid order - after To Order, before Build
+  // Margin. An unset ceiling exports blank cells where the table shows a
+  // dimmed dash (same encoding as the merged-null scalars).
+  // Header literals below ('Max Stock', 'Exceeds Max Stock', 'To Order',
+  // 'Build Margin') pin the `headers` array in generateCsvContent
+  // (csvExport.ts).
+
+  it('adds Max Stock and Exceeds Max Stock between To Order and Build Margin', () => {
+    const items = [
+      createBomItem({ maximum_stock: 40, exceeds_max_stock: true })
+    ];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+
+    const maxCol = header.indexOf('Max Stock');
+    const flagCol = header.indexOf('Exceeds Max Stock');
+    expect(maxCol).toBe(header.indexOf('To Order') + 1);
+    expect(flagCol).toBe(maxCol + 1);
+    expect(header.indexOf('Build Margin')).toBe(flagCol + 1);
+
+    const cells = lines[1].split(',');
+    expect(cells[maxCol]).toBe('40');
+    expect(cells[flagCol]).toBe('Yes');
+    expect(cells.length).toBe(header.length);
+  });
+
+  it('exports the value and a No flag when the row is under its ceiling', () => {
+    const items = [
+      createBomItem({ maximum_stock: 150, exceeds_max_stock: false })
+    ];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const cells = lines[1].split(',');
+
+    expect(cells[header.indexOf('Max Stock')]).toBe('150');
+    expect(cells[header.indexOf('Exceeds Max Stock')]).toBe('No');
+  });
+
+  it('emits blank cells when no ceiling is set', () => {
+    const items = [
+      createBomItem({ maximum_stock: null, exceeds_max_stock: null })
+    ];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const cells = lines[1].split(',');
+
+    expect(cells[header.indexOf('Max Stock')]).toBe('');
+    expect(cells[header.indexOf('Exceeds Max Stock')]).toBe('');
+    expect(cells.length).toBe(header.length);
+  });
+
+  it('keeps child rows truthful: dashes on cut rows, blanks on substitutes', () => {
+    // Cut-list children show the stock-family dash like their sibling
+    // columns; substitute children carry neither field and export blank.
+    const items = [
+      createBomItem({
+        maximum_stock: 40,
+        exceeds_max_stock: true,
+        cut_list: [{ size: 500, count: 2, unit: 'mm' }],
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({})]
+      })
+    ];
+    const csv = generateCsvContent(flattenBomData(items), 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const maxCol = header.indexOf('Max Stock');
+    const flagCol = header.indexOf('Exceeds Max Stock');
+
+    const cutChild = lines[2].split(',');
+    expect(cutChild[maxCol]).toBe('-');
+    expect(cutChild[flagCol]).toBe('-');
+    expect(cutChild.length).toBe(header.length);
+
+    const subChild = lines[3].split(',');
+    expect(subChild[maxCol]).toBe('');
+    expect(subChild[flagCol]).toBe('');
+    expect(subChild.length).toBe(header.length);
+  });
+});

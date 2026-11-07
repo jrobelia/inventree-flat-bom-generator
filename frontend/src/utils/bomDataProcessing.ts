@@ -38,6 +38,8 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           available: null as any,
           net_stock: null as any,
           quantity_to_order: null as any,
+          maximum_stock: null,
+          exceeds_max_stock: null,
           default_supplier_name: '',
           cut_length: piece.size,
           cut_unit: piece.unit,

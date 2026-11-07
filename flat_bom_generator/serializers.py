@@ -235,6 +235,18 @@ class FlatBOMItemSerializer(serializers.Serializer):
         help_text="Upstream Part.quantity_to_order - suggested order quantity after stock, orders, and in-production builds (floored at 0)",
     )
 
+    maximum_stock = serializers.FloatField(
+        required=True,
+        allow_null=True,
+        help_text="Upstream Part.maximum_stock - per-part stock ceiling (None when unset; upstream stores 0 for 'no maximum')",
+    )
+
+    exceeds_max_stock = serializers.BooleanField(
+        required=True,
+        allow_null=True,
+        help_text="True when net_stock + quantity_to_order exceeds maximum_stock (None when no ceiling is set)",
+    )
+
     # Display metadata
     full_name = serializers.CharField(
         required=True, help_text="Full part name including IPN"
@@ -383,6 +395,8 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "available",
             "net_stock",
             "quantity_to_order",
+            "maximum_stock",
+            "exceeds_max_stock",
             # Display metadata
             "full_name",
             "description",

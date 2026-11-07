@@ -153,6 +153,8 @@ describe('Pieces / Inherited From columns (ticket #24, ruling R-026)', () => {
   // get CSV counterparts in the same relative position - after Cut Length /
   // Cut Unit, before In Stock. A merged row that nulls the per-line scalars
   // (R-025) exports a blank cell where the table shows a dimmed dash.
+  // Header literals below ('Pieces', 'Inherited From', 'Cut Unit',
+  // 'In Stock') pin the `headers` array in generateCsvContent (csvExport.ts).
 
   it('adds Pieces and Inherited From in grid order between Cut Unit and In Stock', () => {
     const items = [createBomItem({ piece_count: 4, inherited_from: 'WELD-T' })];

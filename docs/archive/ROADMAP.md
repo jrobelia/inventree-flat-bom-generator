@@ -301,19 +301,19 @@ These have grown organically and will diverge further as Mixed Flag Handling add
 ## References
 
 **Testing:**
-- [TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) - Test execution, strategy, priorities
-- [TEST-WRITING-METHODOLOGY.md](archive/TEST-WRITING-METHODOLOGY.md) - Code-first validation approach (archive)
+- [TEST-PLAN.md](../../flat_bom_generator/tests/TEST-PLAN.md) - Test execution, strategy, priorities
+- [TEST-WRITING-METHODOLOGY.md](TEST-WRITING-METHODOLOGY.md) - Code-first validation approach (archive)
 
 **Architecture:**
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Plugin architecture, API reference, patterns
 - [decisions.md](decisions.md) - Non-obvious technical choices and rationale
 
 **Warnings:**
-- [WARNINGS-ROADMAP.md](WARNINGS-ROADMAP.md) - Warning system expansion ideas
-- [ARCHITECTURE-WARNINGS.md](reference/ARCHITECTURE-WARNINGS.md) - Warning system implementation patterns
+- [WARNINGS-ROADMAP.md](planning/FlatBOM-WARNINGS-ROADMAP.md) - Warning system expansion ideas
+- [ARCHITECTURE-WARNINGS.md](../reference/ARCHITECTURE-WARNINGS.md) - Warning system implementation patterns
 
 **Deployment:**
-- [DEPLOYMENT-WORKFLOW.md](reference/DEPLOYMENT-WORKFLOW.md) - Deployment checklist and testing workflow
+- [DEPLOYMENT-WORKFLOW.md](../reference/DEPLOYMENT-WORKFLOW.md) - Deployment checklist and testing workflow
 
 ---
 

@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live decisions are in `docs/adr/` — DEC-001…009 migrated to ADR-0001…0009
+> (DEC-007 superseded by ADR-0007). See `docs/archive/README.md`.
+
+---
+
 # FlatBOMGenerator -- Decision Log
 
 Append-only. Newest entries at the bottom. Record non-obvious choices so

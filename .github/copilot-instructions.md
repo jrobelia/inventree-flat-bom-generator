@@ -7,14 +7,14 @@
 ## Before Starting Any Work
 
 1. `git log --oneline -10` and `git status` -- know what's deployed and uncommitted
-2. Read [docs/ROADMAP.md](../docs/ROADMAP.md) -- current status, next steps, what's done
-3. Read [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) -- module map, API reference, patterns
+2. Check the repo's open GitHub issues -- current status, next steps, what's planned
+3. Read [docs/reference/ARCHITECTURE.md](../docs/reference/ARCHITECTURE.md) -- module map, API reference, patterns
 
 **Other key docs (consult as needed):**
 - [docs/reference/DEPLOYMENT-WORKFLOW.md](../docs/reference/DEPLOYMENT-WORKFLOW.md) -- deploy checklist
 - [docs/archive/TEST-WRITING-METHODOLOGY.md](../docs/archive/TEST-WRITING-METHODOLOGY.md) -- code-first test case study (archive)
 - [flat_bom_generator/tests/TEST-PLAN.md](../flat_bom_generator/tests/TEST-PLAN.md) -- test strategy
-- [docs/decisions.md](../docs/decisions.md) -- append-only log of non-obvious choices
+- [docs/adr/](../docs/adr/) -- accepted decision records (ADRs)
 
 ---
 
@@ -67,9 +67,9 @@
 ## Documentation Principles
 
 Single source of truth -- each doc has ONE purpose. Link, don't duplicate.
-- **ARCHITECTURE.md** -- module map, tech stack, API reference
-- **ROADMAP.md** -- status, next steps, completed work archive
-- **decisions.md** -- append-only non-obvious choices
+- **docs/reference/ARCHITECTURE.md** -- module map, tech stack, API reference
+- **GitHub issues** -- status, next steps, planned work
+- **docs/adr/** -- accepted decision records
 - **README.md** -- user-facing: features, installation, usage
 
 Keep progress logs brief (3-5 lines, reference git commits).

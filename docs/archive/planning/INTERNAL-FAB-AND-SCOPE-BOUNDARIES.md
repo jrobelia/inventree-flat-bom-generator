@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (suite charters: #18, #40); accepted
+> decisions are in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Internal Fab & Scope Boundaries — Addendum
 
 > **Status:** Vision / ideas phase — companion to `PLUGIN-TRILOGY.md` and

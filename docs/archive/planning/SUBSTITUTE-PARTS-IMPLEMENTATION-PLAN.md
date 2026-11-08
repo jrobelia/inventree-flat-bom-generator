@@ -1,3 +1,10 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Substitute parts shipped at v0.11.53; CSV export for substitutes was
+> deliberately skipped (low value). Live planning is in GitHub issues;
+> accepted decisions are in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Substitute Parts Support - Implementation Plan
 
 **Status:** Phases 0-4 COMPLETE, Phase 5 PARTIAL -- deployed, pending staging verification  

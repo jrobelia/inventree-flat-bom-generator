@@ -8,7 +8,7 @@
 
 - This is the InvenTree Flat BOM Generator plugin.
 - Purpose: flatten nested BOMs into a single-level, purchaseable-parts view with quantity aggregation, stock/allocation awareness, and production planning.
-- Key docs: `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, `docs/decisions.md`.
+- Key docs: `README.md`, `docs/reference/ARCHITECTURE.md`, `docs/adr/`. Planned work lives in GitHub issues; retired planning docs are archived under `docs/archive/` (non-authoritative).
 - Backend package: `flat_bom_generator/`.
 - Frontend: `frontend/src/` (React/TypeScript/Mantine).
 - Tests: `flat_bom_generator/tests/unit/`, `flat_bom_generator/tests/integration/`, `frontend/` (Vitest/Playwright).

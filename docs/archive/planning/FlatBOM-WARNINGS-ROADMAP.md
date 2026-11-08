@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-11-07 — NON-AUTHORITATIVE.** Retained for provenance only.
+> Live planning is in GitHub issues (warning candidates: #39); accepted
+> decisions are in `docs/adr/`. See `docs/archive/README.md`.
+
+---
+
 # Warnings & Errors Roadmap
 
 **Scope:** Warnings specific to flat BOM generation, BOM structure issues, and plugin settings that affect output. We do NOT duplicate InvenTree's built-in warnings (stock levels, suppliers, etc.).

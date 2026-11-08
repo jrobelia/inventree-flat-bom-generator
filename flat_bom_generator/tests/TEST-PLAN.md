@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Test Plan
 
 **Last Updated**: November 7, 2026  
-**Test Count**: 340 backend tests (177 unit + 163 integration); frontend Vitest + Playwright run in the suite  
+**Test Count**: 346 backend tests (181 unit + 165 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
 
@@ -38,9 +38,9 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (177 tests total)
+**Files:** (181 tests total)
 - `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
-- `test_serializers.py` (53 tests) - DRF serializer validation
+- `test_serializers.py` (57 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
 - `test_cut_list.py` (21 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
 - `test_merged_row_scalars.py` (9 tests) - Merged-row per-line scalars null on disagreement (ruling R-025)
@@ -66,13 +66,13 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 **Location:** `flat_bom_generator/tests/integration/*.py`  
 **Purpose:** Test with real InvenTree Part/BomItem/Stock models
 
-**Files:** (163 tests total)
+**Files:** (165 tests total)
 - `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
 - `test_upstream_bom_semantics.py` (15 tests) - piece_count, inherited lines, effective consumable, merged-row scalar nulls (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
 - `test_plugin_core.py` (15 tests) - Plugin registration, URLs, panels
 - `test_error_scenarios.py` (14 tests) - Error handling paths
-- `test_view_function.py` (16 tests) - FlatBOMView endpoint testing
+- `test_view_function.py` (18 tests) - FlatBOMView endpoint testing
 - `test_complex_bom_structures.py` (13 tests) - Multi-path/deep/wide BOM fixtures
 - `test_views_integration.py` (12 tests) - BOM traversal workflow
 - `test_query_parameters.py` (10 tests) - max_depth and query params

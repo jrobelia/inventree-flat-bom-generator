@@ -73,6 +73,8 @@ export function generateCsvContent(
     'On Order',
     'Net Stock',
     'To Order',
+    'Max Stock',
+    'Exceeds Max Stock',
     'Build Margin'
   ];
 
@@ -96,6 +98,8 @@ export function generateCsvContent(
         item.cut_unit || item.unit || '',
         item.piece_count ?? '',
         item.inherited_from ?? '',
+        '-',
+        '-',
         '-',
         '-',
         '-',
@@ -136,6 +140,8 @@ export function generateCsvContent(
       item.on_order,
       item.net_stock,
       item.quantity_to_order,
+      item.maximum_stock ?? '',
+      item.exceeds_max_stock == null ? '' : boolCell(item.exceeds_max_stock),
       balance
     ];
   });

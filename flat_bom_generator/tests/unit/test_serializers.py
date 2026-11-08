@@ -152,6 +152,8 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "available": 3.0,
             "net_stock": 6.0,
             "quantity_to_order": 0.0,
+            "maximum_stock": 100.0,
+            "exceeds_max_stock": False,
             # Display metadata (required)
             "full_name": "Test Part Full Name",
             "description": "Test description",
@@ -289,6 +291,43 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("quantity_to_order", serializer.errors)
 
+    def test_maximum_stock_fields_serialize(self):
+        """Ceiling and breach flag pass through (ticket #26)."""
+        data = self.get_valid_bom_item_data()
+        data["maximum_stock"] = 50.0
+        data["exceeds_max_stock"] = True
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+        self.assertEqual(serializer.validated_data["maximum_stock"], 50.0)
+        self.assertTrue(serializer.validated_data["exceeds_max_stock"])
+
+    def test_maximum_stock_null_pair_serializes(self):
+        """No ceiling: maximum_stock=None pairs with exceeds_max_stock=None -
+        the API surface must accept both nulls (upstream stores 0 for unset)."""
+        data = self.get_valid_bom_item_data()
+        data["maximum_stock"] = None
+        data["exceeds_max_stock"] = None
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
+        self.assertIsNone(serializer.validated_data["maximum_stock"])
+        self.assertIsNone(serializer.validated_data["exceeds_max_stock"])
+
+    def test_missing_maximum_stock_fails(self):
+        """maximum_stock is a required row field (part of the API row shape)."""
+        data = self.get_valid_bom_item_data()
+        del data["maximum_stock"]
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("maximum_stock", serializer.errors)
+
+    def test_missing_exceeds_max_stock_fails(self):
+        """exceeds_max_stock is a required row field (part of the API row shape)."""
+        data = self.get_valid_bom_item_data()
+        del data["exceeds_max_stock"]
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("exceeds_max_stock", serializer.errors)
+
     def test_missing_required_part_id(self):
         """Missing part_id should fail validation."""
         data = self.get_valid_bom_item_data()
@@ -410,6 +449,8 @@ class FlatBOMResponseSerializerTests(unittest.TestCase):
             "available": 40.0,
             "net_stock": 40.0,
             "quantity_to_order": 0.0,
+            "maximum_stock": None,
+            "exceeds_max_stock": None,
             "image": None,
             "thumbnail": None,
             "link": "/part/456/",

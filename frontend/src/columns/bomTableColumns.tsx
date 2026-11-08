@@ -693,6 +693,51 @@ export function createBomTableColumns({
       }
     },
     {
+      accessor: 'maximum_stock',
+      title: 'Max Stock',
+      sortable: false,
+      switchable: true,
+      render: (record) => {
+        if (record.is_child_row || record.maximum_stock == null) {
+          return (
+            <Text size='sm' c='dimmed'>
+              -
+            </Text>
+          );
+        }
+        // Over-ceiling renders the shortage-badge pattern: the ceiling
+        // value in a red filled badge, like a negative net_stock
+        if (record.exceeds_max_stock) {
+          return (
+            <Group gap='xs' wrap='nowrap' justify='space-between'>
+              <Badge
+                color='red'
+                variant='filled'
+                style={{ minWidth: 'fit-content' }}
+              >
+                {record.maximum_stock.toFixed(2)}
+              </Badge>
+              {record.unit && (
+                <Text size='xs' c='dimmed'>
+                  [{record.unit}]
+                </Text>
+              )}
+            </Group>
+          );
+        }
+        return (
+          <Group gap='xs' wrap='nowrap' justify='space-between'>
+            <Text size='sm'>{record.maximum_stock.toFixed(2)}</Text>
+            {record.unit && (
+              <Text size='xs' c='dimmed'>
+                [{record.unit}]
+              </Text>
+            )}
+          </Group>
+        );
+      }
+    },
+    {
       accessor: 'shortfall',
       title: 'Build Margin',
       sortable: true,

@@ -532,6 +532,74 @@ class FlatBOMViewIntegrationTests(InvenTreeTestCase):
         coml1_item = items_by_id[self.coml1.pk]
         self.assertEqual(coml1_item['quantity_to_order'], 50.0)  # 150 - max(100, 0) - 0 - 0
 
+    def test_bom_items_include_maximum_stock_fields(self):
+        """API rows carry the ceiling and flag keys on every row (ticket #26).
+
+        Unset ceiling serializes as a null pair: upstream stores
+        maximum_stock=0 for 'no maximum' (part/api.py:756 excludes it),
+        so the row emits maximum_stock=None and exceeds_max_stock=None.
+        """
+        request = self.factory.get(f'/api/plugin/flat-bom-generator/flat-bom/{self.tla.pk}/')
+        force_authenticate(request, user=self.user)
+        response = self.view(request, part_id=self.tla.pk)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        bom_items = response.data['bom_items']
+        self.assertGreater(len(bom_items), 0, "Should have BOM items")
+
+        for item in bom_items:
+            self.assertIn('maximum_stock', item)
+            self.assertIn('exceeds_max_stock', item)
+            part = Part.objects.get(pk=item['part_id'])
+            if part.maximum_stock:
+                self.assertEqual(
+                    item['maximum_stock'],
+                    float(part.maximum_stock),
+                    f"part {item['part_id']}: maximum_stock must equal Part.maximum_stock",
+                )
+            else:
+                self.assertIsNone(
+                    item['maximum_stock'],
+                    f"part {item['part_id']}: unset ceiling must emit null, not 0",
+                )
+                self.assertIsNone(item['exceeds_max_stock'])
+
+    def test_exceeds_max_stock_flag_tracks_ceiling(self):
+        """The flag is net_stock + quantity_to_order > maximum_stock (ticket #26).
+
+        - coml2: 5 in stock, no orders -> net 5 + 0 to-order vs ceiling 4 -> over
+        - coml1: 100 in stock -> net 100 vs ceiling 150 -> under
+        - fab: no ceiling -> null flag (never false-positive)
+        """
+        self.coml2.maximum_stock = 4
+        self.coml2.save()
+        self.coml1.maximum_stock = 150
+        self.coml1.save()
+
+        request = self.factory.get(f'/api/plugin/flat-bom-generator/flat-bom/{self.tla.pk}/')
+        force_authenticate(request, user=self.user)
+        response = self.view(request, part_id=self.tla.pk)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        items_by_id = {item['part_id']: item for item in response.data['bom_items']}
+
+        over = items_by_id[self.coml2.pk]
+        self.assertEqual(over['maximum_stock'], 4.0)
+        self.assertTrue(over['exceeds_max_stock'])
+        # net_stock + quantity_to_order (5 + 0) vs the ceiling
+        self.assertGreater(
+            over['net_stock'] + over['quantity_to_order'],
+            over['maximum_stock'],
+        )
+
+        under = items_by_id[self.coml1.pk]
+        self.assertEqual(under['maximum_stock'], 150.0)
+        self.assertFalse(under['exceeds_max_stock'])
+
+        unset = items_by_id[self.fab.pk]
+        self.assertIsNone(unset['maximum_stock'])
+        self.assertIsNone(unset['exceeds_max_stock'])
+
     def test_response_is_json_serializable(self):
         """Response data should be JSON serializable (no Django model objects)."""
         import json

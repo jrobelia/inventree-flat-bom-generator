@@ -67,6 +67,11 @@ export interface BomItem {
   net_stock: number; // total_stock - allocated + on_order; can go negative
   quantity_to_order: number; // upstream suggested order quantity (floored at 0)
 
+  // Stock ceiling (upstream Part.maximum_stock, 1.4.0+, ticket #26):
+  // null = no ceiling (upstream stores 0 for 'no maximum')
+  maximum_stock?: number | null;
+  exceeds_max_stock?: boolean | null; // net_stock + quantity_to_order > maximum_stock
+
   // Procurement
   default_supplier_name?: string;
 

@@ -55,6 +55,30 @@ function textOf(node: ReactNode): string {
   return '';
 }
 
+/**
+ * True when any element in the tree has props matching the predicate
+ * (e.g. a Badge carrying color='red').
+ */
+function hasElementWith(
+  node: ReactNode,
+  pred: (props: Record<string, unknown>) => boolean
+): boolean {
+  if (node == null || typeof node !== 'object') {
+    return false;
+  }
+  if (Array.isArray(node)) {
+    return node.some((child) => hasElementWith(child, pred));
+  }
+  if ('props' in node) {
+    const el = node as ReactElement<Record<string, unknown>>;
+    if (pred(el.props)) {
+      return true;
+    }
+    return hasElementWith(el.props.children as ReactNode, pred);
+  }
+  return false;
+}
+
 function makeItem(overrides: Partial<BomItem>): BomItem {
   return {
     part_id: 1,
@@ -177,6 +201,91 @@ describe('shortage field columns (ticket #15)', () => {
     });
     expect(textOf(net.render!(subChild, 0))).toBe('-[pcs]');
     expect(textOf(toOrder.render!(subChild, 0))).toBe('-[pcs]');
+  });
+});
+
+describe('Max Stock column (ticket #26)', () => {
+  // maximum_stock is the part's stock ceiling (upstream Part.maximum_stock;
+  // null = no ceiling). The column joins the auto-managed family (Cut
+  // Length / Pieces / Inherited From): not sortable, present in Select
+  // Columns, auto-hidden unless a row carries a ceiling. exceeds_max_stock
+  // renders the shortage-badge pattern - the ceiling value in a red filled
+  // badge like a negative net_stock.
+
+  it('sits between To Order and Build Margin, not sortable, in Select Columns', () => {
+    const columns = createBomTableColumns({
+      buildQuantity: 1,
+      includeAllocations: true,
+      includeOnOrder: true,
+      calculateShortfall: () => 0
+    });
+    const accessors = columns.map((c) => c.accessor);
+
+    const maxCol = columnBy('maximum_stock');
+    expect(maxCol.title).toBe('Max Stock');
+    expect(maxCol.sortable).toBe(false);
+    expect(accessors.indexOf('maximum_stock')).toBe(
+      accessors.indexOf('quantity_to_order') + 1
+    );
+    expect(accessors.indexOf('maximum_stock')).toBeLessThan(
+      accessors.indexOf('shortfall')
+    );
+
+    // Select Columns menu membership is gated by `toggleable !== false`
+    // (ControlBar.tsx) - like the rest of the family the column sets no
+    // `toggleable`, so it appears.
+    const menuAccessors = columns
+      .filter((c) => (c as { toggleable?: boolean }).toggleable !== false)
+      .map((c) => c.accessor);
+    expect(menuAccessors).toContain('maximum_stock');
+  });
+
+  it('renders the ceiling with unit when the row is under it', () => {
+    const maxCol = columnBy('maximum_stock');
+    const el = maxCol.render!(
+      makeItem({ maximum_stock: 100, exceeds_max_stock: false }),
+      0
+    ) as ReactNode;
+
+    expect(textOf(el)).toBe('100.00[pcs]');
+    expect(
+      hasElementWith(el, (p) => p.color === 'red' || p.color === 'orange')
+    ).toBe(false);
+  });
+
+  it('renders the ceiling in a red filled badge when the row exceeds it', () => {
+    const maxCol = columnBy('maximum_stock');
+    const el = maxCol.render!(
+      makeItem({ maximum_stock: 40, exceeds_max_stock: true }),
+      0
+    ) as ReactNode;
+
+    expect(textOf(el)).toBe('40.00[pcs]');
+    expect(
+      hasElementWith(el, (p) => p.color === 'red' && p.variant === 'filled')
+    ).toBe(true);
+  });
+
+  it('renders a dimmed dash when unset and on child rows', () => {
+    const maxCol = columnBy('maximum_stock');
+
+    expect(
+      textOf(
+        maxCol.render!(
+          makeItem({ maximum_stock: null, exceeds_max_stock: null }),
+          0
+        )
+      )
+    ).toBe('-');
+
+    // A cut-list child never shows the ceiling, even if values leaked on
+    const cutChild = makeItem({
+      is_child_row: true,
+      child_row_type: 'cutlist',
+      maximum_stock: 40,
+      exceeds_max_stock: true
+    });
+    expect(textOf(maxCol.render!(cutChild, 0))).toBe('-');
   });
 });
 

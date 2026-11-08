@@ -61,6 +61,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "available": 40.0,
       "net_stock": 140.0,
       "quantity_to_order": 0.0,
+      "maximum_stock": 200.0,
+      "exceeds_max_stock": false,
       "image": "/media/part_images/fab-100.jpg",
       "thumbnail": "/media/part_images/fab-100_thumbnail.jpg",
       "link": "/part/456/"
@@ -96,6 +98,8 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `available`: Total stock minus allocated
 - `net_stock`: Upstream `Part.net_stock` - total stock minus allocated plus on-order; can go negative (shortage signal)
 - `quantity_to_order`: Upstream `Part.quantity_to_order` - suggested order quantity after stock, open orders, and in-production builds (floored at 0)
+- `maximum_stock`: Upstream `Part.maximum_stock` - per-part stock ceiling (null when unset; upstream stores 0 for "no maximum")
+- `exceeds_max_stock`: True when `net_stock + quantity_to_order` exceeds `maximum_stock` (null when no ceiling is set)
 - `image`: Full-size image URL (null if none)
 - `thumbnail`: Thumbnail image URL (null if none)
 - `link`: URL to part detail page
@@ -345,6 +349,8 @@ interface BomItem {
     on_order: number;       // Incoming from POs
     net_stock: number;      // in_stock - allocated + on_order (upstream; can go negative)
     quantity_to_order: number; // upstream suggested order quantity (floored at 0)
+    maximum_stock?: number | null; // upstream per-part stock ceiling (null = no ceiling)
+    exceeds_max_stock?: boolean | null; // net_stock + quantity_to_order > maximum_stock
     building?: number;      // In production
     
     // Procurement
@@ -395,7 +401,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**16 Columns** (sortable except Category, Cut Length, Pieces, and Inherited From; some toggleable):
+**17 Columns** (sortable except Category, Cut Length, Pieces, Inherited From, and Max Stock; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
@@ -411,12 +417,13 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 13. **On Order** - Blue badge if > 0 with [unit] (toggleable)
 14. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
 15. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
-16. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+16. **Max Stock** - Upstream per-part stock ceiling; red badge when net stock plus suggested order would exceed it (toggleable, hidden unless a ceiling is set)
+17. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
 **Column Visibility:**
 - Always visible: Component
 - Default visible: IPN, Description, Type, Category, Flags, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
-- Auto-hidden unless data present: Cut Length, Pieces, Inherited From
+- Auto-hidden unless data present: Cut Length, Pieces, Inherited From, Max Stock
 - User can toggle visibility via gear icon in ControlBar (v0.11.23+)
 
 **Sort Logic Location**: `utils/bomDataProcessing.ts` (`sortBomData`, extracted from Panel.tsx in v0.11.6)
@@ -483,7 +490,7 @@ python -m build
 - [ ] Stock calculations (allocated, available) accurate
 
 **Frontend:**
-- [ ] Sortable columns sort correctly (Category, Cut Length, Pieces, and Inherited From are not sortable)
+- [ ] Sortable columns sort correctly (Category, Cut Length, Pieces, Inherited From, and Max Stock are not sortable)
 - [ ] Search filters IPN and Part Name
 - [ ] Checkboxes affect shortfall calculation
 - [ ] Build quantity multiplies all requirements
@@ -491,7 +498,7 @@ python -m build
 - [ ] CSV export includes all fields
 - [ ] Pagination includes "All" option and works correctly
 - [ ] Component column displays full_name instead of part_name
-- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, and To Order columns
+- [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, and Max Stock columns
 - [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
 - [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
 - [ ] Column visibility toggles work correctly (gear icon)

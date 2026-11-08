@@ -19,6 +19,7 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
 - **Upstream Shortage Signals**: Net Stock and To Order columns surface InvenTree's own shortage math — net position can go negative
+- **Stock Ceilings**: Max Stock column surfaces each part's `maximum_stock` and flags rows where stock plus the suggested order would exceed it
 
 ### User Interface
 
@@ -260,9 +261,10 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **On Order** | Incoming stock from purchase orders with [unit] (dimmed when checkbox unchecked) |
 | **Net Stock** | Upstream net position: stock on hand minus allocated plus on order (red badge when negative — a shortage; green when positive) with [unit] |
 | **To Order** | Upstream suggested order quantity — demand minus stock, open orders, and in-production builds (orange badge when > 0) with [unit] |
+| **Max Stock** | Upstream per-part stock ceiling — blank when unset; red badge when net stock plus suggested order would exceed it |
 | **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
-All columns except **Category**, **Cut Length**, **Pieces**, and **Inherited From** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
+All columns except **Category**, **Cut Length**, **Pieces**, **Inherited From**, and **Max Stock** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
 
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)
@@ -303,6 +305,9 @@ The plugin uses a recursive traversal with the `visited.copy()` pattern:
 - Can go negative; a negative value is a shortage signal the floored `available` hides
 
 **To Order** = `Part.quantity_to_order` (upstream) = open order demand minus the larger of stock-on-hand and minimum stock, minus on-order and in-production quantities (floored at 0)
+
+**Max Stock** = `Part.maximum_stock` (upstream) = per-part stock ceiling (blank when unset)
+- **Exceeds Max Stock** flags a row when Net Stock + To Order > Max Stock — the suggested order would push the part past its ceiling
 
 **Build Margin** = Stock Used + (On Order if enabled) - Total Required
 - Where Stock Used = Available (if allocations enabled) or Total Stock (if disabled)

@@ -156,6 +156,8 @@ class BOMTraversalIntegrationTests(InvenTreeTestCase):
             'on_order': 0.0,
             'net_stock': 0.0,
             'quantity_to_order': 0.0,
+            'maximum_stock': None,  # Required (null = no ceiling)
+            'exceeds_max_stock': None,  # Required (null = no ceiling)
             'link': f'/part/{part.pk}/',  # Required
         }
         serializer = FlatBOMItemSerializer(data=item_data)

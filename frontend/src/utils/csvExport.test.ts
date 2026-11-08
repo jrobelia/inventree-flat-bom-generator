@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { BomItem } from '../types/BomTypes';
+import type { BomItem, SubstitutePart } from '../types/BomTypes';
 import { flattenBomData } from './bomDataProcessing';
 import { generateCsvContent } from './csvExport';
 
@@ -28,6 +28,33 @@ function createBomItem(overrides: Partial<BomItem>): BomItem {
     is_child_row: false,
     ...overrides
   } as BomItem;
+}
+
+// Helper to create a minimal SubstitutePart for testing (same shape as
+// bomDataProcessing.test.ts)
+function createSubstitutePart(
+  overrides: Partial<SubstitutePart>
+): SubstitutePart {
+  return {
+    substitute_id: 1,
+    part_id: 99,
+    ipn: 'SUB-001',
+    part_name: 'Substitute Part',
+    full_name: 'SUB-001 | Substitute Part',
+    description: '',
+    unit: 'pcs',
+    parent_total_qty: 5,
+    in_stock: 0,
+    on_order: 0,
+    allocated: 0,
+    available: 0,
+    net_stock: 0,
+    quantity_to_order: 0,
+    image: null,
+    thumbnail: null,
+    link: '',
+    ...overrides
+  };
 }
 
 describe('generateCsvContent', () => {
@@ -118,5 +145,76 @@ describe('generateCsvContent', () => {
     const cutUnitCol = header.indexOf('Cut Unit');
 
     expect(lines[2].split(',')[cutUnitCol]).toBe('mm');
+  });
+});
+
+describe('Pieces / Inherited From columns (ticket #24, ruling R-026)', () => {
+  // The CSV mirrors the table (R-017): the two columns #14 added to the grid
+  // get CSV counterparts in the same relative position - after Cut Length /
+  // Cut Unit, before In Stock. A merged row that nulls the per-line scalars
+  // (R-025) exports a blank cell where the table shows a dimmed dash.
+  // Header literals below ('Pieces', 'Inherited From', 'Cut Unit',
+  // 'In Stock') pin the `headers` array in generateCsvContent (csvExport.ts).
+
+  it('adds Pieces and Inherited From in grid order between Cut Unit and In Stock', () => {
+    const items = [createBomItem({ piece_count: 4, inherited_from: 'WELD-T' })];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+
+    const piecesCol = header.indexOf('Pieces');
+    const inheritedCol = header.indexOf('Inherited From');
+    expect(piecesCol).toBeGreaterThan(-1);
+    expect(inheritedCol).toBeGreaterThan(-1);
+    // Grid: ... Cut Length, Pieces, Inherited From, In Stock ...
+    expect(piecesCol).toBe(header.indexOf('Cut Unit') + 1);
+    expect(inheritedCol).toBe(piecesCol + 1);
+    expect(header.indexOf('In Stock')).toBe(inheritedCol + 1);
+
+    const cells = lines[1].split(',');
+    expect(cells[piecesCol]).toBe('4');
+    expect(cells[inheritedCol]).toBe('WELD-T');
+  });
+
+  it('emits blank cells when a merged row nulls the scalars (R-025)', () => {
+    const items = [createBomItem({ piece_count: null, inherited_from: null })];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const cells = lines[1].split(',');
+
+    expect(cells[header.indexOf('Pieces')]).toBe('');
+    expect(cells[header.indexOf('Inherited From')]).toBe('');
+    expect(cells.length).toBe(header.length);
+  });
+
+  it('keeps child rows truthful: blank Pieces, row-level inherited_from', () => {
+    // A cut-list child carries piece_count: null but inherits the parent's
+    // inherited_from (the table renders that IPN on the child row too);
+    // a substitute child carries neither field.
+    const items = [
+      createBomItem({
+        inherited_from: 'WELD-T',
+        cut_list: [{ size: 500, count: 2, unit: 'mm' }],
+        has_substitutes: true,
+        substitute_parts: [createSubstitutePart({})]
+      })
+    ];
+    const csv = generateCsvContent(flattenBomData(items), 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const piecesCol = header.indexOf('Pieces');
+    const inheritedCol = header.indexOf('Inherited From');
+
+    // Row order: parent, cut-list child, substitute child
+    const cutChild = lines[2].split(',');
+    expect(cutChild[piecesCol]).toBe('');
+    expect(cutChild[inheritedCol]).toBe('WELD-T');
+    expect(cutChild.length).toBe(header.length);
+
+    const subChild = lines[3].split(',');
+    expect(subChild[piecesCol]).toBe('');
+    expect(subChild[inheritedCol]).toBe('');
+    expect(subChild.length).toBe(header.length);
   });
 });

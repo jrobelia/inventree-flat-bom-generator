@@ -460,6 +460,11 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     Same sizes merge across all expanded parents; mixed sizes stay separate.
     The parent assembly's supplier status is irrelevant (ruling R-016).
 
+    Per-line scalars (piece_count, inherited_from) survive the merge only
+    when every occurrence agrees; a merged row whose occurrences disagree
+    emits null for that scalar rather than a misleading first-seen value
+    (ruling R-025).
+
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
 
@@ -544,8 +549,8 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                 "internal_supplier": leaf.get("internal_supplier", False),
                 "part_type": leaf["part_type"],
                 "note": leaf.get("note", ""),  # BOM item notes
-                "piece_count": leaf.get("piece_count", 1),
-                "inherited_from": leaf.get("inherited_from"),
+                "piece_count_values": set(),  # per-occurrence piece counts (R-025)
+                "inherited_from_values": set(),  # per-occurrence markers (R-025)
                 "assembly_no_children": leaf.get("assembly_no_children", False),
                 "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
                 "optional": leaf.get(
@@ -567,6 +572,11 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             part_info[key]["optional_instances"] += 1
         if leaf.get("consumable", False):
             part_info[key]["consumable_instances"] += 1
+
+        # Per-line scalars (ruling R-025): collect every occurrence's value;
+        # the merged row emits the scalar only when the set is singleton.
+        part_info[key]["piece_count_values"].add(leaf.get("piece_count", 1))
+        part_info[key]["inherited_from_values"].add(leaf.get("inherited_from"))
 
     all_keys = set(totals.keys())
 
@@ -590,6 +600,12 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             and info["consumable_instances"] == info["total_instances"]
         )
 
+        # Per-line scalars (ruling R-025): a merged row shows the value only
+        # when every occurrence agreed; disagreement emits null so the grid
+        # renders a blank cell rather than one occurrence's value.
+        piece_counts = info["piece_count_values"]
+        inherited_froms = info["inherited_from_values"]
+
         row = {
             "part_id": part_info[key]["part_id"],
             "total_qty": totals.get(key, 0),
@@ -605,8 +621,12 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             "note": part_info[key]["note"],  # BOM item notes
             "reference": combined_reference,  # Aggregated note strings
             "cut_list": list(cut_lists[key].values()) or None,
-            "piece_count": part_info[key]["piece_count"],
-            "inherited_from": part_info[key]["inherited_from"],
+            "piece_count": (
+                next(iter(piece_counts)) if len(piece_counts) == 1 else None
+            ),
+            "inherited_from": (
+                next(iter(inherited_froms)) if len(inherited_froms) == 1 else None
+            ),
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
             "optional": is_optional,

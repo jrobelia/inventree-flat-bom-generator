@@ -84,7 +84,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `default_supplier_id`: ID of primary SupplierPart (null if none)
 - `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
 - `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
-- `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line)
+- `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line; null when merged occurrences disagree, ruling R-025)
 - `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
 - `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)

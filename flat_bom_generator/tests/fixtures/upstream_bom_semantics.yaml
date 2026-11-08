@@ -11,12 +11,17 @@
 #   +- Linear Rail (8105) 500mm x1 piece           -> 500mm   (500 x 1)
 #   +- M8 Bolt (8106) 10 each x5 pieces            -> 50 each (no cut entry)
 #   +- Epoxy (8107) 2 ml x1 - Part.consumable=True, line flag False
+#   +- Dowel Pin (8130) 10pcs x3 under A and under B -> merged row keeps
+#     piece_count=3 (uniform scalars carry through the merge, R-025)
 #
 #   Template Weldment WELD-T (8110) - is_template, assembly
 #   +- Bracket (8120) x2 inherited:true   -> propagates to variant
 #   +- Hidden Line (8122) x9 inherited:false -> stays off variant BOM
+#   +- Gasket (8131) x2 inherited:true    -> also direct on variant; the
+#     merged row nulls inherited_from on disagreement (R-025)
 #   Variant WELD-V (8111) - variant_of=8110, assembly
 #   +- Cover (8121) x1 - direct line (inherited_from null)
+#   +- Gasket (8131) x1 - direct line beside the inherited one
 #   BomItemSubstitute on the inherited bracket line -> Alt Bracket (8123)
 #
 # piece_count is upstream BomItem semantics: quantity is the size of one
@@ -467,3 +472,99 @@
   fields:
     bom_item: 81020
     part: 8123
+
+# Merged-row scalar coverage (issue #23, ruling R-025): same part under two
+# parents at an identical piece spec, and the same part on a variant both
+# directly and via template inheritance.
+- model: part.part
+  pk: 8130
+  fields:
+    name: 'Dowel Pin'
+    IPN: 'SEM-PIN'
+    description: 'Pin under both weldments at identical piece spec'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8130
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 8131
+  fields:
+    name: 'Cover Gasket'
+    IPN: 'SEM-GSK'
+    description: 'Gasket on the variant directly and via template inheritance'
+    category: 8100
+    active: true
+    assembly: false
+    purchaseable: true
+    salable: false
+    is_template: false
+    variant_of: null
+    units: 'pcs'
+    tree_id: 8131
+    level: 0
+    lft: 1
+    rght: 2
+
+# Same part, same piece_count, two parents - merged row keeps the value
+- model: part.bomitem
+  pk: 81014
+  fields:
+    part: 8101
+    sub_part: 8130
+    quantity: 10.0
+    raw_amount: '10'
+    piece_count: 3
+    reference: 'P1'
+    optional: false
+    inherited: false
+    validated: true
+
+- model: part.bomitem
+  pk: 81015
+  fields:
+    part: 8102
+    sub_part: 8130
+    quantity: 10.0
+    raw_amount: '10'
+    piece_count: 3
+    reference: 'P2'
+    optional: false
+    inherited: false
+    validated: true
+
+# Same part on the variant directly and by template inheritance - the
+# occurrences disagree on inherited_from, so the merged row nulls it
+- model: part.bomitem
+  pk: 81023
+  fields:
+    part: 8110
+    sub_part: 8131
+    quantity: 2.0
+    raw_amount: '2'
+    piece_count: 1
+    reference: 'T3'
+    optional: false
+    inherited: true   # propagates to variant WELD-V beside its own line
+    validated: true
+
+- model: part.bomitem
+  pk: 81024
+  fields:
+    part: 8111
+    sub_part: 8131
+    quantity: 1.0
+    raw_amount: '1'
+    piece_count: 1
+    reference: 'V2'
+    optional: false
+    inherited: false
+    validated: true

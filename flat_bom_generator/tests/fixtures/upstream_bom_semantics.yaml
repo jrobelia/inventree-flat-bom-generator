@@ -19,7 +19,8 @@
 #   +- Bracket (8120) x2 inherited:true   -> propagates to variant
 #   +- Hidden Line (8122) x9 inherited:false -> stays off variant BOM
 #   +- Gasket (8131) x2 inherited:true    -> also direct on variant; the
-#     merged row nulls inherited_from on disagreement (R-025)
+#     merged row renders 'WELD-T, local' (#45 ruling, superseding R-025's
+#     disagreement-null)
 #   Variant WELD-V (8111) - variant_of=8110, assembly
 #   +- Cover (8121) x1 - direct line (inherited_from null)
 #   +- Gasket (8131) x1 - direct line beside the inherited one

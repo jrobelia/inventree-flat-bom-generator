@@ -163,16 +163,37 @@ class UpstreamBomSemanticsTests(InvenTreeTestCase):
         self.assertEqual(pin['piece_count'], 1)
         self.assertEqual(pin['total_qty'], 60.0)
 
-    def test_disagreeing_inherited_from_nulls_on_merge(self):
+    def test_mixed_inherited_direct_marks_local(self):
         """The gasket is on the variant directly AND via the template's
-        inherited line - the merged row nulls inherited_from (R-025) while
-        piece_count normalizes to the lump's 1 (#44)."""
+        inherited line - the merged row renders the source template IPN
+        with the `local` marker (#45 ruling, superseding R-025's
+        disagreement-null) while piece_count normalizes to the lump's 1
+        (#44)."""
         rows = self._flat(self.variant)
 
         gasket = rows[8131]
-        self.assertIsNone(gasket['inherited_from'])
+        self.assertEqual(gasket['inherited_from'], 'WELD-T, local')
         self.assertEqual(gasket['total_qty'], 3.0)
         self.assertEqual(gasket['piece_count'], 1)
+
+    def test_merged_reference_joins_line_designators(self):
+        """The gasket's two lines carry designators 'T3' (inherited) and
+        'V2' (direct): the merged reference joins both (#45 - previously
+        dropped entirely). Occurrence order is upstream queryset order, so
+        the assertion compares token sets, not positions."""
+        rows = self._flat(self.variant)
+
+        gasket = rows[8131]
+        self.assertEqual(
+            sorted(gasket['reference'].split(', ')), ['T3', 'V2']
+        )
+
+    def test_single_source_reference_designators_emit(self):
+        """A single-source row emits its bom_item.reference designator -
+        the bracket's inherited line carries 'T1' (#45 AC3)."""
+        rows = self._flat(self.variant)
+
+        self.assertEqual(rows[8120]['reference'], 'T1')
 
 
 if __name__ == '__main__':

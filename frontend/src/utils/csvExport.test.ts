@@ -178,7 +178,7 @@ describe('Inherited From column (ticket #24, ruling R-026; #44 drops Pieces)', (
     expect(cells.length).toBe(header.length);
   });
 
-  it('emits a blank cell when a merged row nulls inherited_from (R-025)', () => {
+  it('emits a blank cell when nothing is inherited (all-direct row)', () => {
     const items = [createBomItem({ inherited_from: null })];
     const csv = generateCsvContent(items, 1, true, true);
     const lines = csv.split('\n');

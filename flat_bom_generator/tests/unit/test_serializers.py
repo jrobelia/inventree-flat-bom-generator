@@ -170,6 +170,7 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
             "part_type": "Coml",
             # BOM data (optional)
             "note": None,
+            "reference": "R1, R2",
             "cut_list": None,
             "piece_count": 1,
             "inherited_from": None,
@@ -204,6 +205,14 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         serializer = FlatBOMItemSerializer(data=data)
         self.assertTrue(serializer.is_valid())
         self.assertEqual(serializer.validated_data["note"], "Cut to 100mm length")
+
+    def test_reference_designators_serialize(self):
+        """reference carries BOM line designators through the API (issue
+        #45 - the field was previously dropped before serialization)."""
+        data = self.get_valid_bom_item_data()
+        serializer = FlatBOMItemSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["reference"], "R1, R2")
 
     def test_assembly_part(self):
         """Assembly part with is_assembly=True should serialize."""

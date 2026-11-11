@@ -1,6 +1,6 @@
 # Merged rows null disagreeing per-line scalars
 
-**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`.
+**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`. **Amended 2026-11-11** (#44, maintainer ruling): the `piece_count` half is withdrawn — a per-line count cannot survive quantity aggregation even when sources agree, so flat rows emit `piece_count: 1` uniformly (material lump; piece structure lives in `cut_list`). The `inherited_from` disagreement-null rule stands.
 
 **Context:** The flat-BOM merge (`deduplicate_and_sum`) grouped occurrences of
 the same part but displayed first-seen `piece_count` and `inherited_from`.

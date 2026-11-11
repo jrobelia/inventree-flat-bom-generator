@@ -254,7 +254,6 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Flags** | Assembly, Purchaseable, and Internal Supplier indicators plus Optional (orange badge) and Consumable (yellow badge) |
 | **Total Qty** | Required quantity for build (scales with build quantity) with [unit] |
 | **Cut Length** | Piece size on cut-list child rows with [unit] |
-| **Pieces** | BOM line piece count — how many pieces of `quantity` size the line needs |
 | **Inherited From** | IPN of the ancestor part an inherited BOM line is defined on |
 | **In Stock** | Total inventory (green if sufficient, orange if partial, red if none) with [unit] |
 | **Allocated** | Stock reserved for builds and sales orders with [unit] (dimmed when checkbox unchecked) |
@@ -264,7 +263,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Max Stock** | Upstream per-part stock ceiling — blank when unset; red badge when net stock plus suggested order would exceed it |
 | **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
-All columns except **Category**, **Cut Length**, **Pieces**, **Inherited From**, and **Max Stock** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
+All columns except **Category**, **Cut Length**, **Inherited From**, and **Max Stock** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
 
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)

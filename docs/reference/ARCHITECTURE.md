@@ -89,7 +89,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `default_supplier_id`: ID of primary SupplierPart (null if none)
 - `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
 - `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
-- `piece_count`: BOM line piece count - pieces of `quantity` size the line needs (1 when not a cut-to-length line; null when merged occurrences disagree, ruling R-025)
+- `piece_count`: Always 1 on a flat row - a flat row is a material lump whose `total_qty` already folds every occurrence's line piece count in; per-line piece structure lives in `cut_list` (ruling R-025 amendment, issue #44)
 - `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
 - `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)
@@ -334,7 +334,7 @@ interface BomItem {
     parent_row_part_id?: number;
     cut_length?: number | null;
     cut_unit?: string;
-    piece_count?: number | null;
+    piece_count?: number;       // Always 1 on flat rows (material lump; R-025 amendment)
     inherited_from?: string | null;
     
     // Stock levels
@@ -396,7 +396,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**17 Columns** (sortable except Category, Cut Length, Pieces, Inherited From, and Max Stock; some toggleable):
+**16 Columns** (sortable except Category, Cut Length, Inherited From, and Max Stock; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
@@ -405,20 +405,19 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
 7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
 8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
-9. **Pieces** - BOM line piece_count (toggleable, hidden unless any line has piece_count > 1)
-10. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
-11. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
-12. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
-13. **On Order** - Blue badge if > 0 with [unit] (toggleable)
-14. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
-15. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
-16. **Max Stock** - Upstream per-part stock ceiling; red badge when net stock plus suggested order would exceed it (toggleable, hidden unless a ceiling is set)
-17. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
+9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
+11. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
+12. **On Order** - Blue badge if > 0 with [unit] (toggleable)
+13. **Net Stock** - Upstream net position (in stock - allocated + on order); red badge when negative (shortage), green when positive, with [unit] (toggleable)
+14. **To Order** - Upstream suggested order quantity; orange badge if > 0 with [unit] (toggleable)
+15. **Max Stock** - Upstream per-part stock ceiling; red badge when net stock plus suggested order would exceed it (toggleable, hidden unless a ceiling is set)
+16. **Build Margin** - Balance after accounting for stock and requirements (toggleable)
 
 **Column Visibility:**
 - Always visible: Component
 - Default visible: IPN, Description, Type, Category, Flags, Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, Build Margin
-- Auto-hidden unless data present: Cut Length, Pieces, Inherited From, Max Stock
+- Auto-hidden unless data present: Cut Length, Inherited From, Max Stock
 - User can toggle visibility via gear icon in ControlBar (v0.11.23+)
 
 **Sort Logic Location**: `utils/bomDataProcessing.ts` (`sortBomData`, extracted from Panel.tsx in v0.11.6)
@@ -487,7 +486,7 @@ See `DEPLOYMENT-WORKFLOW.md` in this directory for the full checklist.
 - [ ] Stock calculations (allocated, available) accurate
 
 **Frontend:**
-- [ ] Sortable columns sort correctly (Category, Cut Length, Pieces, Inherited From, and Max Stock are not sortable)
+- [ ] Sortable columns sort correctly (Category, Cut Length, Inherited From, and Max Stock are not sortable)
 - [ ] Search filters IPN and Part Name
 - [ ] Checkboxes affect shortfall calculation
 - [ ] Build quantity multiplies all requirements

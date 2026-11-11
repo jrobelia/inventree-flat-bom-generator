@@ -69,7 +69,7 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 
 **Files:** (165 tests total)
 - `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
-- `test_upstream_bom_semantics.py` (15 tests) - piece_count, inherited lines, effective consumable, merged-row scalar nulls (fixture: `upstream_bom_semantics.yaml`)
+- `test_upstream_bom_semantics.py` (15 tests) - piece_count lump semantics, inherited lines, effective consumable, merged-row scalar behavior (piece_count normalizes to 1, inherited_from nulls on disagreement) (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
 - `test_plugin_core.py` (15 tests) - Plugin registration, URLs, panels
 - `test_error_scenarios.py` (14 tests) - Error handling paths

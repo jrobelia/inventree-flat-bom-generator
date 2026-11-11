@@ -207,7 +207,7 @@ describe('shortage field columns (ticket #15)', () => {
 describe('Max Stock column (ticket #26)', () => {
   // maximum_stock is the part's stock ceiling (upstream Part.maximum_stock;
   // null = no ceiling). The column joins the auto-managed family (Cut
-  // Length / Pieces / Inherited From): not sortable, present in Select
+  // Length / Inherited From): not sortable, present in Select
   // Columns, auto-hidden unless a row carries a ceiling. exceeds_max_stock
   // renders the shortage-badge pattern - the ceiling value in a red filled
   // badge like a negative net_stock.
@@ -290,20 +290,20 @@ describe('Max Stock column (ticket #26)', () => {
 });
 
 describe('merged-row scalar cells (ticket #23, ruling R-025)', () => {
-  // A merged row nulls piece_count/inherited_from when its occurrences
-  // disagree; the cells render the null as a dimmed dash, never a stale
-  // first-seen value.
+  // A merged row nulls inherited_from when its occurrences disagree; the
+  // cell renders the null as a dimmed dash, never a stale first-seen
+  // value. The Pieces column is gone (#44, R-025 amendment): flat rows are
+  // material lumps with piece_count uniformly 1, so no row can ever carry
+  // a count worth showing - piece structure lives in the cut list.
 
-  it('renders a dash for a null piece_count (occurrences disagreed)', () => {
-    const pieces = columnBy('piece_count');
-    expect(textOf(pieces.render!(makeItem({ piece_count: null }), 0))).toBe(
-      '-'
-    );
-  });
-
-  it('renders the count when merged occurrences agree', () => {
-    const pieces = columnBy('piece_count');
-    expect(textOf(pieces.render!(makeItem({ piece_count: 4 }), 0))).toBe('4');
+  it('does not define a Pieces column', () => {
+    const columns = createBomTableColumns({
+      buildQuantity: 1,
+      includeAllocations: true,
+      includeOnOrder: true,
+      calculateShortfall: () => 0
+    });
+    expect(columns.find((c) => c.accessor === 'piece_count')).toBeUndefined();
   });
 
   it('renders a dash for null inherited_from and the IPN when set', () => {

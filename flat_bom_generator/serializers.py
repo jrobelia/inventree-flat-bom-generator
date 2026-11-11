@@ -340,9 +340,8 @@ class FlatBOMItemSerializer(serializers.Serializer):
 
     piece_count = serializers.IntegerField(
         required=False,
-        allow_null=True,
         default=1,
-        help_text="BOM line piece count - how many pieces of `quantity` size the line needs (1 when not a cut-to-length line; null when merged occurrences disagree, ruling R-025)",
+        help_text="Flat-row piece count - always 1: flat rows carry lump quantity (sum of qty x piece_count x ancestor multipliers); per-line piece structure lives in `cut_list` (ruling R-025 amendment, issue #44)",
     )
 
     inherited_from = serializers.CharField(

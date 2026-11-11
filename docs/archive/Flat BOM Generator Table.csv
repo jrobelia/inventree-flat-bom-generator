@@ -1,0 +1,7 @@
+part example,Your Design,part type,category,source,is_assembly,default_supplier,dflt_spl source,In flat BOM,Comment
+off the shelf part,no,coml,commercial,external,FALSE,,,TRUE,a part you buy but didn't spec
+"cnc, 3d print, cut pieces ",yes,internal fab,fabricated,internal,TRUE,required,internal,FALSE,parts BOM must contain materials part is made from
+"wire, bar stock, etc.",yes,ctl,fabricated -> cut to length,internal,FALSE,,,TRUE,"length of cut stored in bom line item note field, this is a work around part type that doesn't okay well with the rest of inventree's systems"
+"machining, pcb",yes,fab,fabricated,external,FALSE,,,TRUE,standard part that is made externally for you from a drawing
+assembled component,yes,assembly,assembly ,internal,TRUE,,,FALSE,standard assembly done in house
+"pcba, wire harness, etc.",yes,purchased assembly,assembly,external,TRUE,required,external,TRUE,if the default supplier is set to an external source it will assume you are purchasing this directly and won't look at its BOM

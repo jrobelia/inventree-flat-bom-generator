@@ -1,9 +1,10 @@
 # Merged rows null disagreeing per-line scalars
 
-**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`. **Amended 2026-11-11** (#44, maintainer ruling) — see Amendment section.
+**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`. **Amended 2026-11-11** (#44, maintainer ruling); **Amended 2026-11-11** (#45, maintainer ruling) — see Amendment sections.
 
 **Context:** The flat-BOM merge (`deduplicate_and_sum`) grouped occurrences of
 the same part but displayed first-seen `piece_count` and `inherited_from`.
+
 A merge of `500x4` + `500x2` rendered "Pieces: 4" beside a truthful
 "500 x 6" cut-list row -- the scalar lied about its siblings.
 
@@ -30,3 +31,13 @@ showed `6000mm` beside "4", implying 1500mm pieces). Flat rows emit
 `piece_count: 1` uniformly -- material lump; piece structure lives
 exclusively in `cut_list` (matches upstream's own `pc=1 -> "-"`
 convention). The `inherited_from` half is unaffected by this amendment.
+
+## Amendment (ticket #45)
+
+The `inherited_from` disagreement-null is superseded by a maintainer ruling
+(2026-11-11): categorical provenance stays meaningful at row level, so a
+merged row renders the distinct source template IPNs comma-joined and
+sorted, appending the marker `local` when direct (non-inherited) lines are
+in the mix (`T` / `T-A, T-B` / `T, local` / blank when nothing inherited).
+The decision text above remains the frozen record of the original ruling;
+the #44 piece_count amendment is recorded in its own section above.

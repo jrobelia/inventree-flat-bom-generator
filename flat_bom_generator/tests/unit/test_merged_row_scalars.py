@@ -1,9 +1,10 @@
-"""Unit tests for merged-row per-line scalars (issues #23/#44, ruling R-025).
+"""Unit tests for merged-row field contracts (issues #23/#44/#45).
 
 Contract (maintainer ruling R-025, #14 R1-F10 adjudication; amended for
-piece_count by #44, 2026-11-11): a merged flat row - one part aggregated
-across multiple BOM occurrences - must not show a per-line scalar from one
-occurrence while a sibling occurrence disagrees.
+piece_count by #44 and for inherited_from by #45, both 2026-11-11): a merged
+flat row - one part aggregated across multiple BOM occurrences - must not
+show one occurrence's value while a sibling occurrence disagrees or is
+silently dropped.
 
 - piece_count: withdrawn from the disagreement rule entirely - a per-line
   piece count cannot survive quantity aggregation even when sources agree
@@ -11,8 +12,19 @@ occurrence while a sibling occurrence disagrees.
   single-source row under a 3x ancestor shows 6000mm beside "4", implying
   1500mm pieces). Every flat row is a material lump and emits
   piece_count=1; piece structure lives exclusively in the cut list.
-- inherited_from: categorical provenance, not a quantity - it still carries
-  only when uniform and nulls on disagreement.
+- inherited_from (#45 ruling): categorical provenance rendered, not nulled -
+  the merged row lists the distinct source template IPNs comma-joined and
+  sorted, with the marker `local` appended when direct (non-inherited)
+  lines are in the mix. Blank when nothing is inherited.
+- Warning flags (#45): assembly_no_children and max_depth_exceeded OR
+  across occurrences - a flagged occurrence must not vanish because it
+  was not first-seen. max_depth_exceeded is per-path, so this is how a
+  truncated path's lost subtree demand stays visible.
+- note (#45): dedupe-joins all distinct occurrence notes, first-seen
+  order - later occurrences' notes are no longer dropped.
+- reference (#45): carries dedupe-joined bom_item.reference designator
+  tokens, first-seen order - previously dropped entirely while the field
+  misleadingly carried joined notes (the notes-in-reference swap).
 - The cut list is unaffected: it aggregates by (part, piece size), not by
   the BOM line's scalar fields.
 
@@ -53,7 +65,8 @@ class _FakeRegistry:
 
 
 def _leaf(part_id=10, ipn="P-10", quantity=None, piece_count=1,
-          cumulative_qty=0.0, unit="pcs", inherited_from=None, **overrides):
+          cumulative_qty=0.0, unit="pcs", inherited_from=None,
+          reference="", **overrides):
     """Minimal leaf dict matching the get_leaf_parts_only() seam."""
     leaf = {
         "part_id": part_id,
@@ -68,6 +81,7 @@ def _leaf(part_id=10, ipn="P-10", quantity=None, piece_count=1,
         "cumulative_qty": cumulative_qty,
         "internal_supplier": False,
         "note": "",
+        "reference": reference,
         "has_substitutes": False,
         "consumable": False,
         "bom_item_contributions": {},
@@ -127,24 +141,38 @@ class TestMergedRowScalars(unittest.TestCase):
         ])
         self.assertEqual(rows[0]["piece_count"], 1)
 
-    def test_disagreeing_inherited_from_nulls(self):
-        """Inherited + direct occurrences merge to inherited_from=None, in
-        either occurrence order."""
+    def test_inherited_plus_direct_marks_local(self):
+        """Inherited + direct occurrences render the template IPN with the
+        `local` marker, in either occurrence order (#45 ruling)."""
         for first, second in [("WELD-T", None), (None, "WELD-T")]:
             with self.subTest(first=first, second=second):
                 rows = deduplicate_and_sum([
                     _leaf(cumulative_qty=1, inherited_from=first),
                     _leaf(cumulative_qty=2, inherited_from=second),
                 ])
-                self.assertIsNone(rows[0]["inherited_from"])
+                self.assertEqual(
+                    rows[0]["inherited_from"], "WELD-T, local"
+                )
 
-    def test_two_different_inherited_froms_null(self):
-        """Occurrences inherited from different templates also null."""
+    def test_distinct_inherited_froms_render_sorted(self):
+        """Occurrences inherited from different templates render the
+        distinct IPNs comma-joined and sorted (#45 ruling)."""
         rows = deduplicate_and_sum([
             _leaf(cumulative_qty=1, inherited_from="WELD-T"),
             _leaf(cumulative_qty=2, inherited_from="MACH-A"),
         ])
-        self.assertIsNone(rows[0]["inherited_from"])
+        self.assertEqual(rows[0]["inherited_from"], "MACH-A, WELD-T")
+
+    def test_mixed_templates_and_direct_render_sorted_with_local(self):
+        """T-A + T-B + direct renders 'T-A, T-B, local' (#45 ruling)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, inherited_from="WELD-T"),
+            _leaf(cumulative_qty=2, inherited_from=None),
+            _leaf(cumulative_qty=3, inherited_from="MACH-A"),
+        ])
+        self.assertEqual(
+            rows[0]["inherited_from"], "MACH-A, WELD-T, local"
+        )
 
     def test_uniform_inherited_from_carries(self):
         """Every occurrence inherited from the same template keeps the IPN."""
@@ -168,6 +196,82 @@ class TestMergedRowScalars(unittest.TestCase):
             _leaf(cumulative_qty=2, inherited_from="WELD-T"),
         ])
         self.assertEqual(rows[0]["inherited_from"], "WELD-T")
+
+    def test_max_depth_exceeded_ors_across_occurrences(self):
+        """A part reached via one truncated path and one full path shows
+        max_depth_exceeded=True on the merged row, in either order (#45
+        AC1 - the truncated path's subtree demand must stay visible)."""
+        for first, second in [(True, False), (False, True)]:
+            with self.subTest(first=first, second=second):
+                rows = deduplicate_and_sum([
+                    _leaf(cumulative_qty=1, max_depth_exceeded=first),
+                    _leaf(cumulative_qty=2, max_depth_exceeded=second),
+                ])
+                self.assertTrue(rows[0]["max_depth_exceeded"])
+
+    def test_assembly_no_children_ors_across_occurrences(self):
+        """A flagged occurrence wins over an unflagged one, in either
+        order - first-occurrence-wins made the warning vanish (#45)."""
+        for first, second in [(True, False), (False, True)]:
+            with self.subTest(first=first, second=second):
+                rows = deduplicate_and_sum([
+                    _leaf(cumulative_qty=1, assembly_no_children=first),
+                    _leaf(cumulative_qty=2, assembly_no_children=second),
+                ])
+                self.assertTrue(rows[0]["assembly_no_children"])
+
+    def test_merged_note_joins_distinct_notes_first_seen(self):
+        """Every occurrence's note reaches the merged row's note field,
+        distinct notes joined in first-seen order (#45)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, note="Cut to length"),
+            _leaf(cumulative_qty=2, note="Deburr edges"),
+        ])
+        self.assertEqual(rows[0]["note"], "Cut to length, Deburr edges")
+
+    def test_merged_note_dedupes_identical_notes(self):
+        """Identical notes do not duplicate; blanks are dropped (#45)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, note="Use M6"),
+            _leaf(cumulative_qty=2, note=""),
+            _leaf(cumulative_qty=3, note="Use M6"),
+        ])
+        self.assertEqual(rows[0]["note"], "Use M6")
+
+    def test_reference_carries_designators_not_notes(self):
+        """reference emits bom_item.reference designators while note keeps
+        the BOM item notes - the notes-in-reference swap is fixed and each
+        field carries its own source data (#45 AC4)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, note="torque spec", reference="R1"),
+        ])
+        self.assertEqual(rows[0]["note"], "torque spec")
+        self.assertEqual(rows[0]["reference"], "R1")
+
+    def test_reference_joins_distinct_designator_tokens(self):
+        """Designator tokens merge across occurrences, deduped at token
+        level and joined in first-seen order (#45 AC2)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, reference="R1, R2"),
+            _leaf(cumulative_qty=2, reference="R2, R3"),
+        ])
+        self.assertEqual(rows[0]["reference"], "R1, R2, R3")
+
+    def test_single_source_reference_designators_emit(self):
+        """A single-source row emits its bom_item.reference designators -
+        previously dropped on every row (#45 AC3)."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1, reference="R1, R2"),
+        ])
+        self.assertEqual(rows[0]["reference"], "R1, R2")
+
+    def test_no_reference_designators_emit_blank(self):
+        """A row with no designators emits a blank reference, not null."""
+        rows = deduplicate_and_sum([
+            _leaf(cumulative_qty=1),
+            _leaf(cumulative_qty=2, reference="  "),
+        ])
+        self.assertEqual(rows[0]["reference"], "")
 
     def test_cut_list_carries_piece_structure(self):
         """Disagreeing piece_count still merges cut rows by piece size -

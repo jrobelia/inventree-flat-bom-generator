@@ -289,10 +289,11 @@ describe('Max Stock column (ticket #26)', () => {
   });
 });
 
-describe('merged-row scalar cells (ticket #23, ruling R-025)', () => {
-  // A merged row nulls inherited_from when its occurrences disagree; the
-  // cell renders the null as a dimmed dash, never a stale first-seen
-  // value. The Pieces column is gone (#44, R-025 amendment): flat rows are
+describe('merged-row scalar cells (tickets #23/#45, ruling R-025)', () => {
+  // A merged row renders its provenance verbatim: the sorted distinct
+  // source template IPNs plus a `local` marker when direct lines are in
+  // the mix (#45 ruling); the all-direct null still renders as a dimmed
+  // dash. The Pieces column is gone (#44, R-025 amendment): flat rows are
   // material lumps with piece_count uniformly 1, so no row can ever carry
   // a count worth showing - piece structure lives in the cut list.
 
@@ -314,5 +315,17 @@ describe('merged-row scalar cells (ticket #23, ruling R-025)', () => {
     expect(
       textOf(inherited.render!(makeItem({ inherited_from: 'WELD-T' }), 0))
     ).toBe('WELD-T');
+  });
+
+  it('renders the merged provenance string verbatim (local marker, #45)', () => {
+    const inherited = columnBy('inherited_from');
+    expect(
+      textOf(
+        inherited.render!(
+          makeItem({ inherited_from: 'MACH-A, WELD-T, local' }),
+          0
+        )
+      )
+    ).toBe('MACH-A, WELD-T, local');
   });
 });

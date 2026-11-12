@@ -144,6 +144,8 @@ def traverse_bom(
     imp_counter: dict[str, int] | None = None,
     depth_tracker: dict[str, int] | None = None,
     primary_supplier=_UNSET,
+    include_optional: bool = True,
+    path_optional: bool = False,
 ) -> dict:
     """
     Recursively traverse BOM structure and build tree.
@@ -164,6 +166,13 @@ def traverse_bom(
         category_mappings: Dict mapping label types to lists of category IDs
             (includes descendants); used for display labels only
         imp_counter: Dictionary to count Internal Fab parts {'count': 0} (mutable for recursion)
+        include_optional: If False, optional BOM lines are pruned at this
+            seam - the line's whole subtree contributes nothing on that
+            path (issue #30)
+        path_optional: True when an ancestor BOM line on this path was
+            optional - the occurrence is optional demand even when its own
+            line is required, so leaf rows carry the propagated flag and
+            `optional_qty` counts the same demand the toggle would prune
 
     Returns:
         Dictionary representing BOM node with all metadata and children
@@ -273,10 +282,25 @@ def traverse_bom(
 
         if bom_items:
             for bom_item in bom_items:
+                # Optional-line pruning (issue #30): under
+                # include_optional=False an optional BOM line drops its
+                # entire subtree contribution for this path - the child is
+                # never traversed. Mark the parent so a node emptied this
+                # way is not mistaken for a genuine empty assembly
+                # downstream.
+                if bom_item.get("optional", False) and not include_optional:
+                    node["optional_lines_pruned"] = True
+                    continue
+
                 child_part = bom_item["sub_part"]
                 child_qty = bom_item["quantity"]
                 child_ref = bom_item["reference"]
                 child_note = bom_item["note"]
+
+                # An occurrence is optional demand when its own line is
+                # optional OR any ancestor line was - the partition then
+                # counts exactly the demand the toggle would prune (#30)
+                child_path_optional = path_optional or bom_item.get("optional", False)
 
                 # Upstream quantity semantics: quantity is the size of one
                 # piece, piece_count is how many pieces the line needs -
@@ -297,13 +321,15 @@ def traverse_bom(
                     primary_supplier=bom_item.get("primary_supplier", _UNSET),
                     imp_counter=imp_counter,
                     depth_tracker=depth_tracker,
+                    include_optional=include_optional,
+                    path_optional=child_path_optional,
                 )
 
                 # Set child-specific values
                 child_node["quantity"] = child_qty
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
-                child_node["optional"] = bom_item.get("optional", False)
+                child_node["optional"] = child_path_optional
                 child_node["consumable"] = bom_item.get("is_consumable", False)
                 child_node["bom_item_pk"] = bom_item.get("bom_item_pk")
 
@@ -347,6 +373,9 @@ def get_leaf_parts_only(
     - Assembly with no primary supplier: expanded as a build-order candidate;
       the assembly itself is not a line item unless it has no children, in
       which case it is emitted and flagged assembly_no_children.
+    - Optional-line pruning (issue #30): under include_optional=False an
+      assembly emptied because every BOM line was optional emits nothing -
+      no row, no assembly_no_children warning.
 
     Args:
         tree: BOM tree from traverse_bom()
@@ -440,6 +469,14 @@ def get_leaf_parts_only(
             get_leaf_parts_only(child, leaves, expand_purchased_assemblies)
         return leaves
 
+    # Optional-line pruning (issue #30): a node emptied because its BOM
+    # lines were all optional contributes no required demand - no leaf row,
+    # and no assembly_no_children warning (the lines exist; they are merely
+    # excluded). Applies to the TLA root too: an all-optional build yields
+    # an empty flat BOM rather than a self row.
+    if tree.get("optional_lines_pruned"):
+        return leaves
+
     max_depth_exceeded = tree.get("max_depth_exceeded", False)
     assembly_no_children_flag = not max_depth_exceeded
     if assembly_no_children_flag:
@@ -495,6 +532,11 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
       field misleadingly carried joined notes.
     - Descriptive metadata (names, units, supplier, part_type) keeps
       first-occurrence-wins.
+    - optional_qty (issue #30): sum of cumulative qty across optional-flagged
+      occurrences - the quantity partition behind the frontend
+      `mixed (X opt / Y req)` marker. 0 on a required-only row; equals
+      total_qty on an all-optional row. consumable has no partition - it
+      keeps its all-instances collapse (ticket scope bound).
 
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
@@ -503,6 +545,10 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
         Deduplicated list with aggregated quantities
     """
     totals = defaultdict(float)
+    # Sum of cumulative qty across optional-flagged occurrences - the row's
+    # quantity partition for the frontend `mixed (X opt / Y req)` marker
+    # (issue #30). Independent of the all-instances `optional` flag.
+    optional_totals = defaultdict(float)
     part_info = {}
     part_notes = defaultdict(list)  # Raw occurrence notes, deduped at render
     part_designators = defaultdict(list)  # Raw designator tokens, deduped at render
@@ -529,6 +575,8 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             )
 
         totals[key] += leaf["cumulative_qty"]
+        if leaf.get("optional", False):
+            optional_totals[key] += leaf["cumulative_qty"]
 
         # One cut-list entry per piece size per BOM line whose sub_part's
         # units have [length] dimensionality. count = how many pieces the
@@ -686,6 +734,7 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
             "optional": is_optional,
+            "optional_qty": optional_totals.get(key, 0),
             "consumable": is_consumable,
             "bom_item_contributions": dict(bom_item_contributions.get(key, {})),
         }
@@ -699,6 +748,7 @@ def get_flat_bom(
     max_depth: int | None = None,
     expand_purchased_assemblies: bool = False,
     category_mappings: dict[str, int] | None = None,
+    include_optional: bool = True,
 ) -> tuple:
     """
     Get flat BOM line items with deduplicated quantities.
@@ -715,6 +765,10 @@ def get_flat_bom(
             assemblies to show subcomponents
         category_mappings: Dict mapping label types to lists of category IDs
             (display labels only - does not affect expansion)
+        include_optional: If False, optional BOM lines are pruned at the
+            traversal seam so totals and the cut list carry required-only
+            demand; parts reached via required paths still merge normally
+            (issue #30). Default True preserves the all-demand view.
 
     Returns:
         Tuple of (flat_bom_list, total_internal_fab_processed, warnings_list,
@@ -738,6 +792,7 @@ def get_flat_bom(
             category_mappings=category_mappings,
             imp_counter=imp_counter,
             depth_tracker=depth_tracker,
+            include_optional=include_optional,
         )
 
         # Step 2: Apply line-item / expansion matrix

@@ -27,6 +27,30 @@ export interface UsePluginSettingsResult {
 }
 
 /**
+ * Load persisted settings, merged over defaults.
+ *
+ * Merge (not verbatim return) is the contract: settings added after a
+ * stored blob was written - e.g. includeOptional in #30 - must keep their
+ * declared default. A missing key must not read as undefined/false.
+ *
+ * Exported for unit tests; the hook calls it as its useState initializer.
+ */
+export function loadPluginSettings(): PluginSettings {
+  try {
+    const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object') {
+        return { ...DEFAULT_PLUGIN_SETTINGS, ...parsed };
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load settings from localStorage:', err);
+  }
+  return DEFAULT_PLUGIN_SETTINGS;
+}
+
+/**
  * Custom hook for managing plugin settings with localStorage persistence
  *
  * Handles:
@@ -40,17 +64,7 @@ export interface UsePluginSettingsResult {
  */
 export function usePluginSettings(): UsePluginSettingsResult {
   // Load from localStorage or use defaults
-  const [settings, setSettings] = useState<PluginSettings>(() => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (err) {
-      console.warn('Failed to load settings from localStorage:', err);
-    }
-    return DEFAULT_PLUGIN_SETTINGS;
-  });
+  const [settings, setSettings] = useState<PluginSettings>(loadPluginSettings);
 
   // Persist settings to localStorage whenever they change
   useEffect(() => {
@@ -86,7 +100,9 @@ export function usePluginSettings(): UsePluginSettingsResult {
     settings.maxDepth !== DEFAULT_PLUGIN_SETTINGS.maxDepth ||
     settings.expandPurchasedAssemblies !==
       DEFAULT_PLUGIN_SETTINGS.expandPurchasedAssemblies ||
-    settings.includeSubstitutes !== DEFAULT_PLUGIN_SETTINGS.includeSubstitutes;
+    settings.includeSubstitutes !==
+      DEFAULT_PLUGIN_SETTINGS.includeSubstitutes ||
+    settings.includeOptional !== DEFAULT_PLUGIN_SETTINGS.includeOptional;
 
   return {
     settings,

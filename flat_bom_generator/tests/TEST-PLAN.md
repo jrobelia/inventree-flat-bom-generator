@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Test Plan
 
 **Last Updated**: November 11, 2026  
-**Test Count**: 358 backend tests (191 unit + 167 integration); frontend Vitest + Playwright run in the suite  
+**Test Count**: 375 backend tests (201 unit + 174 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
 
@@ -39,12 +39,13 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (191 tests total)
+**Files:** (201 tests total)
 - `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
 - `test_serializers.py` (58 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
 - `test_cut_list.py` (21 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
 - `test_merged_row_scalars.py` (18 tests) - Merged-row field contracts: piece_count normalizes to 1, inherited_from renders sorted IPNs + `local` marker, warning flags OR, note/reference dedupe-join their own sources (ruling R-025 as amended, #45)
+- `test_optional_partition.py` (10 tests) - `optional_qty` partition (required/mixed/all-optional), consumable independence, cut-list coexistence, and the `optional_lines_pruned` leaf guard incl. the all-optional TLA root (issue #30)
 - `test_assembly_no_children.py` (27 tests) - Expansion matrix + warning flag logic
 - `test_shortfall_calculation.py` (13 tests) - Frontend calculations
 - `test_max_depth_warnings.py` (8 tests) - Flag prioritization
@@ -67,7 +68,7 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 **Location:** `flat_bom_generator/tests/integration/*.py`  
 **Purpose:** Test with real InvenTree Part/BomItem/Stock models
 
-**Files:** (167 tests total)
+**Files:** (174 tests total)
 - `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
 - `test_upstream_bom_semantics.py` (17 tests) - piece_count lump semantics, inherited lines, effective consumable, merged-row field behavior (piece_count normalizes to 1, inherited_from renders `IPN, local` on mixed provenance, reference joins line designators) (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
@@ -85,6 +86,7 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 - `test_view_permissions.py` (4 tests) - Role permission dispatch
 - `test_substitute_enrichment.py` (4 tests) - Substitute part enrichment
 - `test_stock_enrichment.py` (2 tests) - Stock field enrichment
+- `test_include_optional.py` (7 tests) - include_optional end to end: subtree pruning, optional_qty partition incl. path-optional occurrences, emptied-assembly warning suppression, setting fallback and param override (fixture: `optional_lines.yaml`)
 
 **Characteristics:**
 - Slower execution (2-5 seconds)

@@ -259,6 +259,29 @@ export function createBomTableColumns({
           );
         }
 
+        // Issue #30: a merged row carrying both optional and required
+        // occurrences shows the partition of its displayed Total Qty.
+        // Mutually exclusive with the all-instances 'Optional' badge
+        // (that flag only survives when every occurrence is optional).
+        const optionalQty = record.optional_qty ?? 0;
+        if (optionalQty > 0 && optionalQty < record.total_qty) {
+          const optShown = optionalQty * buildQuantity;
+          const reqShown = (record.total_qty - optionalQty) * buildQuantity;
+          // Round to 2 decimals to bury float noise; integers render bare
+          const fmt = (v: number) => String(Math.round(v * 100) / 100);
+          flags.push(
+            <Tooltip
+              key='optional_mixed'
+              label='Part of this demand sits on optional BOM lines - turn off "Include Optional Parts" to see required-only totals'
+              withArrow
+            >
+              <Badge color='orange' variant='outline' size='sm'>
+                {`mixed (${fmt(optShown)} opt / ${fmt(reqShown)} req)`}
+              </Badge>
+            </Tooltip>
+          );
+        }
+
         if (record.consumable) {
           flags.push(
             <Tooltip

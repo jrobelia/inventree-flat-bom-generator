@@ -60,16 +60,25 @@ function presenceOf(items: BomItem[], accessor: string): boolean {
 }
 
 describe('autoManagedColumnPresence', () => {
-  it('manages cut_length, piece_count, inherited_from, and maximum_stock', () => {
+  it('manages cut_length, inherited_from, and maximum_stock', () => {
     const accessors = autoManagedColumnPresence([item({})]).map(
       ([name]) => name
     );
     expect(accessors).toEqual([
       'cut_length',
-      'piece_count',
       'inherited_from',
       'maximum_stock'
     ]);
+  });
+
+  it('no longer manages piece_count - flat rows are material lumps (#44)', () => {
+    // piece_count is uniformly 1 on every flat row (R-025 amendment), so
+    // nothing can ever satisfy the old >1 predicate; the column is gone.
+    const accessors = autoManagedColumnPresence([
+      item({ piece_count: 1 }),
+      item({ piece_count: 4 })
+    ]).map(([name]) => name);
+    expect(accessors).not.toContain('piece_count');
   });
 
   it('shows Max Stock when any row carries a ceiling (ticket #26)', () => {

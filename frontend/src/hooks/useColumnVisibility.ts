@@ -17,9 +17,11 @@ export interface UseColumnVisibilityResult {
  * otherwise.
  *
  * - cut_length: any item carries cut-list entries
- * - piece_count: any line needs more than one piece
  * - inherited_from: any line is inherited from an ancestor part
  * - maximum_stock: any part has a stock ceiling set (null or 0 = unset)
+ *
+ * (Pieces is not managed: flat rows are material lumps with piece_count
+ * uniformly 1 - piece structure lives in the cut list, R-025 amendment.)
  */
 export function autoManagedColumnPresence(
   items: BomItem[]
@@ -29,7 +31,6 @@ export function autoManagedColumnPresence(
       'cut_length',
       items.some((item) => item.cut_list && item.cut_list.length > 0)
     ],
-    ['piece_count', items.some((item) => (item.piece_count ?? 1) > 1)],
     ['inherited_from', items.some((item) => !!item.inherited_from)],
     ['maximum_stock', items.some((item) => !!item.maximum_stock)]
   ];
@@ -40,13 +41,12 @@ export function autoManagedColumnPresence(
  *
  * Features:
  * - Persists hidden columns in localStorage
- * - Auto-manages data-dependent columns (cut_length, piece_count,
- *   inherited_from, maximum_stock) based on BOM data (shows only when
- *   data is present)
+ * - Auto-manages data-dependent columns (cut_length, inherited_from,
+ *   maximum_stock) based on BOM data (shows only when data is present)
  * - Provides toggle function for column visibility
  *
- * @param bomData - Current BOM data (used to detect cut lists, piece
- *   counts, inherited BOM lines, and stock ceilings)
+ * @param bomData - Current BOM data (used to detect cut lists,
+ *   inherited BOM lines, and stock ceilings)
  * @returns Hidden columns set and toggle function
  */
 export function useColumnVisibility(

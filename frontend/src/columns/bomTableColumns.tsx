@@ -399,22 +399,6 @@ export function createBomTableColumns({
       }
     },
     {
-      accessor: 'piece_count',
-      title: 'Pieces',
-      sortable: false,
-      switchable: true,
-      render: (record) => {
-        if (record.is_child_row || record.piece_count == null) {
-          return (
-            <Text size='sm' c='dimmed'>
-              -
-            </Text>
-          );
-        }
-        return <Text size='sm'>{record.piece_count}</Text>;
-      }
-    },
-    {
       accessor: 'inherited_from',
       title: 'Inherited From',
       sortable: false,

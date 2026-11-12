@@ -622,6 +622,84 @@ describe('sortBomData', () => {
     });
   });
 
+  describe('category sorting (ticket #43)', () => {
+    // Category is a plain text column: the '' fallback matches the
+    // default_supplier_name pattern, so uncategorized rows sort as empty
+    // string - first ascending, last descending.
+    const categoryItems = [
+      createBomItem({ part_id: 1, ipn: 'A', category: 'Hardware' }),
+      createBomItem({ part_id: 2, ipn: 'B', category: 'Electronics' }),
+      createBomItem({ part_id: 3, ipn: 'C' }), // uncategorized -> ''
+      createBomItem({ part_id: 4, ipn: 'D', category: 'Fasteners' })
+    ];
+
+    it('sorts A->Z ascending like other text columns', () => {
+      const result = sortBomData(
+        categoryItems,
+        'category',
+        'asc',
+        1,
+        false,
+        false
+      );
+
+      expect(result.map((item) => item.ipn)).toEqual(['C', 'B', 'D', 'A']);
+    });
+
+    it('sorts Z->A descending like other text columns', () => {
+      const result = sortBomData(
+        categoryItems,
+        'category',
+        'desc',
+        1,
+        false,
+        false
+      );
+
+      expect(result.map((item) => item.ipn)).toEqual(['A', 'D', 'B', 'C']);
+    });
+  });
+
+  describe('maximum_stock sorting (ticket #43)', () => {
+    // The ceiling sorts numerically like its stock siblings, with one
+    // addition: unset ceilings (null or undefined) partition to the tail
+    // in BOTH directions - raw null arithmetic would head a descending
+    // sort.
+    const ceilingItems = [
+      createBomItem({ part_id: 1, ipn: 'A', maximum_stock: 50 }),
+      createBomItem({ part_id: 2, ipn: 'B', maximum_stock: null }),
+      createBomItem({ part_id: 3, ipn: 'C', maximum_stock: 10 }),
+      createBomItem({ part_id: 4, ipn: 'D', maximum_stock: 200 }),
+      createBomItem({ part_id: 5, ipn: 'E' }) // maximum_stock undefined
+    ];
+
+    it('sorts numerically ascending with unset rows at the tail', () => {
+      const result = sortBomData(
+        ceilingItems,
+        'maximum_stock',
+        'asc',
+        1,
+        false,
+        false
+      );
+
+      expect(result.map((item) => item.ipn)).toEqual(['C', 'A', 'D', 'B', 'E']);
+    });
+
+    it('keeps unset rows at the tail when sorting descending', () => {
+      const result = sortBomData(
+        ceilingItems,
+        'maximum_stock',
+        'desc',
+        1,
+        false,
+        false
+      );
+
+      expect(result.map((item) => item.ipn)).toEqual(['D', 'A', 'C', 'B', 'E']);
+    });
+  });
+
   describe('shortfall calculation sorting', () => {
     it('should sort by shortfall without allocations or on-order', () => {
       const itemsWithStock = [

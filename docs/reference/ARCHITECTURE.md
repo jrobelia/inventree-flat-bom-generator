@@ -397,7 +397,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 
 ## DataTable Column Configuration
 
-**16 Columns** (sortable except Category, Cut Length, Inherited From, and Max Stock; some toggleable):
+**16 Columns** (sortable except Cut Length and Inherited From; some toggleable):
 1. **Component** - Thumbnail + clickable full_name (always visible)
 2. **IPN** - Monospace font (toggleable)
 3. **Description** - Line clamped (toggleable)
@@ -487,7 +487,7 @@ See `DEPLOYMENT-WORKFLOW.md` in this directory for the full checklist.
 - [ ] Stock calculations (allocated, available) accurate
 
 **Frontend:**
-- [ ] Sortable columns sort correctly (Category, Cut Length, Inherited From, and Max Stock are not sortable)
+- [ ] Sortable columns sort correctly (Cut Length and Inherited From are not sortable)
 - [ ] Search filters IPN and Part Name
 - [ ] Checkboxes affect shortfall calculation
 - [ ] Build quantity multiplies all requirements

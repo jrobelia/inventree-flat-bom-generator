@@ -68,6 +68,19 @@ git branch
 5. Update "Last Synced" date in table above
 6. Commit both files together
 
+### Generated artifacts: `static/Panel.js` (R-035)
+
+The committed `flat_bom_generator/static/Panel.js` is the deployed frontend —
+`core.py` serves it and `MANIFEST.in` ships it in the wheel. A source-only fix
+never reaches users.
+
+- Any diff that changes `frontend/src/**` MUST commit the rebuilt
+  `flat_bom_generator/static/Panel.js` in the same change.
+- The bundle must be built **inside the devcontainer** (the suite's build leg
+  or in-container `npm run build`) — Windows-host builds embed a divergent
+  InvenTree API version and are not committable.
+- Check: `frontend/src` in the diff ⇒ `static/Panel.js` in the diff.
+
 ---
 
 ## Workflow: Making Changes

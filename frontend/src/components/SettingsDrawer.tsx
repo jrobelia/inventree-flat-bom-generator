@@ -76,6 +76,15 @@ export function SettingsDrawer({
             onUpdateSetting('includeSubstitutes', event.currentTarget.checked)
           }
         />
+
+        <Switch
+          label='Include Optional Parts'
+          description='Count optional BOM-line demand in totals; off shows required-only purchasing'
+          checked={settings.includeOptional}
+          onChange={(event) =>
+            onUpdateSetting('includeOptional', event.currentTarget.checked)
+          }
+        />
         <Group justify='space-between' mt='xl'>
           <Button variant='subtle' onClick={onResetToDefaults}>
             Reset to Defaults

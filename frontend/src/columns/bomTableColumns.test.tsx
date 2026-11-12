@@ -331,6 +331,74 @@ describe('merged-row scalar cells (tickets #23/#45, ruling R-025)', () => {
   });
 });
 
+describe('optional partition marker (ticket #30)', () => {
+  // A merged row carrying both optional and required occurrences renders
+  // `mixed (X opt / Y req)` - the partition of the displayed (scaled)
+  // Total Qty. An all-optional row keeps the plain Optional badge; a
+  // required-only row shows no optional mark at all.
+
+  const flagsRender = (overrides: Partial<BomItem>, buildQuantity = 1) => {
+    const columns = createBomTableColumns({
+      buildQuantity,
+      includeAllocations: true,
+      includeOnOrder: true,
+      calculateShortfall: () => 0
+    });
+    const flags = columns.find((c) => c.accessor === 'flags');
+    return textOf(flags!.render!(makeItem(overrides), 0) as ReactNode);
+  };
+
+  it('renders `mixed (3 opt / 2 req)` on a mixed row at buildQuantity 1', () => {
+    const text = flagsRender({
+      purchaseable: false,
+      total_qty: 5,
+      optional_qty: 3,
+      optional: false
+    });
+    expect(text).toContain('mixed (3 opt / 2 req)');
+    expect(text).not.toContain('Optional');
+  });
+
+  it('scales the partition with buildQuantity like Total Qty does', () => {
+    const text = flagsRender(
+      { purchaseable: false, total_qty: 5, optional_qty: 3 },
+      10
+    );
+    expect(text).toContain('mixed (30 opt / 20 req)');
+  });
+
+  it('keeps the plain Optional badge on an all-optional row', () => {
+    const text = flagsRender({
+      purchaseable: false,
+      total_qty: 5,
+      optional_qty: 5,
+      optional: true
+    });
+    expect(text).toContain('Optional');
+    expect(text).not.toContain('mixed');
+  });
+
+  it('renders no optional mark on a required-only row', () => {
+    const text = flagsRender({
+      purchaseable: false,
+      total_qty: 5,
+      optional_qty: 0
+    });
+    expect(text).not.toContain('mixed');
+    expect(text).not.toContain('Optional');
+  });
+
+  it('does not render the marker on cut-list child rows', () => {
+    const text = flagsRender({
+      is_child_row: true,
+      child_row_type: 'cutlist',
+      total_qty: 5,
+      optional_qty: 3
+    });
+    expect(text).toBe('-');
+  });
+});
+
 describe('column sortability (ticket #43, ruling R-034)', () => {
   // R-034: Category and Max Stock join the sortable set - Max Stock as a
   // stock-family numeric beside its sorting siblings, Category as a plain

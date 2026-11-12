@@ -17,6 +17,9 @@ export interface PluginSettings {
 
   /** Include substitute parts in BOM (triggers backend DB queries) */
   includeSubstitutes: boolean;
+
+  /** Include optional BOM-line demand in totals (issue #30; default on) */
+  includeOptional: boolean;
 }
 
 /**
@@ -29,7 +32,8 @@ export interface PluginSettings {
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   maxDepth: 0,
   expandPurchasedAssemblies: false,
-  includeSubstitutes: false
+  includeSubstitutes: false,
+  includeOptional: true
 };
 
 /**

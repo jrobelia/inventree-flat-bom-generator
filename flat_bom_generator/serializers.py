@@ -317,6 +317,12 @@ class FlatBOMItemSerializer(serializers.Serializer):
         help_text="Whether part is optional in BOM (can be excluded from builds)",
     )
 
+    optional_qty = serializers.FloatField(
+        required=False,
+        default=0.0,
+        help_text="Sum of the row's total_qty contributed by optional BOM-line occurrences - the partition behind the `mixed (X opt / Y req)` marker (issue #30); 0 when all occurrences are required",
+    )
+
     consumable = serializers.BooleanField(
         required=False,
         default=False,
@@ -418,6 +424,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "internal_supplier",
             "part_type",
             "optional",
+            "optional_qty",
             "consumable",
             # BOM data
             "note",

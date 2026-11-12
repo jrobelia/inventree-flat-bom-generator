@@ -31,6 +31,9 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 
 **Query Parameters:**
 - `max_depth` (optional): Maximum BOM traversal depth (recommended for very deep BOMs to improve performance)
+- `expand_purchased_assemblies` (optional): Expand external-supplier assemblies into their children instead of emitting the assembly row
+- `include_substitutes` (optional): Enrich rows with substitute parts (falls back to the Show Substitute Parts plugin setting)
+- `include_optional` (optional): Include optional BOM-line demand in totals (falls back to the Include Optional Parts plugin setting; default on). `false` prunes every optional line's whole subtree at traversal — totals, order figures, and the cut list recompute from required demand only (issue #30)
 
 **Response:**
 ```json
@@ -54,6 +57,7 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
       "purchaseable": true,
       "default_supplier_id": 789,
       "optional": false,
+      "optional_qty": 0.0,
       "consumable": false,
       "reference": "U1, U2",
       "note": "",
@@ -91,8 +95,9 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
 - `piece_count`: Always 1 on a flat row - a flat row is a material lump whose `total_qty` already folds every occurrence's line piece count in; per-line piece structure lives in `cut_list` (ruling R-025 amendment, issue #44)
 - `inherited_from`: Distinct source template IPNs the merged lines were inherited through, comma-joined and sorted, with marker `local` appended when direct (non-inherited) lines are in the mix; null when nothing is inherited (maintainer ruling, issue #45)
-- `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
-- `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)
+- `optional`: Boolean - true only when EVERY occurrence of the part is optional demand (ADR-0006 collapse). An occurrence is optional when its own BOM line is optional or any ancestor line on its path was (issue #30) - so the flag, like the toggle, treats a required line inside an optional subassembly as optional demand
+- `optional_qty`: Float - share of `total_qty` contributed by optional-demand occurrences (issue #30). `0` on a required-only row, `== total_qty` on an all-optional row, strictly between on a mixed row - the partition behind the `mixed (X opt / Y req)` flag-cell marker
+- `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders). Keeps the all-instances collapse with no partition - out of the include_optional toggle's scope
 - `note`: BOM item notes (free text, never parsed) - merged rows dedupe-join distinct occurrence notes (issue #45)
 - `reference`: BOM line reference designators (`bom_item.reference`) - merged rows dedupe-join distinct tokens (issue #45)
 - `level`: Depth in original BOM tree
@@ -241,11 +246,11 @@ flat_bom, imp_count, warnings, max_depth_reached = get_flat_bom(part_id, max_dep
   - `Fab` - Non-assembly in a configured Fabrication category
   - `Other` - Everything else
 - **Expansion matrix** (in `bom_traversal.get_leaf_parts_only`, driven by assembly + supplier state, never the label):
-  - The top-level input part is exempt: an assembly root always expands and never emits a row for itself (a childless unsourced root still emits with `assembly_no_children`); the matrix below applies to descendants only
+  - The top-level input part is exempt: an assembly root always expands and never emits a row for itself (a childless unsourced root still emits with `assembly_no_children` — except under `include_optional=false`, where an all-optional root emptied by pruning emits nothing); the matrix below applies to descendants only
   - Non-assembly → line item
   - External-supplier assembly → line item, not expanded (expand toggle shows children instead)
   - Internal-supplier assembly → line item AND expanded
-  - Unsourced assembly → expanded (regardless of `purchaseable`); emitted + flagged only when it has no children
+  - Unsourced assembly → expanded (regardless of `purchaseable`); emitted + flagged only when it has no children — except under `include_optional=false`, where an assembly emptied by optional-line pruning emits nothing
 
 ### Frontend Files
 
@@ -277,6 +282,7 @@ showCutlistRows: boolean        // Show/hide cutlist breakdown rows
 maxDepth: number                // Maximum BOM traversal depth
 expandPurchasedAssemblies: boolean  // Expand external-supplier assemblies
 includeSubstitutes: boolean     // Include substitute parts
+includeOptional: boolean        // Include optional BOM-line demand (default on)
 
 // useColumnVisibility
 hiddenColumns: Record<string, boolean> // Column visibility state
@@ -322,6 +328,7 @@ interface BomItem {
     default_supplier_id?: number | null;
     internal_supplier?: boolean;
     optional?: boolean;
+    optional_qty?: number;    // Share of total_qty from optional-demand occurrences (#30)
     consumable?: boolean;
     
     // Quantities
@@ -406,7 +413,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
 5. **Category** - InvenTree part category name (toggleable)
-6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges; `mixed (X opt / Y req)` marker when a row carries both optional and required quantity (toggleable)
 7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
 8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
 9. **Inherited From** - Source template IPNs the merged lines were inherited through (sorted, `local` marker when direct lines are in the mix); blank when nothing is inherited (toggleable, hidden unless inherited lines present)
@@ -500,7 +507,7 @@ See `DEPLOYMENT-WORKFLOW.md` in this directory for the full checklist.
 - [ ] Component column displays full_name instead of part_name
 - [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, and Max Stock columns
 - [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
-- [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
+- [ ] Flags column shows Optional (orange), Consumable (yellow) badges, and `mixed (X opt / Y req)` marker on mixed rows
 - [ ] Column visibility toggles work correctly (gear icon)
 - [ ] Settings panel collapses after first generation (progressive disclosure)
 - [ ] Cutlist rows can be shown/hidden with checkbox

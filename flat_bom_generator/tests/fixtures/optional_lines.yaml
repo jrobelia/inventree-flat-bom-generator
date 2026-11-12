@@ -1,0 +1,350 @@
+# Optional BOM-line Test Fixtures (issue #30)
+# Created: November 11, 2026
+# Purpose: Exercise the include_optional toggle end to end - pruning at the
+# traversal seam, the optional_qty partition, and cut-list omission.
+#
+# BOM shape (OPT-ROOT 9201):
+#   +- PART-REQ        9202  x2  required
+#   +- PART-OPT-ONLY   9203  x3  optional
+#   +- SUB-OPT         9204  x1  optional      (assembly)
+#   |    +- PART-SUB-LEAF  9205  x4  required line - optional by path
+#   |    +- PART-MIXED     9206  x1  required line - optional by path
+#   +- PART-MIXED      9206  x1  required      (same part, second occurrence)
+#   +- PART-BAR-OPT    9207  x500 optional     (length line -> cut list)
+#   +- SUB-ALLOPT      9208  x1  required      (assembly)
+#        +- PART-SUBLEAF-OPT 9209  x2  optional
+#
+# include_optional=true (default):
+#   9202 total 2  opt 0   | 9203 total 3  opt 3 | 9205 total 4 opt 4
+#   9206 total 2  opt 1   | 9207 total 500 opt 500 (cut 500x1)
+#   9209 total 2  opt 2
+# include_optional=false:
+#   9202 total 2  opt 0   | 9206 total 1  opt 0
+#   SUB-ALLOPT emits nothing - no leaf, no assembly_no_children warning.
+#
+# Part IDs: 9200-9209; BomItem IDs: 9201-9209
+
+- model: part.partcategory
+  pk: 9200
+  fields:
+    name: Optional Lines Test Category
+    description: Category for include_optional tests
+    parent: null
+    default_keywords: ""
+    structural: false
+    _icon: ""
+    pathstring: Optional Lines Test Category
+    level: 0
+    tree_id: 9200
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9201
+  fields:
+    name: Optional Lines Root Assembly
+    description: Root with a mix of optional and required lines
+    category: 9200
+    IPN: OPT-ROOT
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9202
+  fields:
+    name: Required Bracket
+    description: Required-only occurrence
+    category: 9200
+    IPN: PART-REQ
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9203
+  fields:
+    name: Optional Cover
+    description: Occurs only through an optional line
+    category: 9200
+    IPN: PART-OPT-ONLY
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9204
+  fields:
+    name: Optional Subassembly
+    description: Entered through an optional line; children are required lines
+    category: 9200
+    IPN: SUB-OPT
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9205
+  fields:
+    name: Subassembly Gasket
+    description: Reachable only through the optional SUB-OPT line
+    category: 9200
+    IPN: PART-SUB-LEAF
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9206
+  fields:
+    name: Mixed Fastener
+    description: One required occurrence plus one under the optional SUB-OPT
+    category: 9200
+    IPN: PART-MIXED
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9207
+  fields:
+    name: Optional Seal Strip
+    description: Length-unit part on an optional line - cut-list contribution
+    category: 9200
+    IPN: PART-BAR-OPT
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: mm
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9208
+  fields:
+    name: All-Optional Subassembly
+    description: Required entry line whose only BOM line is optional
+    category: 9200
+    IPN: SUB-ALLOPT
+    revision: A
+    assembly: true
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: false
+    salable: false
+    units: ""
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: part.part
+  pk: 9209
+  fields:
+    name: Emptied-Assembly Widget
+    description: Optional line inside SUB-ALLOPT
+    category: 9200
+    IPN: PART-SUBLEAF-OPT
+    revision: A
+    assembly: false
+    is_template: false
+    active: true
+    virtual: false
+    trackable: false
+    purchaseable: true
+    salable: false
+    units: pcs
+    minimum_stock: 0
+    tree_id: 9200
+    level: 0
+    lft: 1
+    rght: 2
+
+# BOM lines under OPT-ROOT (9201)
+- model: part.bomitem
+  pk: 9201
+  fields:
+    part: 9201
+    sub_part: 9202
+    quantity: 2
+    raw_amount: '2'
+    reference: B1
+    note: ""
+    optional: false
+    validated: true
+
+- model: part.bomitem
+  pk: 9202
+  fields:
+    part: 9201
+    sub_part: 9203
+    quantity: 3
+    raw_amount: '3'
+    reference: C1
+    note: ""
+    optional: true
+    validated: true
+
+- model: part.bomitem
+  pk: 9203
+  fields:
+    part: 9201
+    sub_part: 9204
+    quantity: 1
+    raw_amount: '1'
+    reference: S1
+    note: ""
+    optional: true
+    validated: true
+
+- model: part.bomitem
+  pk: 9204
+  fields:
+    part: 9201
+    sub_part: 9206
+    quantity: 1
+    raw_amount: '1'
+    reference: F1
+    note: ""
+    optional: false
+    validated: true
+
+- model: part.bomitem
+  pk: 9205
+  fields:
+    part: 9201
+    sub_part: 9207
+    quantity: 500
+    raw_amount: '500'
+    reference: R1
+    note: ""
+    optional: true
+    validated: true
+
+- model: part.bomitem
+  pk: 9206
+  fields:
+    part: 9201
+    sub_part: 9208
+    quantity: 1
+    raw_amount: '1'
+    reference: S2
+    note: ""
+    optional: false
+    validated: true
+
+# BOM lines under SUB-OPT (9204) - required lines reached through an
+# optional parent link (path-optional demand)
+- model: part.bomitem
+  pk: 9207
+  fields:
+    part: 9204
+    sub_part: 9205
+    quantity: 4
+    raw_amount: '4'
+    reference: G1
+    note: ""
+    optional: false
+    validated: true
+
+- model: part.bomitem
+  pk: 9208
+  fields:
+    part: 9204
+    sub_part: 9206
+    quantity: 1
+    raw_amount: '1'
+    reference: F2
+    note: ""
+    optional: false
+    validated: true
+
+# BOM line under SUB-ALLOPT (9208) - its only line is optional
+- model: part.bomitem
+  pk: 9209
+  fields:
+    part: 9208
+    sub_part: 9209
+    quantity: 2
+    raw_amount: '2'
+    reference: W1
+    note: ""
+    optional: true
+    validated: true

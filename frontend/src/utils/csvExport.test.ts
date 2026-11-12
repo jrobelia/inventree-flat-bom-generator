@@ -320,4 +320,23 @@ describe('Max Stock columns (ticket #26, ruling R-026 parity)', () => {
     expect(subChild[flagCol]).toBe('');
     expect(subChild.length).toBe(header.length);
   });
+
+  it('exports the filtered Total Qty verbatim regardless of optional partition (#30)', () => {
+    // The CSV has no flags column (established contract), so the toggle's
+    // only CSV effect is through total_qty: whatever the view returned -
+    // include or required-only - exports scaled, unrepartitioned.
+    const items = [
+      createBomItem({ total_qty: 2, optional_qty: 0 }),
+      createBomItem({ part_id: 2, ipn: 'MIX-1', total_qty: 5, optional_qty: 3 })
+    ];
+    const csv = generateCsvContent(items, 1, true, true);
+    const header = csv.split('\n')[0].split(',');
+    const qtyCol = header.indexOf('Total Qty');
+    const rows = csv.split('\n').slice(1);
+
+    expect(Number(rows[0].split(',')[qtyCol])).toBe(2);
+    expect(Number(rows[1].split(',')[qtyCol])).toBe(5);
+    // No Optional-style column joins the header set.
+    expect(header.some((h) => /optional/i.test(h))).toBe(false);
+  });
 });

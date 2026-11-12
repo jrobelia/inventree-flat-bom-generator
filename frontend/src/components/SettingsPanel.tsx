@@ -73,6 +73,15 @@ export function SettingsPanel({
           }
         />
 
+        <Switch
+          label='Include Optional Parts'
+          description='Count optional BOM-line demand in totals; off shows required-only purchasing'
+          checked={settings.includeOptional}
+          onChange={(event) =>
+            onUpdateSetting('includeOptional', event.currentTarget.checked)
+          }
+        />
+
         <Group justify='flex-end'>
           <Button variant='subtle' onClick={onResetToDefaults}>
             Reset to Defaults

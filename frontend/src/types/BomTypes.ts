@@ -29,6 +29,8 @@ export interface BomItem {
   default_supplier_id?: number | null;
   internal_supplier?: boolean;
   optional?: boolean;
+  /** Share of total_qty from optional BOM-line occurrences (issue #30) */
+  optional_qty?: number;
   consumable?: boolean;
 
   // Quantities (aggregated/deduplicated)

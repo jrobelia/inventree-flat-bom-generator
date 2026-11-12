@@ -16,6 +16,41 @@ export interface UseFlatBomResult {
 }
 
 /**
+ * Build the flat-BOM query string from plugin settings.
+ *
+ * Pure function extracted for testability: the URL contract (which params
+ * are always sent vs. omitted at their default) is verified by unit tests
+ * without mounting the hook.
+ */
+export function buildFlatBomQuery(settings: PluginSettings): string {
+  const queryParams = new URLSearchParams();
+
+  // max_depth: Include if non-zero (0 = unlimited)
+  if (settings.maxDepth > 0) {
+    queryParams.append('max_depth', settings.maxDepth.toString());
+  }
+
+  // expand_purchased_assemblies: Include if true (default false)
+  if (settings.expandPurchasedAssemblies) {
+    queryParams.append('expand_purchased_assemblies', 'true');
+  }
+
+  // include_substitutes: Always send to override plugin default
+  queryParams.append(
+    'include_substitutes',
+    settings.includeSubstitutes ? 'true' : 'false'
+  );
+
+  // include_optional: Always send to override plugin default (#30)
+  queryParams.append(
+    'include_optional',
+    settings.includeOptional ? 'true' : 'false'
+  );
+
+  return queryParams.toString();
+}
+
+/**
  * Custom hook for managing flat BOM API calls and state
  *
  * Handles:
@@ -49,26 +84,7 @@ export function useFlatBom(
     setError(null);
 
     try {
-      // Build query params from settings (only include non-defaults)
-      const queryParams = new URLSearchParams();
-
-      // max_depth: Include if non-zero (0 = unlimited)
-      if (settings.maxDepth > 0) {
-        queryParams.append('max_depth', settings.maxDepth.toString());
-      }
-
-      // expand_purchased_assemblies: Include if true (default false)
-      if (settings.expandPurchasedAssemblies) {
-        queryParams.append('expand_purchased_assemblies', 'true');
-      }
-
-      // include_substitutes: Always send to override plugin default
-      queryParams.append(
-        'include_substitutes',
-        settings.includeSubstitutes ? 'true' : 'false'
-      );
-
-      const queryString = queryParams.toString();
+      const queryString = buildFlatBomQuery(settings);
       const url = `/plugin/flat-bom-generator/flat-bom/${partId}/${
         queryString ? `?${queryString}` : ''
       }`;

@@ -51,6 +51,12 @@ class FlatBOMGenerator(SettingsMixin, UrlsMixin, UserInterfaceMixin, InvenTreePl
             "validator": bool,
             "default": False,
         },
+        "INCLUDE_OPTIONAL_PARTS": {
+            "name": "Include Optional Parts",
+            "description": "Include optional BOM-line demand in flat BOM totals (optional demand is real demand, so the default keeps it on). Disable to exclude optional lines - and their whole subtrees - from totals, derived figures, and the cut list.",
+            "validator": bool,
+            "default": True,
+        },
     }
 
     # Custom URL endpoints (from UrlsMixin)

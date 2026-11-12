@@ -14,7 +14,7 @@ InvenTree's built-in BOM view shows only the first layer of a BOM's hierarchical
 
 - **Automatic Line-Item Extraction**: Traverses the entire BOM tree and emits line items driven by assembly status and each part's primary supplier — external-supplier assemblies appear as purchased units, internal-supplier assemblies appear and are expanded, unsourced assemblies expand as build candidates
 - **Quantity Deduplication**: When a part appears multiple times in different branches of the BOM, automatically aggregates the total quantity needed
-- **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag)
+- **Optional & Consumable Parts**: Displays badges for optional and consumable parts with smart aggregation logic (flag shown only if ALL instances have that flag). Rows mixing optional and required demand carry a `mixed (X opt / Y req)` marker partitioning their displayed total, and the **Include Optional Parts** toggle filters totals to required-only demand — pruning each optional line's whole subtree and recalculating order figures and the cut list
 - **Cut Lists**: BOM lines in length units (mm, m, ft...) get a piece breakdown — each entry shows the piece size and how many pieces the BOM demands, aggregated per part and size
 - **Flexible Build Margin Planning**: Toggle between optimistic (ignore allocations) and realistic (account for allocated stock) planning modes
 - **On-Order Awareness**: Choose whether to include incoming purchase orders in your Build Margin calculations
@@ -96,8 +96,9 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Fabrication Category** | InvenTree category for fabricated parts. Parts in this category (or child categories) get the Fab display label. Affects labels only, not expansion. | None |
 | **Commercial Category** | InvenTree category for commercial/COTS parts. Parts in this category (or child categories) get the Coml display label. Affects labels only, not expansion. | None |
 | **Show Substitute Parts** | Include substitute parts in the flat BOM by default (shown as child rows with individual stock levels). The panel's Include Substitute Parts toggle overrides this per run. | `False` |
+| **Include Optional Parts** | Count optional BOM-line demand in totals by default. Optional demand is real demand, so the default keeps it on; the panel's Include Optional Parts toggle overrides this per run to show required-only purchasing. | `True` |
 
-Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, and **Include Substitute Parts** — are panel settings, not plugin admin settings: they live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run.
+Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, **Include Substitute Parts**, and **Include Optional Parts** — live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run. **Include Substitute Parts** and **Include Optional Parts** additionally have plugin admin defaults (the table above) that apply when the panel sends no override; **Maximum Traversal Depth** and **Expand Purchased Assemblies** are panel-only.
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 

@@ -127,6 +127,8 @@ class FlatBOMView(APIView):
         Query Parameters:
             max_depth: Maximum depth to traverse (default: 0/unlimited)
             expand_purchased_assemblies: Expand assemblies with suppliers (default: false)
+            include_substitutes: Enrich rows with substitute parts (plugin setting default)
+            include_optional: Include optional BOM-line demand (plugin setting default, on)
 
         Returns:
             List of unique leaf parts with total quantities and display metadata
@@ -143,6 +145,7 @@ class FlatBOMView(APIView):
         include_substitutes_param = request.query_params.get(
             "include_substitutes", None
         )
+        include_optional_param = request.query_params.get("include_optional", None)
 
         # Parse max_depth
         max_depth = None
@@ -163,6 +166,9 @@ class FlatBOMView(APIView):
         category_mappings = {}
 
         include_substitutes_default = False
+        # Optional demand is real demand - the default keeps today's
+        # behavior (issue #30)
+        include_optional_default = True
 
         if plugin:
             category_mappings = get_category_mappings(plugin)
@@ -179,6 +185,19 @@ class FlatBOMView(APIView):
                     else False
                 )
             )
+
+            include_optional_setting = plugin.get_setting(
+                "INCLUDE_OPTIONAL_PARTS", backup_value=True
+            )
+            include_optional_default = (
+                bool(include_optional_setting)
+                if isinstance(include_optional_setting, bool)
+                else (
+                    str(include_optional_setting).lower() == "true"
+                    if include_optional_setting
+                    else True
+                )
+            )
         else:
             logger.error("[FlatBOM] Plugin 'flat-bom-generator' not found in registry!")
 
@@ -193,6 +212,11 @@ class FlatBOMView(APIView):
         else:
             include_substitutes = include_substitutes_default
 
+        if include_optional_param is not None:
+            include_optional = include_optional_param.lower() == "true"
+        else:
+            include_optional = include_optional_default
+
         if plugin:
             logger.info("[FlatBOM] Settings loaded:")
             logger.info(
@@ -200,6 +224,9 @@ class FlatBOMView(APIView):
             )
             logger.info(
                 f"  - include_substitutes: {include_substitutes} (from {'query param' if include_substitutes_param else 'plugin default'})"
+            )
+            logger.info(
+                f"  - include_optional: {include_optional} (from {'query param' if include_optional_param else 'plugin default'})"
             )
             logger.info(f"  - max_depth: {max_depth} (from query param)")
             logger.info(f"  - category_mappings: {category_mappings}")
@@ -230,6 +257,7 @@ class FlatBOMView(APIView):
                     max_depth=max_depth,
                     expand_purchased_assemblies=expand_purchased_assemblies,
                     category_mappings=category_mappings,
+                    include_optional=include_optional,
                 )
             )
             logger.info(

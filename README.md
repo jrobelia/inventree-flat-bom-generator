@@ -263,7 +263,7 @@ The plugin adds a "Flat BOM Viewer" panel to assembly part pages:
 | **Max Stock** | Upstream per-part stock ceiling — blank when unset; red badge when net stock plus suggested order would exceed it |
 | **Build Margin** | Balance after build (negative red badge if deficit, positive green badge if surplus; respects allocation and on-order checkboxes) |
 
-All columns except **Cut Length** and **Inherited From** are **sortable**, and the table is **paginated** (10/25/50/100/All per page).
+All columns except **Cut Length** and **Inherited From** are **sortable**, and the table is **paginated** (10/25/50/100/500/1000 per page).
 
 *Screenshot: BOM table showing all columns with various part types and stock levels*  
 ![Full data table showing sortable columns, color-coded badges, and stock level indicators](imgs/data-table-view.png)

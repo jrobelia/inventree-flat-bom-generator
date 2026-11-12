@@ -474,8 +474,8 @@ The former "CtL integration" gap is obsolete - the cut-to-length mechanism was r
 - [ ] Units display [unit] notation on relevant columns
 
 ### Interactive Features
-- [ ] Pagination (10/25/50/100/All) works correctly
-- [ ] "All" option displays entire table without pagination
+- [ ] Pagination (10/25/50/100/500/1000) works correctly
+- [ ] Largest page size (1000) caps the table at 1000 rows per page
 - [ ] Column sorting works (click headers)
 - [ ] Search box filters rows
 - [ ] Checkboxes toggle shortfall values

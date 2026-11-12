@@ -114,7 +114,7 @@
     sub_part: 9004
     quantity: 4
     raw_amount: '4'
-    note: J1, J2, J3, J4
+    reference: J1, J2, J3, J4
     validated: true
 - model: part.bomitem
   pk: 9004
@@ -123,7 +123,7 @@
     sub_part: 9004
     quantity: 2
     raw_amount: '2'
-    note: J5, J6
+    reference: J5, J6
     validated: true
 - model: part.part
   pk: 9010

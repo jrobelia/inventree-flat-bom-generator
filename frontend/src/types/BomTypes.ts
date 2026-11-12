@@ -46,9 +46,11 @@ export interface BomItem {
   cut_length?: number | null;
   cut_unit?: string;
 
-  // Upstream BOM line semantics (InvenTree 1.6): inherited_from = IPN of
-  // the ancestor part an inherited BOM line is defined on (null for direct
-  // lines). piece_count is a per-line concept - flat rows are material
+  // Upstream BOM line semantics (InvenTree 1.6): inherited_from = the
+  // distinct source template IPNs the merged lines were inherited through,
+  // comma-joined and sorted, with marker 'local' appended when direct
+  // lines are in the mix; null when nothing is inherited (#45 ruling).
+  // piece_count is a per-line concept - flat rows are material
   // lumps and always carry 1; piece structure lives in cut_list (R-025
   // amendment, issue #44).
   piece_count?: number;

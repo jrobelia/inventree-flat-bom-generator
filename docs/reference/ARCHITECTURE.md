@@ -90,10 +90,11 @@ GET /api/plugin/flat-bom-generator/flat-bom/{part_id}/
 - `internal_supplier`: Boolean - true when the primary supplier's company has `is_internal` set
 - `cut_list`: Cut entries for BOM lines whose sub-part units have [length] dimensionality - `{size, count, unit}` aggregated by (part, piece size), null otherwise
 - `piece_count`: Always 1 on a flat row - a flat row is a material lump whose `total_qty` already folds every occurrence's line piece count in; per-line piece structure lives in `cut_list` (ruling R-025 amendment, issue #44)
-- `inherited_from`: IPN of the ancestor part an inherited BOM line is defined on (null for direct lines)
+- `inherited_from`: Distinct source template IPNs the merged lines were inherited through, comma-joined and sorted, with marker `local` appended when direct (non-inherited) lines are in the mix; null when nothing is inherited (maintainer ruling, issue #45)
 - `optional`: Boolean - whether part is optional in BOM (can be excluded from builds)
 - `consumable`: Boolean - whether part is effectively consumable (BOM line flag or Part.consumable; not tracked in build orders)
-- `note`: BOM item notes (free text, never parsed)
+- `note`: BOM item notes (free text, never parsed) - merged rows dedupe-join distinct occurrence notes (issue #45)
+- `reference`: BOM line reference designators (`bom_item.reference`) - merged rows dedupe-join distinct tokens (issue #45)
 - `level`: Depth in original BOM tree
 - `in_stock`: Total inventory
 - `on_order`: Quantity on incomplete purchase orders
@@ -335,7 +336,7 @@ interface BomItem {
     cut_length?: number | null;
     cut_unit?: string;
     piece_count?: number;       // Always 1 on flat rows (material lump; R-025 amendment)
-    inherited_from?: string | null;
+    inherited_from?: string | null;  // Sorted template IPNs + 'local' marker; null when nothing inherited (#45)
     
     // Stock levels
     in_stock: number;       // Total physical stock
@@ -405,7 +406,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
 7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
 8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
-9. **Inherited From** - IPN of the ancestor part an inherited BOM line is defined on (toggleable, hidden unless inherited lines present)
+9. **Inherited From** - Source template IPNs the merged lines were inherited through (sorted, `local` marker when direct lines are in the mix); blank when nothing is inherited (toggleable, hidden unless inherited lines present)
 10. **In Stock** - Color badge (green/orange/red) with [unit] (toggleable)
 11. **Allocated** - Yellow badge if > 0 with [unit] (toggleable)
 12. **On Order** - Blue badge if > 0 with [unit] (toggleable)
@@ -530,7 +531,7 @@ The authoritative test inventory and strategy is `flat_bom_generator/tests/TEST-
 - Always handle `Part.DoesNotExist` exceptions
 
 ### Accepted decisions
-`docs/adr/` holds the settled choices a change must not silently contradict — fixture-based integration tests (0001), DRF serializers everywhere (0002), code-first test methodology (0003), frontend extraction conventions (0004–0005), all-instances flag aggregation (0006), doc ownership (0007), variant-parts scope (0008), merged-row scalar nulling (0009).
+`docs/adr/` holds the settled choices a change must not silently contradict — fixture-based integration tests (0001), DRF serializers everywhere (0002), code-first test methodology (0003), frontend extraction conventions (0004–0005), all-instances flag aggregation (0006), doc ownership (0007), variant-parts scope (0008), merged-row scalar contracts (0009).
 
 ---
 

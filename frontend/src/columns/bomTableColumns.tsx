@@ -155,7 +155,7 @@ export function createBomTableColumns({
     {
       accessor: 'category',
       title: 'Category',
-      sortable: false,
+      sortable: true,
       switchable: true,
       render: (record) => {
         if (record.is_child_row) {
@@ -679,7 +679,7 @@ export function createBomTableColumns({
     {
       accessor: 'maximum_stock',
       title: 'Max Stock',
-      sortable: false,
+      sortable: true,
       switchable: true,
       render: (record) => {
         if (record.is_child_row || record.maximum_stock == null) {

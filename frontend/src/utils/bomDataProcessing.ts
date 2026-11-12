@@ -215,6 +215,10 @@ export function sortBomData(
         aValue = a.part_type;
         bValue = b.part_type;
         break;
+      case 'category':
+        aValue = a.category || '';
+        bValue = b.category || '';
+        break;
       case 'total_qty':
         aValue = a.total_qty * buildQuantity;
         bValue = b.total_qty * buildQuantity;
@@ -242,6 +246,22 @@ export function sortBomData(
       case 'quantity_to_order':
         aValue = a.quantity_to_order;
         bValue = b.quantity_to_order;
+        break;
+      case 'maximum_stock':
+        // Unset ceilings tail in BOTH directions (#43): partition
+        // null/undefined out before comparing the defined values - raw
+        // null arithmetic would head a descending sort.
+        if (a.maximum_stock == null && b.maximum_stock == null) {
+          return 0;
+        }
+        if (a.maximum_stock == null) {
+          return 1;
+        }
+        if (b.maximum_stock == null) {
+          return -1;
+        }
+        aValue = a.maximum_stock;
+        bValue = b.maximum_stock;
         break;
       case 'shortfall':
         // Calculate shortfall for sorting

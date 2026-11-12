@@ -207,12 +207,13 @@ describe('shortage field columns (ticket #15)', () => {
 describe('Max Stock column (ticket #26)', () => {
   // maximum_stock is the part's stock ceiling (upstream Part.maximum_stock;
   // null = no ceiling). The column joins the auto-managed family (Cut
-  // Length / Inherited From): not sortable, present in Select
-  // Columns, auto-hidden unless a row carries a ceiling. exceeds_max_stock
+  // Length / Inherited From) for visibility - present in Select
+  // Columns, auto-hidden unless a row carries a ceiling - while R-034
+  // (#43) makes it sortable like its stock siblings. exceeds_max_stock
   // renders the shortage-badge pattern - the ceiling value in a red filled
   // badge like a negative net_stock.
 
-  it('sits between To Order and Build Margin, not sortable, in Select Columns', () => {
+  it('sits between To Order and Build Margin, sortable, in Select Columns', () => {
     const columns = createBomTableColumns({
       buildQuantity: 1,
       includeAllocations: true,
@@ -223,7 +224,7 @@ describe('Max Stock column (ticket #26)', () => {
 
     const maxCol = columnBy('maximum_stock');
     expect(maxCol.title).toBe('Max Stock');
-    expect(maxCol.sortable).toBe(false);
+    expect(maxCol.sortable).toBe(true);
     expect(accessors.indexOf('maximum_stock')).toBe(
       accessors.indexOf('quantity_to_order') + 1
     );
@@ -327,5 +328,20 @@ describe('merged-row scalar cells (tickets #23/#45, ruling R-025)', () => {
         )
       )
     ).toBe('MACH-A, WELD-T, local');
+  });
+});
+
+describe('column sortability (ticket #43, ruling R-034)', () => {
+  // R-034: Category and Max Stock join the sortable set - Max Stock as a
+  // stock-family numeric beside its sorting siblings, Category as a plain
+  // text column. Cut Length and Inherited From stay non-sortable. (The
+  // ruling also names Pieces, but #44 removed that column, so there is no
+  // flag to keep.)
+
+  it('sorts Category and Max Stock, keeps Cut Length and Inherited From non-sortable', () => {
+    expect(columnBy('category').sortable).toBe(true);
+    expect(columnBy('maximum_stock').sortable).toBe(true);
+    expect(columnBy('cut_length').sortable).toBe(false);
+    expect(columnBy('inherited_from').sortable).toBe(false);
   });
 });

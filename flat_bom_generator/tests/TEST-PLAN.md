@@ -1,7 +1,7 @@
 # FlatBOMGenerator - Test Plan
 
 **Last Updated**: November 11, 2026  
-**Test Count**: 346 backend tests (181 unit + 165 integration); frontend Vitest + Playwright run in the suite  
+**Test Count**: 358 backend tests (191 unit + 167 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
 
@@ -39,7 +39,7 @@ This document covers **testing strategy, execution, and improvement priorities**
 **Location:** `flat_bom_generator/tests/*.py`  
 **Purpose:** Test individual functions in isolation, no database required
 
-**Files:** (181 tests total)
+**Files:** (191 tests total)
 - `test_categorization.py` (32 tests) - Display-label classification (labels only, never expansion)
 - `test_serializers.py` (58 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
@@ -67,7 +67,7 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 **Location:** `flat_bom_generator/tests/integration/*.py`  
 **Purpose:** Test with real InvenTree Part/BomItem/Stock models
 
-**Files:** (165 tests total)
+**Files:** (167 tests total)
 - `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
 - `test_upstream_bom_semantics.py` (17 tests) - piece_count lump semantics, inherited lines, effective consumable, merged-row field behavior (piece_count normalizes to 1, inherited_from renders `IPN, local` on mixed provenance, reference joins line designators) (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
@@ -271,7 +271,7 @@ def test_serializer_validates_real_part(self):
 5. test_no_warnings_for_clean_bom - Validates clean BOM (no warnings)
 6. test_warning_serialization_structure - Validates BOMWarningSerializer fields
 7. test_warnings_included_in_response_structure - Validates metadata.warnings structure
-8. test_references_combined_across_paths - SKIPPED (reference aggregation, future feature)
+8. test_references_combined_across_paths - Validates reference designators joined across paths (feature shipped #45)
 
 **Coverage Achievement:**
 - **Before:** 85% (38 component tests: serializers + flags + helpers)
@@ -291,13 +291,13 @@ def test_serializer_validates_real_part(self):
 ---
 
 ### ✅ Priority 4: Complex BOM Structures (COMPLETE - Fixture-Based Approach)
-**Time Invested:** 6 hours (initial attempts + fixture breakthrough + YAML debugging) | **Tests Created:** 17 tests (16 passing, 1 skipped)
+**Time Invested:** 6 hours (initial attempts + fixture breakthrough + YAML debugging) | **Tests Created:** 17 tests (17 passing)
 
 **Purpose:** Validate BOM traversal with complex real-world scenarios beyond simple 3-level BOMs.
 
 **BREAKTHROUGH:** Discovered programmatic fixture loading pattern that bypasses InvenTree's `Part.check_add_to_bom()` validation!
 
-**Scenario 1: Same Part Multiple Paths** ✅ WORKING (4/5 tests passing)
+**Scenario 1: Same Part Multiple Paths** ✅ WORKING (5/5 tests passing)
 **Status:** ✅ **Fixture-based approach successful** - Tests validate `visited.copy()` pattern
 
 **Problem Encountered:** InvenTree `Part.check_add_to_bom()` validation rejects dynamic BOM creation in tests.
@@ -314,11 +314,11 @@ def test_serializer_validates_real_part(self):
 - Module docstring in test file documents the pattern for future use
 
 **Tests Created:**
-- **SamePartMultiplePathsTests** (4 tests) - ✅ 3 passing, 1 skipped
+- **SamePartMultiplePathsTests** (4 tests) - ✅ 4 passing
   - test_same_part_appears_via_multiple_paths ✅
   - test_quantity_aggregation_across_paths ✅ (2×4 + 3×2 = 14)
   - test_no_circular_reference_warning ✅
-  - test_references_combined_across_paths ⏭️ SKIPPED (feature not implemented)
+  - test_references_combined_across_paths ✅ (designator join shipped #45)
 - **SamePartDifferentQuantitiesTests** (1 test) - ✅ PASSING
   - test_quantities_sum_from_three_paths ✅ (10+5+3=18)
 
@@ -576,7 +576,7 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-10 | Integration: Priority 3 | ⚠️ GAP ACCEPTED | 85% coverage via components, view integration blocked |
 | 2026-01-10 | Integration: Priority 4 | ⚠️ SCENARIO 1 SKIPPED | 5 tests created, blocked by InvenTree validation |
 | 2026-01-11 | Integration: Priority 4 | ✅ BREAKTHROUGH | Fixture-based approach, 693-line YAML, all scenarios working |
-| 2026-01-11 | Integration: Priority 4 | ✅ 16/17 PASS | Scenarios 1-4 complete (1 skipped: reference aggregation) |
+| 2026-01-11 | Integration: Priority 4 | ✅ 16/17 PASS | Scenarios 1-4 complete (1 skipped then: reference aggregation — shipped #45) |
 | 2026-01-12 | Integration: Priority 3 | ✅ REOPENED | Using fixture approach to close 15% gap |
 | 2026-01-12 | Integration: Priority 3 | ✅ 8/8 PASS | warning_scenarios.yaml (383 lines), all warning types tested! |
 | 2026-01-12 | Test Count Update | 📊 151 PASSING | 60 unit + 91 integration (8 warning + 22 get_bom_items + 61 other) |
@@ -587,8 +587,8 @@ class MyFeatureTests(InvenTreeTestCase):
 | 2026-01-12 | Gap #5: View Settings | ✅ 6/6 PASS | Double-patch mocking for settings loading |
 | 2026-01-12 | Gap #6: Stock Enrichment | ✅ 2/2 PASS + 🐛 BUG FIXED | Production bug found/fixed (Part.DoesNotExist) |
 
-**Current Test Count:** 340 backend tests  
-**Breakdown:** 177 unit + 163 integration  
+**Current Test Count:** 358 backend tests  
+**Breakdown:** 191 unit + 167 integration  
 **All Critical Gaps Closed:** Gaps #1-#6 complete (61 tests added)  
 **Priorities 1-4 Complete:** 100% coverage achieved via fixture-based integration tests  
 **Production Bug Fixed:** Part.DoesNotExist crash in stock enrichment

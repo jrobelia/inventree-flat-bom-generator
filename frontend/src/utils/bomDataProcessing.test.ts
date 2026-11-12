@@ -701,26 +701,30 @@ describe('sortBomData', () => {
   });
 
   describe('shortfall calculation sorting', () => {
-    it('should sort by shortfall without allocations or on-order', () => {
+    // The sort key is the signed balance the column renders
+    // (available - required): negative = shortfall, positive = surplus.
+    // Ascending puts the worst shortfall first; descending the largest
+    // surplus (#46).
+    it('should sort by signed balance without allocations or on-order', () => {
       const itemsWithStock = [
         createBomItem({
           total_qty: 10,
           in_stock: 50,
           allocated: 5,
           on_order: 20
-        }), // Shortfall: 0 (50 >= 10)
+        }), // Balance: +40 (50 - 10)
         createBomItem({
           total_qty: 20,
           in_stock: 10,
           allocated: 5,
           on_order: 20
-        }), // Shortfall: 10 (10 < 20)
+        }), // Balance: -10 (10 - 20)
         createBomItem({
           total_qty: 30,
           in_stock: 5,
           allocated: 5,
           on_order: 20
-        }) // Shortfall: 25 (5 < 30)
+        }) // Balance: -25 (5 - 30)
       ];
 
       const result = sortBomData(
@@ -732,10 +736,10 @@ describe('sortBomData', () => {
         false
       );
 
-      // Ascending: 0, 10, 25
-      expect(result[0].total_qty).toBe(10); // 0 shortfall
-      expect(result[1].total_qty).toBe(20); // 10 shortfall
-      expect(result[2].total_qty).toBe(30); // 25 shortfall
+      // Ascending: -25, -10, +40 (worst shortfall first)
+      expect(result[0].total_qty).toBe(30); // -25 balance
+      expect(result[1].total_qty).toBe(20); // -10 balance
+      expect(result[2].total_qty).toBe(10); // +40 balance
     });
 
     it('should subtract allocations when includeAllocations=true', () => {
@@ -745,13 +749,13 @@ describe('sortBomData', () => {
           in_stock: 50,
           allocated: 45,
           on_order: 0
-        }), // Available: 5, Shortfall: 5
+        }), // Balance: 50 - 45 - 10 = -5
         createBomItem({
           total_qty: 10,
           in_stock: 50,
           allocated: 0,
           on_order: 0
-        }) // Available: 50, Shortfall: 0
+        }) // Balance: 50 - 0 - 10 = +40
       ];
 
       const result = sortBomData(
@@ -763,9 +767,9 @@ describe('sortBomData', () => {
         false
       );
 
-      // With allocations: item 2 (0 shortfall) < item 1 (5 shortfall)
-      expect(result[0].allocated).toBe(0); // No shortfall
-      expect(result[1].allocated).toBe(45); // Has shortfall
+      // With allocations: item 1 (-5) < item 2 (+40)
+      expect(result[0].allocated).toBe(45); // -5 balance
+      expect(result[1].allocated).toBe(0); // +40 balance
     });
 
     it('should include on-order when includeOnOrder=true', () => {
@@ -775,13 +779,13 @@ describe('sortBomData', () => {
           in_stock: 10,
           allocated: 0,
           on_order: 40
-        }), // Stock+OnOrder: 50, Shortfall: 0
+        }), // Balance: 10 + 40 - 50 = 0
         createBomItem({
           total_qty: 50,
           in_stock: 10,
           allocated: 0,
           on_order: 0
-        }) // Stock: 10, Shortfall: 40
+        }) // Balance: 10 - 50 = -40
       ];
 
       const result = sortBomData(
@@ -793,9 +797,9 @@ describe('sortBomData', () => {
         true
       );
 
-      // With on-order: item 1 (0 shortfall) < item 2 (40 shortfall)
-      expect(result[0].on_order).toBe(40); // No shortfall
-      expect(result[1].on_order).toBe(0); // Has shortfall
+      // With on-order: item 2 (-40) < item 1 (0)
+      expect(result[0].on_order).toBe(0); // -40 balance
+      expect(result[1].on_order).toBe(40); // 0 balance
     });
 
     it('should handle buildQuantity multiplier in shortfall calculation', () => {
@@ -819,6 +823,145 @@ describe('sortBomData', () => {
 
       // Should calculate shortfall based on total_qty * buildQuantity
       expect(result[0].total_qty).toBe(10);
+    });
+  });
+
+  describe('build margin signed-balance ordering (ticket #46)', () => {
+    // Regression: the old sort key was Math.max(0, required - available), so
+    // every surplus row clamped to key 0 - equal keys meant the green group
+    // kept arbitrary input order and never sorted. The key is now the same
+    // signed balance the column renders (calculateShortfall).
+    const mixedItems = [
+      createBomItem({
+        part_id: 1,
+        ipn: 'A',
+        total_qty: 20,
+        in_stock: 10
+      }), // Balance: -10
+      createBomItem({
+        part_id: 2,
+        ipn: 'B',
+        total_qty: 10,
+        in_stock: 5
+      }), // Balance: -5
+      createBomItem({
+        part_id: 3,
+        ipn: 'C',
+        total_qty: 8,
+        in_stock: 10
+      }), // Balance: +2
+      createBomItem({
+        part_id: 4,
+        ipn: 'D',
+        total_qty: 2,
+        in_stock: 10
+      }) // Balance: +8
+    ];
+
+    it('orders surplus rows among themselves ascending (worst shortfall first)', () => {
+      const result = sortBomData(
+        mixedItems,
+        'shortfall',
+        'asc',
+        1,
+        false,
+        false
+      );
+
+      // -10, -5, +2, +8
+      expect(result.map((item) => item.ipn)).toEqual(['A', 'B', 'C', 'D']);
+    });
+
+    it('orders surplus rows among themselves descending (largest surplus first)', () => {
+      const result = sortBomData(
+        mixedItems,
+        'shortfall',
+        'desc',
+        1,
+        false,
+        false
+      );
+
+      // +8, +2, -5, -10
+      expect(result.map((item) => item.ipn)).toEqual(['D', 'C', 'B', 'A']);
+    });
+
+    it('reorders consistently when includeAllocations flips a row to shortfall', () => {
+      const allocItems = [
+        createBomItem({
+          part_id: 1,
+          ipn: 'A',
+          total_qty: 10,
+          in_stock: 20,
+          allocated: 15
+        }), // Untoggled: +10; with allocations: 20 - 15 - 10 = -5
+        createBomItem({
+          part_id: 2,
+          ipn: 'B',
+          total_qty: 10,
+          in_stock: 12,
+          allocated: 0
+        }) // +2 either way
+      ];
+
+      const untoggled = sortBomData(
+        allocItems,
+        'shortfall',
+        'asc',
+        1,
+        false,
+        false
+      );
+      expect(untoggled.map((item) => item.ipn)).toEqual(['B', 'A']);
+
+      const toggled = sortBomData(
+        allocItems,
+        'shortfall',
+        'asc',
+        1,
+        true,
+        false
+      );
+      expect(toggled.map((item) => item.ipn)).toEqual(['A', 'B']);
+    });
+
+    it('reorders consistently when includeOnOrder lifts a row to surplus', () => {
+      const orderItems = [
+        createBomItem({
+          part_id: 1,
+          ipn: 'A',
+          total_qty: 30,
+          in_stock: 5,
+          on_order: 40
+        }), // Untoggled: -25; with on-order: 5 + 40 - 30 = +15
+        createBomItem({
+          part_id: 2,
+          ipn: 'B',
+          total_qty: 10,
+          in_stock: 0,
+          on_order: 0
+        }) // -10 either way
+      ];
+
+      const untoggled = sortBomData(
+        orderItems,
+        'shortfall',
+        'asc',
+        1,
+        false,
+        false
+      );
+      expect(untoggled.map((item) => item.ipn)).toEqual(['A', 'B']);
+
+      const toggled = sortBomData(
+        orderItems,
+        'shortfall',
+        'asc',
+        1,
+        false,
+        true
+      );
+      expect(toggled.map((item) => item.ipn)).toEqual(['B', 'A']);
     });
   });
 

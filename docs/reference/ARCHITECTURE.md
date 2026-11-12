@@ -379,12 +379,15 @@ interface BomItem {
 
 ## Critical Calculations
 
-### Shortfall Calculation
+### Build Margin Calculation
 ```typescript
-const stockToUse = includeAllocations ? record.available : record.in_stock;
-const onOrderToUse = includeOnOrder ? record.on_order : 0;
-const totalRequired = record.total_qty * buildQuantity;
-const shortfall = Math.max(0, totalRequired - stockToUse - onOrderToUse);
+// Signed balance rendered by the Build Margin column and used as its sort
+// key (calculateShortfall / sortBomData 'shortfall'): negative = shortfall,
+// positive = surplus.
+let stockValue = record.in_stock;
+if (includeAllocations) stockValue -= record.allocated;
+if (includeOnOrder) stockValue += record.on_order;
+const balance = stockValue - record.total_qty * buildQuantity;
 ```
 
 ### Stock Allocations (Backend)

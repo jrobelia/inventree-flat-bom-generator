@@ -264,7 +264,10 @@ export function sortBomData(
         bValue = b.maximum_stock;
         break;
       case 'shortfall':
-        // Calculate shortfall for sorting
+        // Sort by the signed build-margin balance the column renders
+        // (calculateShortfall): available - required. A clamped deficit key
+        // collapsed every surplus row to 0 so the green group never sorted
+        // (#46).
         let aStockValue = a.in_stock;
         let bStockValue = b.in_stock;
         if (includeAllocations) {
@@ -275,8 +278,8 @@ export function sortBomData(
           aStockValue += a.on_order;
           bStockValue += b.on_order;
         }
-        aValue = Math.max(0, a.total_qty * buildQuantity - aStockValue);
-        bValue = Math.max(0, b.total_qty * buildQuantity - bStockValue);
+        aValue = aStockValue - a.total_qty * buildQuantity;
+        bValue = bStockValue - b.total_qty * buildQuantity;
         break;
       case 'default_supplier_name':
         aValue = a.default_supplier_name || '';

@@ -809,7 +809,7 @@ describe('sortBomData', () => {
           in_stock: 100,
           allocated: 0,
           on_order: 0
-        }) // Need 50 (10*5), have 100, shortfall: 0
+        }) // Need 50 (10*5), have 100, margin +50
       ];
 
       const result = sortBomData(

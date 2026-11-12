@@ -531,7 +531,7 @@ The authoritative test inventory and strategy is `flat_bom_generator/tests/TEST-
 - Always handle `Part.DoesNotExist` exceptions
 
 ### Accepted decisions
-`docs/adr/` holds the settled choices a change must not silently contradict — fixture-based integration tests (0001), DRF serializers everywhere (0002), code-first test methodology (0003), frontend extraction conventions (0004–0005), all-instances flag aggregation (0006), doc ownership (0007), variant-parts scope (0008), merged-row scalar nulling (0009).
+`docs/adr/` holds the settled choices a change must not silently contradict — fixture-based integration tests (0001), DRF serializers everywhere (0002), code-first test methodology (0003), frontend extraction conventions (0004–0005), all-instances flag aggregation (0006), doc ownership (0007), variant-parts scope (0008), merged-row scalar contracts (0009).
 
 ---
 

@@ -4,7 +4,6 @@
 
 **Context:** The flat-BOM merge (`deduplicate_and_sum`) grouped occurrences of
 the same part but displayed first-seen `piece_count` and `inherited_from`.
-
 A merge of `500x4` + `500x2` rendered "Pieces: 4" beside a truthful
 "500 x 6" cut-list row -- the scalar lied about its siblings.
 

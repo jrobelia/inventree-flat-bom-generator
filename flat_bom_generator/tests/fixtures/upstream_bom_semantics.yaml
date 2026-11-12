@@ -544,8 +544,8 @@
     inherited: false
     validated: true
 
-# Same part on the variant directly and by template inheritance - the
-# occurrences disagree on inherited_from, so the merged row nulls it
+# Same part on the variant directly and by template inheritance - mixed
+# direct + inherited provenance renders 'WELD-T, local' (sorted join + local marker, #45)
 - model: part.bomitem
   pk: 81023
   fields:

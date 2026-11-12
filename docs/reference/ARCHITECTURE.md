@@ -282,6 +282,7 @@ showCutlistRows: boolean        // Show/hide cutlist breakdown rows
 maxDepth: number                // Maximum BOM traversal depth
 expandPurchasedAssemblies: boolean  // Expand external-supplier assemblies
 includeSubstitutes: boolean     // Include substitute parts
+includeOptional: boolean        // Include optional BOM-line demand (default on)
 
 // useColumnVisibility
 hiddenColumns: Record<string, boolean> // Column visibility state
@@ -412,7 +413,7 @@ available = part_obj.available_stock     # Property: total_stock - allocation_co
 3. **Description** - Line clamped (toggleable)
 4. **Type** - Badge (blue/green/orange/cyan/grape/violet/indigo) (toggleable)
 5. **Category** - InvenTree part category name (toggleable)
-6. **Flags** - Optional (orange) / Consumable (yellow) badges (toggleable)
+6. **Flags** - Optional (orange) / Consumable (yellow) badges; `mixed (X opt / Y req)` marker when a row carries both optional and required quantity (toggleable)
 7. **Total Qty** - Scaled by buildQuantity with [unit] (toggleable)
 8. **Cut Length** - For cutlist child rows, shows individual piece length (auto-managed only, not switchable; hidden unless cut data present)
 9. **Inherited From** - Source template IPNs the merged lines were inherited through (sorted, `local` marker when direct lines are in the mix); blank when nothing is inherited (toggleable, hidden unless inherited lines present)
@@ -506,7 +507,7 @@ See `DEPLOYMENT-WORKFLOW.md` in this directory for the full checklist.
 - [ ] Component column displays full_name instead of part_name
 - [ ] Unit display [unit] appears on Total Qty, In Stock, Allocated, On Order, Net Stock, To Order, and Max Stock columns
 - [ ] IFP Processed counter displays in statistics panel (Internal Fab Parts)
-- [ ] Flags column shows Optional (orange) and Consumable (yellow) badges
+- [ ] Flags column shows Optional (orange), Consumable (yellow) badges, and `mixed (X opt / Y req)` marker on mixed rows
 - [ ] Column visibility toggles work correctly (gear icon)
 - [ ] Settings panel collapses after first generation (progressive disclosure)
 - [ ] Cutlist rows can be shown/hidden with checkbox

@@ -607,7 +607,7 @@ Update documentation immediately when you change:
 - **BomItem interface or API response shape** → this file's interface/schema + `README.md` where user-visible
 - **Backend enrichment or calculations** → this file's calculations + `TEST-PLAN.md` where coverage changes
 - **Component structure or state variables** → this file's Key Files / State sections
-- **A settled decision a shipped change contradicts** → append an `## Amendment (ticket #N)` section to the affected ADR; never edit the frozen text
+- **A settled decision a shipped change contradicts** → append an `## Amendment (ticket #N)` section to the affected ADR **and** mark its `**Status:**` line with the pointer (`**Amended <date> (#N) — see Amendment section.**`) — the line names it, the section carries it; never edit the frozen text
 
 Docs to keep synchronized: `README.md` (user-facing), this file (developer reference), `flat_bom_generator/tests/TEST-PLAN.md` (test inventory), `docs/adr/` (frozen decisions). Work tracking belongs in GitHub issues, not in docs.
 

@@ -1,6 +1,6 @@
 # Merged rows null disagreeing per-line scalars
 
-**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`. **Amended 2026-11-11** (#44, maintainer ruling): the `piece_count` half is withdrawn — a per-line count cannot survive quantity aggregation even when sources agree, so flat rows emit `piece_count: 1` uniformly (material lump; piece structure lives in `cut_list`). The `inherited_from` disagreement-null rule stands.
+**Status:** Accepted — migrated from DEC-009 (`docs/decisions.md`, Nov 2026), archived under `docs/archive/decisions.md`. **Amended 2026-11-11** (#44, maintainer ruling) — see Amendment section.
 
 **Context:** The flat-BOM merge (`deduplicate_and_sum`) grouped occurrences of
 the same part but displayed first-seen `piece_count` and `inherited_from`.
@@ -19,3 +19,14 @@ string, splitting merged rows by scalar value.
 **Why this way:** Maintainer ruling R-025 (adjudication of #14 R1-F10,
 2026-11-05): blank is honest -- a planner must not read one occurrence's
 count as the whole story. Null also feeds #24's CSV blank semantics.
+
+## Amendment (ticket #44)
+
+**2026-11-11, maintainer ruling (R-025 amended):** the `piece_count` half
+is withdrawn -- a per-line count cannot survive quantity aggregation even
+when sources agree (`500x4` + `500x4` showed "Pieces: 4" while the cut
+list truthfully said `500x8`; a single-source row under a 3x ancestor
+showed `6000mm` beside "4", implying 1500mm pieces). Flat rows emit
+`piece_count: 1` uniformly -- material lump; piece structure lives
+exclusively in `cut_list` (matches upstream's own `pc=1 -> "-"`
+convention). The `inherited_from` half is unaffected by this amendment.

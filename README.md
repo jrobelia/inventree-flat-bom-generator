@@ -98,7 +98,7 @@ After enabling the plugin, configure it in **Settings → Plugins → Flat BOM G
 | **Show Substitute Parts** | Include substitute parts in the flat BOM by default (shown as child rows with individual stock levels). The panel's Include Substitute Parts toggle overrides this per run. | `False` |
 | **Include Optional Parts** | Count optional BOM-line demand in totals by default. Optional demand is real demand, so the default keeps it on; the panel's Include Optional Parts toggle overrides this per run to show required-only purchasing. | `True` |
 
-Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, **Include Substitute Parts**, and **Include Optional Parts** — are panel settings, not plugin admin settings: they live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run.
+Traversal and display toggles — **Maximum Traversal Depth**, **Expand Purchased Assemblies**, **Include Substitute Parts**, and **Include Optional Parts** — live in the Flat BOM panel (stored in browser localStorage) and are sent to the API as query parameters per run. **Include Substitute Parts** and **Include Optional Parts** additionally have plugin admin defaults (the table above) that apply when the panel sends no override; **Maximum Traversal Depth** and **Expand Purchased Assemblies** are panel-only.
 
 **Note:** See the "Category Configuration Behavior" section below for detailed part categorization logic.
 

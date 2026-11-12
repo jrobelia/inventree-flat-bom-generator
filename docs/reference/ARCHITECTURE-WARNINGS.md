@@ -27,6 +27,7 @@ assembly_with_no_children = is_assembly and len(children) == 0
 This is TRUE for:
 1. Assembly stopped at max_depth (expected behavior)
 2. Assembly with no BOM defined (error condition)
+3. *(added 2026-11, #30)* Assembly emptied by optional-line pruning under `include_optional=false` — expected behavior; emits no leaf row and no `assembly_no_children` warning
 
 ### The Solution: Prioritized Flags
 ```python

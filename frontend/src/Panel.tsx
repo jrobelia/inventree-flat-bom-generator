@@ -58,6 +58,12 @@ import {
   generateCsvContent,
   generateFilename
 } from './utils/csvExport';
+import {
+  paginateRecords,
+  parseRecordsPerPage,
+  RECORDS_PER_PAGE_OPTIONS,
+  RECORDS_PER_PAGE_STORAGE_KEY
+} from './utils/pagination';
 
 /**
  * Render a custom panel with the provided context.
@@ -93,12 +99,9 @@ function FlatBOMGeneratorPanel({
   });
   const [page, setPage] = useState(1);
   // Records per page state - persisted in localStorage
-  const [recordsPerPage, setRecordsPerPage] = useState<number | 'All'>(() => {
-    const stored = localStorage.getItem('flat-bom-records-per-page');
-    if (stored === 'All') return 'All';
-    const num = Number(stored);
-    return num > 0 ? num : 50;
-  });
+  const [recordsPerPage, setRecordsPerPage] = useState<number>(() =>
+    parseRecordsPerPage(localStorage.getItem(RECORDS_PER_PAGE_STORAGE_KEY))
+  );
 
   // Custom hooks for flat BOM functionality
   const { settings, updateSetting, resetToDefaults } = usePluginSettings();
@@ -230,10 +233,10 @@ function FlatBOMGeneratorPanel({
     [columns, hiddenColumns]
   );
 
-  const handleRecordsPerPageChange = (value: number | 'All') => {
+  const handleRecordsPerPageChange = (value: number) => {
     setRecordsPerPage(value);
     setPage(1);
-    localStorage.setItem('flat-bom-records-per-page', value.toString());
+    localStorage.setItem(RECORDS_PER_PAGE_STORAGE_KEY, value.toString());
   };
 
   return (
@@ -369,23 +372,16 @@ function FlatBOMGeneratorPanel({
             striped
             highlightOnHover
             columns={visibleColumns}
-            records={
-              recordsPerPage === 'All'
-                ? filteredAndSortedData
-                : filteredAndSortedData.slice(
-                    (page - 1) * recordsPerPage,
-                    page * recordsPerPage
-                  )
-            }
+            records={paginateRecords(
+              filteredAndSortedData,
+              page,
+              recordsPerPage
+            )}
             totalRecords={filteredAndSortedData.length}
-            recordsPerPage={
-              recordsPerPage === 'All'
-                ? filteredAndSortedData.length
-                : recordsPerPage
-            }
+            recordsPerPage={recordsPerPage}
             page={page}
             onPageChange={setPage}
-            recordsPerPageOptions={[10, 25, 50, 100, 'All'] as any}
+            recordsPerPageOptions={RECORDS_PER_PAGE_OPTIONS}
             onRecordsPerPageChange={handleRecordsPerPageChange}
             sortStatus={sortStatus}
             onSortStatusChange={setSortStatus}

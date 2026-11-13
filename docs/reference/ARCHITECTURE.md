@@ -290,7 +290,7 @@ error: string | null            // Error state
 searchQuery: string             // Filter text
 sortStatus: DataTableSortStatus // Column + direction
 page: number                    // Current page
-recordsPerPage: number | 'All'  // Pagination size (can be 'All')
+recordsPerPage: number          // Pagination size (10/25/50/100/500/1000, persisted)
 settingsExpanded: boolean       // Settings panel expansion state
 ```
 

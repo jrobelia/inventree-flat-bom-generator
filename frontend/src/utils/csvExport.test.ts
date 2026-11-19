@@ -150,9 +150,9 @@ describe('generateCsvContent', () => {
 
 describe('Inherited From column (ticket #24, ruling R-026; #44 drops Pieces)', () => {
   // The CSV mirrors the table (R-017): Inherited From keeps its grid
-  // position - after Cut Length / Cut Unit, before In Stock. A merged row
-  // that nulls the scalar (R-025) exports a blank cell where the table
-  // shows a dimmed dash.
+  // position - after Cut Length / Cut Unit, before In Stock. A row with
+  // nothing inherited (all-direct, #45) exports a blank cell where the
+  // table shows a dimmed dash.
   // The Pieces column is gone (#44, R-025 amendment): flat rows are
   // material lumps with piece_count uniformly 1, so the column could only
   // ever export a degenerate 1 - same treatment as the grid, which no
@@ -178,7 +178,7 @@ describe('Inherited From column (ticket #24, ruling R-026; #44 drops Pieces)', (
     expect(cells.length).toBe(header.length);
   });
 
-  it('emits a blank cell when a merged row nulls inherited_from (R-025)', () => {
+  it('emits a blank cell when nothing is inherited (all-direct row)', () => {
     const items = [createBomItem({ inherited_from: null })];
     const csv = generateCsvContent(items, 1, true, true);
     const lines = csv.split('\n');
@@ -214,6 +214,24 @@ describe('Inherited From column (ticket #24, ruling R-026; #44 drops Pieces)', (
     const subChild = lines[3].split(',');
     expect(subChild[inheritedCol]).toBe('');
     expect(subChild.length).toBe(header.length);
+  });
+
+  it('exports a comma-bearing provenance string as one quoted cell (#45)', () => {
+    // Merged mixed provenance renders 'WELD-T, local' - the comma must
+    // stay inside one quoted cell or a naive comma-split shifts the row
+    // off its header.
+    const items = [createBomItem({ inherited_from: 'WELD-T, local' })];
+    const csv = generateCsvContent(items, 1, true, true);
+    const lines = csv.split('\n');
+    const header = lines[0].split(',');
+    const inheritedCol = header.indexOf('Inherited From');
+
+    expect(lines[1]).toContain('"WELD-T, local"');
+    // Substitute the quoted cell, then the harness's naive split shows it
+    // occupies exactly the Inherited From column and no more.
+    const cells = lines[1].replace('"WELD-T, local"', 'X').split(',');
+    expect(cells[inheritedCol]).toBe('X');
+    expect(cells.length).toBe(header.length);
   });
 });
 

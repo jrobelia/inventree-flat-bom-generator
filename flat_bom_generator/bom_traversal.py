@@ -450,6 +450,19 @@ def get_leaf_parts_only(
     return leaves
 
 
+def _dedupe_join(values) -> str:
+    """Join distinct non-blank strings with ', ', first-seen order.
+
+    Used for merged-row text fields (note, reference) whose occurrences
+    must all contribute without duplicating identical values (issue #45).
+    """
+    seen = []
+    for value in values:
+        if value not in seen:
+            seen.append(value)
+    return ", ".join(seen)
+
+
 def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     """
     Sum quantities for parts appearing multiple times.
@@ -465,10 +478,23 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     Per-line scalars: piece_count is uniformly 1 on every flat row - a
     merged lump quantity cannot carry any single line's piece count, and
     even a lone line's count would misstate the lump under a multiplied
-    ancestor (ruling R-025 amendment, issue #44). inherited_from survives
-    the merge only when every occurrence agrees; a merged row whose
-    occurrences disagree emits null for that scalar rather than a
-    misleading first-seen value (ruling R-025).
+    ancestor (ruling R-025 amendment, issue #44). inherited_from renders
+    the distinct source template IPNs comma-joined and sorted, with the
+    marker `local` appended when direct (non-inherited) lines are in the
+    mix; blank when nothing is inherited (maintainer ruling, issue #45 -
+    supersedes the R-025 disagreement-null for this field).
+
+    Merged-row field contracts (issue #45):
+    - Warning flags (assembly_no_children, max_depth_exceeded) OR across
+      occurrences - a flagged occurrence must not vanish because it was
+      not first-seen. max_depth_exceeded is per-path, so the OR is what
+      keeps a truncated path's lost subtree demand visible.
+    - note dedupe-joins all distinct occurrence notes, first-seen order.
+    - reference carries dedupe-joined bom_item.reference designator
+      tokens, first-seen order - previously dropped entirely while the
+      field misleadingly carried joined notes.
+    - Descriptive metadata (names, units, supplier, part_type) keeps
+      first-occurrence-wins.
 
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
@@ -478,7 +504,8 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     """
     totals = defaultdict(float)
     part_info = {}
-    part_references = defaultdict(list)  # Store all note strings for aggregation
+    part_notes = defaultdict(list)  # Raw occurrence notes, deduped at render
+    part_designators = defaultdict(list)  # Raw designator tokens, deduped at render
     # Cut-list entries keyed by piece size per part; first-seen order kept
     cut_lists = defaultdict(dict)
     unit_registry = _resolve_unit_registry()
@@ -535,12 +562,19 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                 else:
                     entry["count"] += max(count, 1)
 
-        # Collect note strings for aggregation (display only - never parsed)
-        note = leaf.get("note", "")
-        if note and note.strip():
-            part_references[key].append(note)
+        # Collect occurrence notes and reference designators for the merged
+        # row's note/reference fields (display only - never parsed)
+        note = (leaf.get("note") or "").strip()
+        if note:
+            part_notes[key].append(note)
+        for token in (leaf.get("reference") or "").split(","):
+            token = token.strip()
+            if token:
+                part_designators[key].append(token)
 
-        # Store part info (first occurrence wins for metadata)
+        # Store part info (first occurrence wins for descriptive metadata;
+        # warning flags are OR'd below so a flagged later occurrence
+        # cannot vanish - issue #45)
         if key not in part_info:
             part_info[key] = {
                 "part_id": part_id,
@@ -553,10 +587,9 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                 "default_supplier_id": leaf.get("default_supplier_id"),
                 "internal_supplier": leaf.get("internal_supplier", False),
                 "part_type": leaf["part_type"],
-                "note": leaf.get("note", ""),  # BOM item notes
-                "inherited_from_values": set(),  # per-occurrence markers (R-025)
-                "assembly_no_children": leaf.get("assembly_no_children", False),
-                "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
+                "inherited_from_values": set(),  # per-occurrence markers (R-025, #45 render)
+                "assembly_no_children": False,  # OR'd per occurrence below
+                "max_depth_exceeded": False,  # OR'd per occurrence below
                 "optional": leaf.get(
                     "optional", False
                 ),  # Start as False, set to True only if ALL instances are optional
@@ -577,18 +610,31 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
         if leaf.get("consumable", False):
             part_info[key]["consumable_instances"] += 1
 
-        # Per-line scalars (ruling R-025): collect every occurrence's value;
-        # the merged row emits the scalar only when the set is singleton.
+        # Warning flags OR across occurrences (issue #45): the merged row
+        # flags "any occurrence flagged". max_depth_exceeded is per-path -
+        # a deep path can truncate while a shallow path expands the same
+        # part fully, and the truncated path's lost subtree demand must
+        # not vanish silently.
+        if leaf.get("assembly_no_children", False):
+            part_info[key]["assembly_no_children"] = True
+        if leaf.get("max_depth_exceeded", False):
+            part_info[key]["max_depth_exceeded"] = True
+
+        # Per-occurrence provenance (ruling R-025 as amended by #45):
+        # collect every occurrence's inherited_from marker; the merged row
+        # renders the distinct template IPNs plus a `local` marker for
+        # direct lines.
         part_info[key]["inherited_from_values"].add(leaf.get("inherited_from"))
 
     all_keys = set(totals.keys())
 
     result = []
     for key in sorted(all_keys, key=lambda k: part_info[k]["ipn"]):
-        # Combine all note strings from multiple BOM paths
-        combined_reference = (
-            ", ".join(part_references[key]) if part_references[key] else ""
-        )
+        # note joins distinct occurrence notes; reference joins distinct
+        # bom_item.reference designator tokens - each field carries its own
+        # source data (issue #45 fixes the notes-in-reference swap)
+        combined_note = _dedupe_join(part_notes[key])
+        combined_reference = _dedupe_join(part_designators[key])
 
         # Finalize optional and consumable flags based on ALL instances
         # Part is optional=True only if it's optional in ALL BOM appearances
@@ -603,10 +649,20 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             and info["consumable_instances"] == info["total_instances"]
         )
 
-        # Per-line scalars (ruling R-025): a merged row shows inherited_from
-        # only when every occurrence agreed; disagreement emits null so the
-        # grid renders a blank cell rather than one occurrence's value.
+        # Provenance render (maintainer ruling, issue #45): the merged row
+        # lists the distinct source template IPNs comma-joined and sorted,
+        # appending the marker `local` when direct (non-inherited) lines
+        # are in the mix. Blank when nothing is inherited. An empty-string
+        # marker (inherited line whose template has no IPN) is inherited
+        # but unrenderable - it contributes no token and does not count
+        # as direct.
         inherited_froms = info["inherited_from_values"]
+        inherited_ipns = sorted(v for v in inherited_froms if v)
+        has_direct = None in inherited_froms
+        has_inherited = any(v is not None for v in inherited_froms)
+        inherited_tokens = inherited_ipns + (
+            ["local"] if has_direct and has_inherited else []
+        )
 
         row = {
             "part_id": part_info[key]["part_id"],
@@ -620,15 +676,13 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             "default_supplier_id": part_info[key]["default_supplier_id"],
             "internal_supplier": part_info[key]["internal_supplier"],
             "part_type": part_info[key]["part_type"],
-            "note": part_info[key]["note"],  # BOM item notes
-            "reference": combined_reference,  # Aggregated note strings
+            "note": combined_note,  # Dedupe-joined BOM item notes
+            "reference": combined_reference,  # Dedupe-joined designators
             "cut_list": list(cut_lists[key].values()) or None,
             # Material lump: piece_count is uniformly 1 on every flat row
             # (R-025 amendment, issue #44).
             "piece_count": 1,
-            "inherited_from": (
-                next(iter(inherited_froms)) if len(inherited_froms) == 1 else None
-            ),
+            "inherited_from": ", ".join(inherited_tokens) or None,
             "assembly_no_children": part_info[key].get("assembly_no_children", False),
             "max_depth_exceeded": part_info[key].get("max_depth_exceeded", False),
             "optional": is_optional,

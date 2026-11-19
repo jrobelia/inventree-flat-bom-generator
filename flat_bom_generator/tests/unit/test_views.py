@@ -113,7 +113,7 @@ class APIResponseStructureTests(unittest.TestCase):
 
     def test_bom_item_structure(self):
         """Document expected structure of each bom_item."""
-        # These 22 core fields MUST be present in each bom_item
+        # These 25 core fields MUST be present in each bom_item
         required_fields = [
             # Core identifiers (3)
             "part_id", "ipn", "part_name",
@@ -125,8 +125,8 @@ class APIResponseStructureTests(unittest.TestCase):
             # Part properties (5)
             "is_assembly", "purchaseable", "default_supplier_id", "part_type",
             "internal_supplier",
-            # BOM data (4)
-            "note", "cut_list", "piece_count", "inherited_from",
+            # BOM data (5)
+            "note", "reference", "cut_list", "piece_count", "inherited_from",
         ]
 
         # Warning flags are optional (only present if triggered)
@@ -135,7 +135,7 @@ class APIResponseStructureTests(unittest.TestCase):
             "max_depth_exceeded",
         ]
 
-        self.assertEqual(len(required_fields), 24)
+        self.assertEqual(len(required_fields), 25)
         self.assertTrue(True, "BOM item structure documented")
 
     def test_metadata_structure(self):

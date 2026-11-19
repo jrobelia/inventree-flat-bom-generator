@@ -186,7 +186,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
     - Quantities (total_qty, in_stock, allocated, on_order, available)
     - Display metadata (full_name, description, image, thumbnail, link, category)
     - Part properties (units, is_assembly, purchaseable, internal_supplier, part_type)
-    - BOM data (note, cut_list, piece_count, inherited_from)
+    - BOM data (note, reference, cut_list, piece_count, inherited_from)
     - Warning flags (assembly_no_children, max_depth_exceeded)
     """
 
@@ -328,7 +328,14 @@ class FlatBOMItemSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         allow_blank=True,
-        help_text="BOM item notes (displayed as free text, never parsed)",
+        help_text="BOM item notes (displayed as free text, never parsed); merged rows dedupe-join distinct occurrence notes (issue #45)",
+    )
+
+    reference = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="BOM line reference designators (bom_item.reference); merged rows dedupe-join distinct tokens (issue #45)",
     )
 
     cut_list = serializers.ListField(
@@ -348,7 +355,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         allow_blank=True,
-        help_text="IPN of the ancestor part an inherited BOM line is defined on (None for direct lines)",
+        help_text="Distinct source template IPNs the merged lines were inherited through, comma-joined and sorted, with marker 'local' appended when direct (non-inherited) lines are in the mix; None when nothing is inherited (maintainer ruling, issue #45)",
     )
 
     # Warning flags
@@ -414,6 +421,7 @@ class FlatBOMItemSerializer(serializers.Serializer):
             "consumable",
             # BOM data
             "note",
+            "reference",
             "cut_list",
             "piece_count",
             "inherited_from",

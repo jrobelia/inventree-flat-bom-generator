@@ -148,50 +148,51 @@ describe('generateCsvContent', () => {
   });
 });
 
-describe('Pieces / Inherited From columns (ticket #24, ruling R-026)', () => {
-  // The CSV mirrors the table (R-017): the two columns #14 added to the grid
-  // get CSV counterparts in the same relative position - after Cut Length /
-  // Cut Unit, before In Stock. A merged row that nulls the per-line scalars
-  // (R-025) exports a blank cell where the table shows a dimmed dash.
-  // Header literals below ('Pieces', 'Inherited From', 'Cut Unit',
-  // 'In Stock') pin the `headers` array in generateCsvContent (csvExport.ts).
+describe('Inherited From column (ticket #24, ruling R-026; #44 drops Pieces)', () => {
+  // The CSV mirrors the table (R-017): Inherited From keeps its grid
+  // position - after Cut Length / Cut Unit, before In Stock. A merged row
+  // that nulls the scalar (R-025) exports a blank cell where the table
+  // shows a dimmed dash.
+  // The Pieces column is gone (#44, R-025 amendment): flat rows are
+  // material lumps with piece_count uniformly 1, so the column could only
+  // ever export a degenerate 1 - same treatment as the grid, which no
+  // longer defines the column. Piece structure lives in the cut list.
+  // Header literals below ('Inherited From', 'Cut Unit', 'In Stock') pin
+  // the `headers` array in generateCsvContent (csvExport.ts).
 
-  it('adds Pieces and Inherited From in grid order between Cut Unit and In Stock', () => {
-    const items = [createBomItem({ piece_count: 4, inherited_from: 'WELD-T' })];
+  it('keeps Inherited From in grid order between Cut Unit and In Stock', () => {
+    const items = [createBomItem({ inherited_from: 'WELD-T' })];
     const csv = generateCsvContent(items, 1, true, true);
     const lines = csv.split('\n');
     const header = lines[0].split(',');
 
-    const piecesCol = header.indexOf('Pieces');
+    expect(header.indexOf('Pieces')).toBe(-1);
     const inheritedCol = header.indexOf('Inherited From');
-    expect(piecesCol).toBeGreaterThan(-1);
     expect(inheritedCol).toBeGreaterThan(-1);
-    // Grid: ... Cut Length, Pieces, Inherited From, In Stock ...
-    expect(piecesCol).toBe(header.indexOf('Cut Unit') + 1);
-    expect(inheritedCol).toBe(piecesCol + 1);
+    // Grid: ... Cut Length, Inherited From, In Stock ...
+    expect(inheritedCol).toBe(header.indexOf('Cut Unit') + 1);
     expect(header.indexOf('In Stock')).toBe(inheritedCol + 1);
 
     const cells = lines[1].split(',');
-    expect(cells[piecesCol]).toBe('4');
     expect(cells[inheritedCol]).toBe('WELD-T');
+    expect(cells.length).toBe(header.length);
   });
 
-  it('emits blank cells when a merged row nulls the scalars (R-025)', () => {
-    const items = [createBomItem({ piece_count: null, inherited_from: null })];
+  it('emits a blank cell when a merged row nulls inherited_from (R-025)', () => {
+    const items = [createBomItem({ inherited_from: null })];
     const csv = generateCsvContent(items, 1, true, true);
     const lines = csv.split('\n');
     const header = lines[0].split(',');
     const cells = lines[1].split(',');
 
-    expect(cells[header.indexOf('Pieces')]).toBe('');
     expect(cells[header.indexOf('Inherited From')]).toBe('');
     expect(cells.length).toBe(header.length);
   });
 
-  it('keeps child rows truthful: blank Pieces, row-level inherited_from', () => {
-    // A cut-list child carries piece_count: null but inherits the parent's
-    // inherited_from (the table renders that IPN on the child row too);
-    // a substitute child carries neither field.
+  it('keeps child rows truthful on inherited_from', () => {
+    // A cut-list child inherits the parent's inherited_from (the table
+    // renders that IPN on the child row too); a substitute child carries
+    // the field blank.
     const items = [
       createBomItem({
         inherited_from: 'WELD-T',
@@ -203,17 +204,14 @@ describe('Pieces / Inherited From columns (ticket #24, ruling R-026)', () => {
     const csv = generateCsvContent(flattenBomData(items), 1, true, true);
     const lines = csv.split('\n');
     const header = lines[0].split(',');
-    const piecesCol = header.indexOf('Pieces');
     const inheritedCol = header.indexOf('Inherited From');
 
     // Row order: parent, cut-list child, substitute child
     const cutChild = lines[2].split(',');
-    expect(cutChild[piecesCol]).toBe('');
     expect(cutChild[inheritedCol]).toBe('WELD-T');
     expect(cutChild.length).toBe(header.length);
 
     const subChild = lines[3].split(',');
-    expect(subChild[piecesCol]).toBe('');
     expect(subChild[inheritedCol]).toBe('');
     expect(subChild.length).toBe(header.length);
   });

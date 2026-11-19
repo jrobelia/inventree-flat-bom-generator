@@ -301,7 +301,6 @@ def traverse_bom(
 
                 # Set child-specific values
                 child_node["quantity"] = child_qty
-                child_node["piece_count"] = bom_item.get("piece_count", 1)
                 child_node["reference"] = child_ref
                 child_node["note"] = child_note
                 child_node["optional"] = bom_item.get("optional", False)
@@ -379,7 +378,10 @@ def get_leaf_parts_only(
             "level": node["level"],
             "bom_item_pk": node.get("bom_item_pk"),
             "quantity": node.get("quantity"),
-            "piece_count": node.get("piece_count", 1),
+            # Flat rows are material lumps: piece_count is uniformly 1 -
+            # per-line piece structure lives in the cut list (R-025
+            # amendment, issue #44).
+            "piece_count": 1,
             "inherited_from": node.get("inherited_from"),
             "max_depth_exceeded": node.get("max_depth_exceeded", False),
             "optional": node.get("optional", False),
@@ -460,10 +462,13 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
     Same sizes merge across all expanded parents; mixed sizes stay separate.
     The parent assembly's supplier status is irrelevant (ruling R-016).
 
-    Per-line scalars (piece_count, inherited_from) survive the merge only
-    when every occurrence agrees; a merged row whose occurrences disagree
-    emits null for that scalar rather than a misleading first-seen value
-    (ruling R-025).
+    Per-line scalars: piece_count is uniformly 1 on every flat row - a
+    merged lump quantity cannot carry any single line's piece count, and
+    even a lone line's count would misstate the lump under a multiplied
+    ancestor (ruling R-025 amendment, issue #44). inherited_from survives
+    the merge only when every occurrence agrees; a merged row whose
+    occurrences disagree emits null for that scalar rather than a
+    misleading first-seen value (ruling R-025).
 
     Args:
         leaf_parts: List of leaf parts from get_leaf_parts_only()
@@ -549,7 +554,6 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
                 "internal_supplier": leaf.get("internal_supplier", False),
                 "part_type": leaf["part_type"],
                 "note": leaf.get("note", ""),  # BOM item notes
-                "piece_count_values": set(),  # per-occurrence piece counts (R-025)
                 "inherited_from_values": set(),  # per-occurrence markers (R-025)
                 "assembly_no_children": leaf.get("assembly_no_children", False),
                 "max_depth_exceeded": leaf.get("max_depth_exceeded", False),
@@ -575,7 +579,6 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
 
         # Per-line scalars (ruling R-025): collect every occurrence's value;
         # the merged row emits the scalar only when the set is singleton.
-        part_info[key]["piece_count_values"].add(leaf.get("piece_count", 1))
         part_info[key]["inherited_from_values"].add(leaf.get("inherited_from"))
 
     all_keys = set(totals.keys())
@@ -600,10 +603,9 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             and info["consumable_instances"] == info["total_instances"]
         )
 
-        # Per-line scalars (ruling R-025): a merged row shows the value only
-        # when every occurrence agreed; disagreement emits null so the grid
-        # renders a blank cell rather than one occurrence's value.
-        piece_counts = info["piece_count_values"]
+        # Per-line scalars (ruling R-025): a merged row shows inherited_from
+        # only when every occurrence agreed; disagreement emits null so the
+        # grid renders a blank cell rather than one occurrence's value.
         inherited_froms = info["inherited_from_values"]
 
         row = {
@@ -621,9 +623,9 @@ def deduplicate_and_sum(leaf_parts: list[dict]) -> list[dict]:
             "note": part_info[key]["note"],  # BOM item notes
             "reference": combined_reference,  # Aggregated note strings
             "cut_list": list(cut_lists[key].values()) or None,
-            "piece_count": (
-                next(iter(piece_counts)) if len(piece_counts) == 1 else None
-            ),
+            # Material lump: piece_count is uniformly 1 on every flat row
+            # (R-025 amendment, issue #44).
+            "piece_count": 1,
             "inherited_from": (
                 next(iter(inherited_froms)) if len(inherited_froms) == 1 else None
             ),

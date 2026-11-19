@@ -137,34 +137,36 @@ class UpstreamBomSemanticsTests(InvenTreeTestCase):
         self.assertEqual(cover['total_qty'], 1.0)
         self.assertEqual(cover['piece_count'], 1)
 
-    def test_merged_row_nulls_disagreeing_piece_count(self):
-        """500x4 + 500x2 on the bar: the merged row cannot show either
-        count - 'Pieces' goes blank rather than lie (issue #23, R-025)."""
+    def test_merged_row_disagreeing_piece_count_is_one(self):
+        """500x4 + 500x2 on the bar: the merged row is a material lump -
+        piece_count normalizes to 1 whatever the sources were (#44,
+        R-025 amendment)."""
         rows = self._flat(self.tla)
 
-        self.assertIsNone(rows[8103]['piece_count'])
+        self.assertEqual(rows[8103]['piece_count'], 1)
 
-    def test_merged_row_nulls_disagreeing_piece_count_tube(self):
-        """The tube's 500x4 + 250x8 merge also nulls piece_count - while
-        its two-size cut_list stays aggregated and correct."""
+    def test_merged_row_disagreeing_piece_count_tube_is_one(self):
+        """The tube's 500x4 + 250x8 merge also emits piece_count=1 - while
+        its two-size cut_list keeps the real piece structure."""
         rows = self._flat(self.tla)
 
-        self.assertIsNone(rows[8104]['piece_count'])
+        self.assertEqual(rows[8104]['piece_count'], 1)
         self.assertEqual(len(rows[8104]['cut_list']), 2)
 
-    def test_uniform_piece_count_survives_merge(self):
-        """SEM-PIN at 10x3 under both weldments keeps piece_count=3 on the
-        merged row - only disagreement nulls."""
+    def test_uniform_piece_count_still_normalizes(self):
+        """SEM-PIN at 10x3 under both weldments cannot keep piece_count=3:
+        even agreeing sources cannot describe the lump's 60 pcs as 3
+        pieces - the row emits 1 (#44)."""
         rows = self._flat(self.tla)
 
         pin = rows[8130]
-        self.assertEqual(pin['piece_count'], 3)
+        self.assertEqual(pin['piece_count'], 1)
         self.assertEqual(pin['total_qty'], 60.0)
 
     def test_disagreeing_inherited_from_nulls_on_merge(self):
         """The gasket is on the variant directly AND via the template's
         inherited line - the merged row nulls inherited_from (R-025) while
-        uniform piece_count=1 still carries."""
+        piece_count normalizes to the lump's 1 (#44)."""
         rows = self._flat(self.variant)
 
         gasket = rows[8131]

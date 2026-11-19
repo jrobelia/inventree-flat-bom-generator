@@ -43,7 +43,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           default_supplier_name: '',
           cut_length: piece.size,
           cut_unit: piece.unit,
-          piece_count: null,
           // Generic child row fields
           is_child_row: true,
           child_row_type: 'cutlist',
@@ -86,7 +85,6 @@ export function flattenBomData(items: BomItem[]): BomItem[] {
           purchaseable: true,
           // Clear fields that don't apply to substitutes
           cut_list: null,
-          piece_count: null,
           has_substitutes: false,
           substitute_parts: null
         } as BomItem);

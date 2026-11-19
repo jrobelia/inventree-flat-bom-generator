@@ -393,24 +393,25 @@ class FlatBOMItemSerializerTests(unittest.TestCase):
         self.assertEqual(serializer.validated_data["piece_count"], 4)
         self.assertEqual(serializer.validated_data["inherited_from"], "WELD-T")
 
-    def test_piece_count_null_for_merged_disagreement(self):
-        """A merged row carries piece_count=None when its occurrences
-        disagree (ruling R-025) - the API surface must accept the null."""
+    def test_piece_count_null_rejected(self):
+        """piece_count is always 1 on a flat row (material lump; #44 R-025
+        amendment) - the retired merged-null path is off-contract and the
+        serializer rejects it."""
         data = self.get_valid_bom_item_data()
         data["piece_count"] = None
         serializer = FlatBOMItemSerializer(data=data)
-        self.assertTrue(serializer.is_valid(), f"Validation failed: {serializer.errors}")
-        self.assertIsNone(serializer.validated_data["piece_count"])
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("piece_count", serializer.errors)
 
-    def test_merged_null_scalars_serialize_through(self):
-        """Instance serialization emits JSON null for merged scalars - the
-        grid renders its blank cell from the same payload."""
+    def test_merged_null_inherited_from_serializes_through(self):
+        """Instance serialization emits JSON null for a merged row's
+        inherited_from - the grid renders its blank cell from the same
+        payload. piece_count no longer nulls (#44: it is always 1)."""
         data = self.get_valid_bom_item_data()
-        data["piece_count"] = None
         data["inherited_from"] = None
         serializer = FlatBOMItemSerializer(data)
-        self.assertIsNone(serializer.data["piece_count"])
         self.assertIsNone(serializer.data["inherited_from"])
+        self.assertEqual(serializer.data["piece_count"], 1)
 
     def test_all_part_types(self):
         """Test all category types serialize correctly."""

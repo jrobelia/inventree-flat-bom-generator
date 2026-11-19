@@ -254,7 +254,8 @@ class TestAssemblyNoChildren(unittest.TestCase):
         self.assertNotIn("cut_length", leaves[0])
 
     def test_child_preserves_bom_line_fields(self):
-        """BOM line fields (quantity, piece_count, inherited_from) carry to leaf."""
+        """BOM line fields carry to leaf - piece_count normalized to the
+        flat-row lump value 1 (#44), quantity and inherited_from kept."""
         from flat_bom_generator.bom_traversal import get_leaf_parts_only
 
         tree = {
@@ -283,7 +284,7 @@ class TestAssemblyNoChildren(unittest.TestCase):
         self.assertEqual(len(leaves), 1)
         self.assertEqual(leaves[0]["part_id"], 700)
         self.assertEqual(leaves[0]["quantity"], 120.0)
-        self.assertEqual(leaves[0]["piece_count"], 4)
+        self.assertEqual(leaves[0]["piece_count"], 1)
         self.assertEqual(leaves[0]["inherited_from"], "WELD-T")
 
     def test_assembly_no_children_due_to_max_depth_not_flagged(self):

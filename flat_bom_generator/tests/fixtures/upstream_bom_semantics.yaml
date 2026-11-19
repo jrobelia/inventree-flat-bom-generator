@@ -11,8 +11,9 @@
 #   +- Linear Rail (8105) 500mm x1 piece           -> 500mm   (500 x 1)
 #   +- M8 Bolt (8106) 10 each x5 pieces            -> 50 each (no cut entry)
 #   +- Epoxy (8107) 2 ml x1 - Part.consumable=True, line flag False
-#   +- Dowel Pin (8130) 10pcs x3 under A and under B -> merged row keeps
-#     piece_count=3 (uniform scalars carry through the merge, R-025)
+#   +- Dowel Pin (8130) 10pcs x3 under A and under B -> merged row emits
+#     piece_count=1 (#44: uniform per-line counts cannot describe the
+#     lump; R-025 as amended)
 #
 #   Template Weldment WELD-T (8110) - is_template, assembly
 #   +- Bracket (8120) x2 inherited:true   -> propagates to variant
@@ -514,7 +515,8 @@
     lft: 1
     rght: 2
 
-# Same part, same piece_count, two parents - merged row keeps the value
+# Same part, same piece_count, two parents - merged row emits piece_count=1
+# (uniform per-line counts cannot describe the lump; R-025 as amended, #44)
 - model: part.bomitem
   pk: 81014
   fields:

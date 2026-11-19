@@ -1,6 +1,6 @@
 # FlatBOMGenerator - Test Plan
 
-**Last Updated**: November 7, 2026  
+**Last Updated**: November 11, 2026  
 **Test Count**: 346 backend tests (181 unit + 165 integration); frontend Vitest + Playwright run in the suite  
 **Test Quality**: Grade B+ (85% Grade A tests, 92% estimated coverage)  
 **Status**: All priorities complete, all critical gaps closed
@@ -44,7 +44,7 @@ This document covers **testing strategy, execution, and improvement priorities**
 - `test_serializers.py` (57 tests) - DRF serializer validation
 - `test_views.py` (14 tests) - View structure and helper functions
 - `test_cut_list.py` (21 tests) - Cut-list aggregation (piece_count x multiplier, length-unit dimensionality)
-- `test_merged_row_scalars.py` (9 tests) - Merged-row per-line scalars null on disagreement (ruling R-025)
+- `test_merged_row_scalars.py` (9 tests) - Merged-row per-line scalars: piece_count normalizes to 1, inherited_from nulls on disagreement (ruling R-025 as amended)
 - `test_assembly_no_children.py` (27 tests) - Expansion matrix + warning flag logic
 - `test_shortfall_calculation.py` (13 tests) - Frontend calculations
 - `test_max_depth_warnings.py` (8 tests) - Flag prioritization
@@ -69,7 +69,7 @@ python -m unittest flat_bom_generator.tests.test_categorization -v
 
 **Files:** (165 tests total)
 - `test_internal_supplier_expansion.py` (11 tests) - Expansion matrix arms incl. sourced-TLA roots (fixture: `internal_supplier_expansion.yaml`)
-- `test_upstream_bom_semantics.py` (15 tests) - piece_count, inherited lines, effective consumable, merged-row scalar nulls (fixture: `upstream_bom_semantics.yaml`)
+- `test_upstream_bom_semantics.py` (15 tests) - piece_count lump semantics, inherited lines, effective consumable, merged-row scalar behavior (piece_count normalizes to 1, inherited_from nulls on disagreement) (fixture: `upstream_bom_semantics.yaml`)
 - `test_get_bom_items.py` (15 tests) - BOM item fetching and supplier lookup
 - `test_plugin_core.py` (15 tests) - Plugin registration, URLs, panels
 - `test_error_scenarios.py` (14 tests) - Error handling paths
@@ -613,4 +613,4 @@ class MyFeatureTests(InvenTreeTestCase):
 
 ---
 
-_Last updated: November 7, 2026_
+_Last updated: November 11, 2026_

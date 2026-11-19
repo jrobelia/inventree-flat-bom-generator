@@ -1,14 +1,18 @@
-"""Unit tests for merged-row per-line scalars (issue #23, ruling R-025).
+"""Unit tests for merged-row per-line scalars (issues #23/#44, ruling R-025).
 
-Contract (maintainer ruling R-025, #14 R1-F10 adjudication): a merged flat
-row - one part aggregated across multiple BOM occurrences - must not show a
-per-line scalar from one occurrence while a sibling occurrence disagrees.
+Contract (maintainer ruling R-025, #14 R1-F10 adjudication; amended for
+piece_count by #44, 2026-11-11): a merged flat row - one part aggregated
+across multiple BOM occurrences - must not show a per-line scalar from one
+occurrence while a sibling occurrence disagrees.
 
-- piece_count: identical across all merged occurrences -> show it;
-  differing -> null. The grid renders the null as a blank 'Pieces' cell
-  rather than "Pieces: 4" beside a truthful "500 x 6" cut-list row.
-- inherited_from: same rule - show only when uniform, else null.
-- Single-occurrence rows are unaffected.
+- piece_count: withdrawn from the disagreement rule entirely - a per-line
+  piece count cannot survive quantity aggregation even when sources agree
+  (500x4 + 500x4 shows "4" while the cut list truthfully says 500x8; a
+  single-source row under a 3x ancestor shows 6000mm beside "4", implying
+  1500mm pieces). Every flat row is a material lump and emits
+  piece_count=1; piece structure lives exclusively in the cut list.
+- inherited_from: categorical provenance, not a quantity - it still carries
+  only when uniform and nulls on disagreement.
 - The cut list is unaffected: it aggregates by (part, piece size), not by
   the BOM line's scalar fields.
 
@@ -82,7 +86,7 @@ def _leaf(part_id=10, ipn="P-10", quantity=None, piece_count=1,
 
 
 class TestMergedRowScalars(unittest.TestCase):
-    """deduplicate_and_sum() nulls disagreeing per-line scalars (R-025)."""
+    """deduplicate_and_sum() per-line scalar contract (R-025 as amended)."""
 
     def setUp(self):
         patcher = patch(
@@ -92,9 +96,9 @@ class TestMergedRowScalars(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_disagreeing_piece_count_nulls(self):
-        """500x4 + 500x2 on one part -> merged row piece_count is None, in
-        either occurrence order (the ruled defect was first-seen wins)."""
+    def test_disagreeing_piece_count_still_one(self):
+        """500x4 + 500x2 on one part -> merged row piece_count is 1, in
+        either occurrence order; the lump has no per-line piece count."""
         for counts in [(4, 2), (2, 4)]:
             with self.subTest(counts=counts):
                 rows = deduplicate_and_sum([
@@ -104,22 +108,24 @@ class TestMergedRowScalars(unittest.TestCase):
                           cumulative_qty=1000, unit="mm"),
                 ])
                 self.assertEqual(len(rows), 1)
-                self.assertIsNone(rows[0]["piece_count"])
+                self.assertEqual(rows[0]["piece_count"], 1)
 
-    def test_uniform_piece_count_carries(self):
-        """Two occurrences at piece_count=4 keep the value on the merged row."""
+    def test_agreeing_piece_count_still_one(self):
+        """Even when every occurrence agrees (500x4 + 500x4), the merged
+        row's lump quantity cannot carry a per-line count -> piece_count 1."""
         rows = deduplicate_and_sum([
             _leaf(piece_count=4, cumulative_qty=2000),
-            _leaf(piece_count=4, cumulative_qty=1000),
-        ])
-        self.assertEqual(rows[0]["piece_count"], 4)
-
-    def test_single_occurrence_piece_count_unaffected(self):
-        """A lone occurrence keeps its piece_count regardless of value."""
-        rows = deduplicate_and_sum([
             _leaf(piece_count=4, cumulative_qty=2000),
         ])
-        self.assertEqual(rows[0]["piece_count"], 4)
+        self.assertEqual(rows[0]["piece_count"], 1)
+
+    def test_single_occurrence_piece_count_normalizes(self):
+        """A lone occurrence normalizes too - under a multiplied ancestor its
+        source count would imply the wrong piece size on the lump total."""
+        rows = deduplicate_and_sum([
+            _leaf(piece_count=4, cumulative_qty=6000),
+        ])
+        self.assertEqual(rows[0]["piece_count"], 1)
 
     def test_disagreeing_inherited_from_nulls(self):
         """Inherited + direct occurrences merge to inherited_from=None, in
@@ -163,14 +169,15 @@ class TestMergedRowScalars(unittest.TestCase):
         ])
         self.assertEqual(rows[0]["inherited_from"], "WELD-T")
 
-    def test_cut_list_unaffected_by_scalar_null(self):
+    def test_cut_list_carries_piece_structure(self):
         """Disagreeing piece_count still merges cut rows by piece size -
-        '500 x 6' survives while 'Pieces' goes blank (R-025 scope bound)."""
+        '500 x 6' is the piece structure while the lump's piece_count is 1
+        (R-025 scope bound, amended)."""
         rows = deduplicate_and_sum([
             _leaf(quantity=500, piece_count=4, cumulative_qty=2000, unit="mm"),
             _leaf(quantity=500, piece_count=2, cumulative_qty=1000, unit="mm"),
         ])
-        self.assertIsNone(rows[0]["piece_count"])
+        self.assertEqual(rows[0]["piece_count"], 1)
         self.assertEqual(
             rows[0]["cut_list"], [{"size": 500, "count": 6, "unit": "mm"}]
         )
